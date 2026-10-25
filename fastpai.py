@@ -15,8 +15,14 @@ os.makedirs("static/covers", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # --- 2. DATABASE SETUP ---
-sqlite_file_name = "gophigo.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
+database_url = os.environ.get("DATABASE_URL")
+if database_url:
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+    sqlite_url = database_url
+else:
+    sqlite_file_name = "gophigo.db"
+    sqlite_url = f"sqlite:///{sqlite_file_name}"
+
 engine = create_engine(sqlite_url)
 
 class Author(SQLModel, table=True):
