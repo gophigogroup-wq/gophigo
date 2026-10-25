@@ -1,4 +1,4 @@
 fastapi
 uvicorn
 sqlmodel
-python-multipat
+python-multipart
