@@ -1,0 +1,4 @@
+fastapai
+uvicorn
+sqlmodel
+python-multipat
