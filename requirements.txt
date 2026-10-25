@@ -1,4 +1,4 @@
-fastapai
+fastapi
 uvicorn
 sqlmodel
 python-multipat
