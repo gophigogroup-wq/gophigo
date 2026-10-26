@@ -96,18 +96,16 @@ def register_page():
 
 @app.post("/register", response_class=HTMLResponse)
 def process_registration(fullname: str = Form(...), email: str = Form(...), password: str = Form(...), book_title: str = Form(...), price: float = Form(...), cover: UploadFile = File(...), pdf_file: UploadFile = File(...)):
-    cover_ext = cover.filename.split(".")[-1]
-    cover_name = f"{uuid.uuid4()}.{cover_ext}"
-    with open(f"static/covers/{cover_name}", "wb") as buffer:
-        shutil.copyfileobj(cover.file, buffer)
+      # 1. Upload Cover Image to Cloudinary
+    cover_result = cloudinary.uploader.upload(cover.file, folder="gophigo_covers")
+    cover_url = cover_result.get("secure_url")
 
-    pdf_ext = pdf_file.filename.split(".")[-1]
-    pdf_name = f"{uuid.uuid4()}.{pdf_ext}"
-    with open(f"static/books/{pdf_name}", "wb") as buffer:
-        shutil.copyfileobj(pdf_file.file, buffer)
+    # 2. Upload PDF to Cloudinary (as raw file)
+    pdf_result = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw")
+    pdf_url = pdf_result.get("secure_url")
 
     scrambled_password = hashlib.sha256(password.encode()).hexdigest()
-    new_author = Author(fullname=fullname, email=email, password=scrambled_password, book_title=book_title, price=price, cover_image=cover_name, pdf_file=pdf_name)
+    new_author = Author(fullname=fullname, email=email, password=scrambled_password, book_title=book_title, price=price, cover_image=cover_url, pdf_file=pdf_url)
     
     with Session(engine) as session:
         session.add(new_author)
