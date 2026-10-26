@@ -104,7 +104,7 @@ def register_page():
 @app.post("/register", response_class=HTMLResponse)
 def process_registration(fullname: str = Form(...), email: str = Form(...), password: str = Form(...), book_title: str = Form(...), price: float = Form(...), cover: UploadFile = File(...), pdf_file: UploadFile = File(...)):
       # 1. Upload Cover Image to Cloudinary
-    cover_result = cloudinary.uploader.upload(cover.file, folder="gophigo_covers")
+    cover_result = cloudinary.uploader.upload(cover.file, folder="gophigo_covers",resource_type="image")
     cover_url = cover_result.get("secure_url")
 
     # 2. Upload PDF to Cloudinary (as raw file)
