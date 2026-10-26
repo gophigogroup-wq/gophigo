@@ -148,7 +148,6 @@ def store():
             html += "<p>No books available yet. Check back later!</p>"
             
         for author in active_authors:
-            html += f"""
               html += f"""
             <div style='background: white; border-radius: 8px; padding: 20px; width: 250px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center;'>
                 <img src="/static/covers/{author.cover_image}" alt="Book Cover" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; margin-bottom: 15px; border: 1px solid #ccc;">
