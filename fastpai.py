@@ -1,3 +1,5 @@
+import cloudinary
+import cloudinary.uploader
 from fastapi import FastAPI, Form, Depends, HTTPException, status, Request, Response, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
