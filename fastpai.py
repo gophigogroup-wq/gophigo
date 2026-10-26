@@ -108,7 +108,7 @@ def process_registration(fullname: str = Form(...), email: str = Form(...), pass
     cover_url = cover_result.get("secure_url")
 
     # 2. Upload PDF to Cloudinary (as raw file)
-    pdf_result = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw")
+    pdf_result = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw",access_mode="public")
     pdf_url = pdf_result.get("secure_url")
 
     scrambled_password = hashlib.sha256(password.encode()).hexdigest()
@@ -137,7 +137,7 @@ def store():
         for author in active_authors:
             html += f"""
             <div style='background: white; border-radius: 8px; padding: 20px; width: 250px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center;'>
-                <img src="/{author.cover_image}" alt="Book Cover" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; margin-bottom: 15px; border: 1px solid #ccc;">
+                <img src="{author.cover_image}" alt="Book Cover" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; margin-bottom: 15px; border: 1px solid #ccc;">
                 <h3 style='color: #2c3e50; margin: 0;'>{author.book_title}</h3>
                 <p style='color: #7f8c8d; margin: 5px 0;'>By {author.fullname}</p>
                 <h4 style='color: #2ecc71;'>{author.price} TZS</h4>
