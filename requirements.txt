@@ -3,3 +3,4 @@ uvicorn
 sqlmodel
 python-multipart
 psycopg[binary]
+cloudinary
