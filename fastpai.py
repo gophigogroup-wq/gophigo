@@ -365,7 +365,7 @@ def author_dashboard(request: Request):
             <h1>Author Dashboard</h1>
             <h2>Welcome Back, {author.fullname}!</h2>
             <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; max-width: 500px; margin: auto;">
-                <img src="/static/covers/{author.cover_image}" style="width: 150px; height: 200px; object-fit: cover; border-radius: 4px;">
+                <img src="{author.cover_image}" style="width: 150px; height: 200px; object-fit: cover; border-radius: 4px;">
                 <h3>Your Book: {author.book_title}</h3>
                 <p><strong>Price:</strong> {author.price} TZS</p>
                 {payment_html}
@@ -444,7 +444,7 @@ def admin_dashboard(request: Request):
             
         book_color = "green" if author.book_status == "Approved" else ("red" if author.book_status == "Rejected" else "#f39c12")
         
-        html += f"<tr><td>{author.id}</td><td><img src='/static/covers/{author.cover_image}' style='width: 50px; height: 60px; object-fit: cover;'></td><td>{author.fullname}</td><td>{author.book_title}</td><td style='color: {status_color}; font-weight: bold;'>{author.membership_status}</td><td style='color: {book_color}; font-weight: bold;'>{author.book_status}</td><td>{action_buttons}</td></tr>"
+        html += f"<tr><td>{author.id}</td><td><img src='{author.cover_image}' style='width: 50px; height: 60px; object-fit: cover;'></td><td>{author.fullname}</td><td>{author.book_title}</td><td style='color: {status_color}; font-weight: bold;'>{author.membership_status}</td><td style='color: {book_color}; font-weight: bold;'>{author.book_status}</td><td>{action_buttons}</td></tr>"
         
     html += "</table><br>"
     html += "<a href='/admin-logout' style='background-color: #e74c3c; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Admin Logout</a>"
