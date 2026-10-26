@@ -114,6 +114,7 @@ def process_registration(fullname: str = Form(...), email: str = Form(...), pass
     scrambled_password = hashlib.sha256(password.encode()).hexdigest()
     new_author = Author(fullname=fullname, email=email, password=scrambled_password, book_title=book_title, price=price, cover_image=cover_url, pdf_file=pdf_url)
     
+    
     with Session(engine) as session:
         session.add(new_author)
         session.commit()
