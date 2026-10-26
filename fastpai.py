@@ -374,6 +374,7 @@ def author_dashboard(request: Request):
             <br><br><a href="/logout" style="background-color: #e74c3c; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Logout</a>
         </body></html>
         """
+        
 
 @app.get("/pay-membership")
 def pay_membership(request: Request):
