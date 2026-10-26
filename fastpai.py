@@ -290,7 +290,7 @@ def read_book(request: Request, purchase_id: int):
                     <h3>Gophigo Secure Reader - {purchase.book_title}</h3>
                     <p style="font-size: 12px; color: #bdc3c7;">Licensed to: {customer_email}. Screenshots are traceable.</p>
                 </div>
-                <iframe src="/static/books/{purchase.pdf_file}#toolbar=0" style="flex: 1; border: none; width: 100%;"></iframe>
+              <iframe src="https://docs.google.com/viewer?url={purchase.pdf_file}&embedded=true" style="flex: 1; border: none; width: 100%; height: 100vh;"></iframe>
             </body>
         </html>
         """
