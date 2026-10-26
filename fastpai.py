@@ -217,7 +217,7 @@ def checkout(request: Request, author_id: int):
         <html><body style="font-family: Arial; text-align: center; padding: 50px; background-color: #f4f4f4;">
             <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto;">
                 <h2>Checkout</h2>
-                <img src="/static/covers/{author.cover_image}" style="width: 150px; height: 200px; object-fit: cover; border-radius: 4px;">
+                <img src="{author.cover_image}" style="width: 150px; height: 200px; object-fit: cover; border-radius: 4px;">
                 <h3>{author.book_title}</h3>
                 <h4 style="color: #2ecc71;">{author.price} TZS</h4>
                 <a href="/pay/{author.id}" style="background-color: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: block; margin-top: 20px;">Pay with Mobile Money (Simulate)</a>
