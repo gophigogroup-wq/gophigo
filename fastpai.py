@@ -69,7 +69,7 @@ def home():
     <html>
         <body style="font-family: Arial; text-align: center; background-color: #f4f4f4; padding: 50px;">
             <h1>Welcome to Gophigo Publishing Portal</h1>
-            <p>The best place for Tanzanian authors to sell their books.</p>
+            <p>The global marketplace for authors to sell their books.</p>
             <a href="/store" style="background-color: #f39c12; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">📚 Visit Public Bookstore</a>
             <br><br>
             <a href="/register" style="background-color: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Register as an Author</a>
