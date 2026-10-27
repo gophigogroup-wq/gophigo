@@ -341,7 +341,7 @@ def author_dashboard(request: Request):
             return RedirectResponse(url="/login", status_code=303)
 
         author_sales = session.exec(select(Purchase).where(Purchase.author_id == author.id)).all()
-        total_earned = len(author_sales) * (author.price * 0.70)
+        total_earned = len(author_sales) * (author.price * 0.50)
 
         if author.membership_status == "Pending":
             payment_html = """
@@ -354,7 +354,7 @@ def author_dashboard(request: Request):
             payment_html = f"""
             <div style="background: #d4edda; padding: 20px; border-radius: 8px; margin-top: 20px;">
                 <h3 style="color: #155724;">✅ Membership Active</h3>
-                <h4 style="color: #155724;">Total Earnings (70%): {total_earned} TZS</h4>
+                <h4 style="color: #155724;">Total Earnings (50%): {total_earned} TZS</h4>
             </div>
             <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin-top: 10px;">
                 <h4 style="color: #856404;">Book Status: {author.book_status}</h4>
@@ -428,11 +428,13 @@ def admin_dashboard(request: Request):
         authors = session.exec(select(Author)).all()
         purchases = session.exec(select(Purchase)).all()
         
-        total_sales = len(purchases) * 20000
+       total_sales = sum(author.price for author in authors if author.id in [p.author_id for p in purchases])
+        total_platform_revenue = total_sales * 0.50
+        total_author_payouts = total_sales * 0.50
     
     html = "<html><body style='font-family: Arial; padding: 50px; background-color: #f4f4f4;'>"
     html += "<h1>Gophigo Admin Dashboard</h1>"
-    html += f"<div style='background: #2c3e50; color: white; padding: 20px; border-radius: 8px;'><h3>Total Book Sales</h3><p style='font-size: 24px;'>{len(purchases)} copies sold</p></div>"
+        html += f"<div style='background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;'><h3>Total Sales: {total_sales} TZS</h3><p style='font-size: 18px;'>Gophigo Revenue (50%): {total_platform_revenue} TZS | Author Payouts (50%): {total_author_payouts} TZS</p></div>" 
     
     html += "<br><table border='1' style='border-collapse: collapse; width: 100%; background: white;'><tr style='background-color: #34495e; color: white;'><th>ID</th><th>Cover</th><th>Name</th><th>Book</th><th>Status</th><th>Book Quality</th><th>Actions</th></tr>"
     
