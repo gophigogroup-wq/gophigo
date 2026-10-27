@@ -67,6 +67,7 @@ NAVBAR = """
         <a href="/store" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Bookstore</a>
         <a href="/login" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Author Login</a>
         <a href="/customer-login" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Customer Login</a>
+                <a href="/admin-login" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">Admin Login</a>
     </div>
 </nav>
 """
