@@ -428,10 +428,10 @@ def admin_dashboard(request: Request):
         authors = session.exec(select(Author)).all()
         purchases = session.exec(select(Purchase)).all()
         
-       total_sales = sum(author.price for author in authors if author.id in [p.author_id for p in purchases])
+        total_sales = sum(author.price for author in authors if author.id in [p.author_id for p in purchases])
         total_platform_revenue = total_sales * 0.50
         total_author_payouts = total_sales * 0.50
-    
+
     html = "<html><body style='font-family: Arial; padding: 50px; background-color: #f4f4f4;'>"
     html += "<h1>Gophigo Admin Dashboard</h1>"
         html += f"<div style='background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;'><h3>Total Sales: {total_sales} TZS</h3><p style='font-size: 18px;'>Gophigo Revenue (50%): {total_platform_revenue} TZS | Author Payouts (50%): {total_author_payouts} TZS</p></div>" 
