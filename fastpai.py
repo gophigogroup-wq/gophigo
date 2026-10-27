@@ -509,7 +509,67 @@ def admin_login(response: Response, username: str = Form(...), password: str = F
     return HTMLResponse(content=f"<h1>Invalid Admin Credentials. <a href='/admin-login'>Try again</a></h1>{FOOTER}", status_code=401)
 
 @app.get("/admin", response_class=HTMLResponse)
-def admin_d
+def admin_dashboard(request: Request):
+    if request.cookies.get("admin_session") != "true":
+        return RedirectResponse(url="/admin-login", status_code=303)
+
+    with Session(engine) as session:
+        authors = session.exec(select(Author)).all()
+        purchases = session.exec(select(Purchase)).all()
+        
+        total_sales = sum(author.price for author in authors if author.id in [p.author_id for p in purchases])
+        total_platform_revenue = total_sales * 0.50
+        total_author_payouts = total_sales * 0.50
+    
+    html = f"""
+    <html>
+        <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+            {NAVBAR}
+            <div style="padding: 50px; min-height: 60vh;">
+                <h1 style="color: #2c3e50;">Gophigo Admin Dashboard</h1>
+                
+                <div style='background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
+                    <h3 style="margin-top: 0;">Total Sales: {total_sales} TZS</h3>
+                    <p style='font-size: 18px; margin-bottom: 0;'>Gophigo Revenue (50%): <strong style="color: #2ecc71;">{total_platform_revenue} TZS</strong> | Author Payouts (50%): <strong style="color: #f39c12;">{total_author_payouts} TZS</strong></p>
+                </div>
+                
+                <div style="overflow-x: auto;">
+                    <table border='1' style='border-collapse: collapse; width: 100%; background: white; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'>
+                        <tr style='background-color: #34495e; color: white;'>
+                            <th style="padding: 10px;">ID</th>
+                            <th style="padding: 10px;">Cover</th>
+                            <th style="padding: 10px;">Name</th>
+                            <th style="padding: 10px;">Book</th>
+                            <th style="padding: 10px;">Status</th>
+                            <th style="padding: 10px;">Book Quality</th>
+                            <th style="padding: 10px;">Actions</th>
+                        </tr>
+    """
+    
+    for author in authors:
+        status_color = "green" if author.membership_status == "Active" else "red"
+        
+        if author.membership_status == "Active" and author.book_status == "Pending Review":
+            action_buttons = f"<a href='/approve/{author.id}' style='background-color: #2ecc71; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px; margin-right: 5px;'>Approve</a> <a href='/reject/{author.id}' style='background-color: #e74c3c; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px;'>Reject</a>"
+        else:
+            action_buttons = ""
+            
+        book_color = "green" if author.book_status == "Approved" else ("red" if author.book_status == "Rejected" else "#f39c12")
+        
+        html += f"<tr><td style='padding: 10px; text-align: center;'>{author.id}</td><td style='padding: 10px; text-align: center;'><img src='{author.cover_image}' style='width: 50px; height: 60px; object-fit: cover; border-radius: 4px;'></td><td style='padding: 10px;'>{author.fullname}</td><td style='padding: 10px;'>{author.book_title}</td><td style='padding: 10px; color: {status_color}; font-weight: bold;'>{author.membership_status}</td><td style='padding: 10px; color: {book_color}; font-weight: bold;'>{author.book_status}</td><td style='padding: 10px;'>{action_buttons}</td></tr>"
+        
+    html += f"""
+                    </table>
+                </div>
+                <br>
+                <a href='/admin-logout' style='background-color: #e74c3c; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Admin Logout</a>
+            </div>
+            {FOOTER}
+        </body>
+    </html>
+    """
+    
+    return html
 @app.get("/admin", response_class=HTMLResponse)
 def admin_dashboard(request: Request):
     if request.cookies.get("admin_session") != "true":
