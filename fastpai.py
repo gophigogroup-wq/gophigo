@@ -67,7 +67,7 @@ SQLModel.metadata.create_all(engine)
 def home():
     return """
     <html>
-        <body style="font-family: Arial; text-align: center; background-color: #f4f4f4; padding: 50px;">
+        <body style="font-family: Arial; text-align: center; background-color: #f4f4f4; padding: 50px;"><nav style="background-color: #2c3e50; padding: 15px; text-align: center;"><a href="/" style="color: white; text-decoration: none; margin: 0 15px;">Home</a><a href="/store" style="color: white; text-decoration: none; margin: 0 15px;">Bookstore</a><a href="/login" style="color: white; text-decoration: none; margin: 0 15px;">Author Login</a><a href="/customer-login" style="color: white; text-decoration: none; margin: 0 15px;">Customer Login</a></nav>
             <h1>Welcome to Gophigo Publishing Portal</h1>
             <p>The global marketplace for authors to sell their books.</p>
             <a href="/store" style="background-color: #f39c12; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">📚 Visit Public Bookstore</a>
