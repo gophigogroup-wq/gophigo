@@ -434,7 +434,7 @@ def admin_dashboard(request: Request):
 
     html = "<html><body style='font-family: Arial; padding: 50px; background-color: #f4f4f4;'>"
     html += "<h1>Gophigo Admin Dashboard</h1>"
-        html += f"<div style='background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;'><h3>Total Sales: {total_sales} TZS</h3><p style='font-size: 18px;'>Gophigo Revenue (50%): {total_platform_revenue} TZS | Author Payouts (50%): {total_author_payouts} TZS</p></div>" 
+    html += f"<div style='background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;'><h3>Total Sales: {total_sales} TZS</h3><p style='font-size: 18px;'>Gophigo Revenue (50%): {total_platform_revenue} TZS | Author Payouts (50%): {total_author_payouts} TZS</p></div>" 
     
     html += "<br><table border='1' style='border-collapse: collapse; width: 100%; background: white;'><tr style='background-color: #34495e; color: white;'><th>ID</th><th>Cover</th><th>Name</th><th>Book</th><th>Status</th><th>Book Quality</th><th>Actions</th></tr>"
     
