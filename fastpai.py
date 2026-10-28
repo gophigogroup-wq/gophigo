@@ -58,14 +58,14 @@ class Purchase(SQLModel, table=True):
 SQLModel.metadata.create_all(engine)
 
 # --- 3. SHARED DESIGN (NAVBAR & FOOTER) ---
+# Notice we removed "Bookstore" from the nav, and combined Author Login/Register
 NAVBAR = """
 <nav style="background-color: #2c3e50; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: Arial; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
     <div style="font-size: 24px; font-weight: bold;">
         <a href="/" style="color: white; text-decoration: none;">📚 Gophigo</a>
     </div>
     <div>
-        <a href="/store" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Bookstore</a>
-        <a href="/login" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Author Login</a>
+        <a href="/author-portal" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Author Portal</a>
         <a href="/customer-login" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Customer Login</a>
         <a href="/admin-login" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">Admin Login</a>
     </div>
@@ -81,18 +81,60 @@ FOOTER = """
 
 # --- 4. THE WEB PAGES ---
 
+# The Homepage is now the Store!
 @app.get("/", response_class=HTMLResponse)
-def home():
+def store():
+    with Session(engine) as session:
+        active_authors = session.exec(select(Author).where(Author.membership_status == "Active", Author.book_status == "Approved")).all()
+        
+        html = f"""
+        <html>
+            <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+                {NAVBAR}
+                <div style="padding: 50px; min-height: 60vh;">
+                    <h1 style="text-align: center; color: #2c3e50; margin-bottom: 40px;">📚 Gophigo Bookstore</h1>
+                    <div style='display: flex; flex-wrap: wrap; gap: 30px; justify-content: center;'>
+        """
+        
+        if not active_authors:
+            html += "<p style='text-align: center; font-size: 18px; color: #7f8c8d;'>No books available yet. Check back later!</p>"
+            
+        for author in active_authors:
+            html += f"""
+            <div style='background: white; border-radius: 8px; padding: 20px; width: 250px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; transition: transform 0.2s;'>
+                <img src="{author.cover_image}" alt="Book Cover" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; margin-bottom: 15px; border: 1px solid #eee;">
+                <h3 style='color: #2c3e50; margin: 0 0 5px 0; font-size: 20px;'>{author.book_title}</h3>
+                <p style='color: #7f8c8d; margin: 0 0 15px 0; font-size: 14px;'>By {author.fullname}</p>
+                <h4 style='color: #2ecc71; margin: 0 0 15px 0; font-size: 18px;'>{author.price} TZS</h4>
+                <form action="/checkout/{author.id}" method="GET" style="margin: 0;">
+                    <button type="submit" style="background-color: #3498db; color: white; padding: 12px; border: none; border-radius: 5px; width: 100%; cursor: pointer; font-size: 16px; font-weight: bold;">Buy Now</button>
+                </form>
+            </div>
+            """
+            
+        html += f"""
+                    </div>
+                </div>
+                {FOOTER}
+            </body>
+        </html>
+        """
+        return html
+
+# --- 5. AUTHOR PORTAL (Login & Register) ---
+@app.get("/author-portal", response_class=HTMLResponse)
+def author_portal():
     return f"""
     <html>
         <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
             {NAVBAR}
             <div style="text-align: center; padding: 100px 20px; min-height: 60vh;">
-                <h1 style="color: #2c3e50; font-size: 40px; margin-bottom: 10px;">Welcome to Gophigo Publishing Portal</h1>
-                <p style="font-size: 20px; color: #555; margin-bottom: 40px;">The global marketplace for authors to sell their books.</p>
-                <a href="/store" style="background-color: #f39c12; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">📚 Visit Public Bookstore</a>
-                <br><br>
-                <a href="/register" style="background-color: #3498db; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">Register as an Author</a>
+                <h1 style="color: #2c3e50; font-size: 36px;">Author Portal</h1>
+                <p style="font-size: 18px; color: #555; margin-bottom: 40px;">Publish your book and keep 50% of your sales.</p>
+                
+                <a href="/register" style="background-color: #3498db; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-right: 10px;">Register as a New Author</a>
+                
+                <a href="/login" style="background-color: #2ecc71; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-left: 10px;">Author Login</a>
             </div>
             {FOOTER}
         </body>
@@ -154,225 +196,6 @@ def process_registration(fullname: str = Form(...), email: str = Form(...), pass
     </html>
     """
 
-@app.get("/store", response_class=HTMLResponse)
-def store():
-    with Session(engine) as session:
-        active_authors = session.exec(select(Author).where(Author.membership_status == "Active", Author.book_status == "Approved")).all()
-        
-        html = f"""
-        <html>
-            <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-                {NAVBAR}
-                <div style="padding: 50px; min-height: 60vh;">
-                    <h1 style="text-align: center; color: #2c3e50; margin-bottom: 40px;">📚 Gophigo Bookstore</h1>
-                    <div style='display: flex; flex-wrap: wrap; gap: 30px; justify-content: center;'>
-        """
-        
-        if not active_authors:
-            html += "<p style='text-align: center; font-size: 18px; color: #7f8c8d;'>No books available yet. Check back later!</p>"
-            
-        for author in active_authors:
-            html += f"""
-            <div style='background: white; border-radius: 8px; padding: 20px; width: 250px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; transition: transform 0.2s;'>
-                <img src="{author.cover_image}" alt="Book Cover" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; margin-bottom: 15px; border: 1px solid #eee;">
-                <h3 style='color: #2c3e50; margin: 0 0 5px 0; font-size: 20px;'>{author.book_title}</h3>
-                <p style='color: #7f8c8d; margin: 0 0 15px 0; font-size: 14px;'>By {author.fullname}</p>
-                <h4 style='color: #2ecc71; margin: 0 0 15px 0; font-size: 18px;'>{author.price} TZS</h4>
-                <form action="/checkout/{author.id}" method="GET" style="margin: 0;">
-                    <button type="submit" style="background-color: #3498db; color: white; padding: 12px; border: none; border-radius: 5px; width: 100%; cursor: pointer; font-size: 16px; font-weight: bold;">Buy Now</button>
-                </form>
-            </div>
-            """
-            
-        html += f"""
-                    </div>
-                </div>
-                {FOOTER}
-            </body>
-        </html>
-        """
-        return html
-
-# --- 5. CUSTOMER LOGIN & PURCHASING ---
-@app.get("/customer-register", response_class=HTMLResponse)
-def customer_register_page():
-    return f"""
-    <html>
-        <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-            {NAVBAR}
-            <div style="padding: 50px; min-height: 60vh;">
-                <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-                    <h2 style="text-align: center; color: #2c3e50;">Create Customer Account</h2>
-                    <form action="/customer-register" method="POST">
-                        <label>Full Name:</label><br><input type="text" name="fullname" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                        <label>Email Address:</label><br><input type="email" name="email" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                        <label>Password:</label><br><input type="password" name="password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                        <button type="submit" style="background-color: #2ecc71; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Register</button>
-                    </form>
-                </div>
-            </div>
-            {FOOTER}
-        </body>
-    </html>
-    """
-
-@app.post("/customer-register")
-def process_customer_register(fullname: str = Form(...), email: str = Form(...), password: str = Form(...)):
-    scrambled_password = hashlib.sha256(password.encode()).hexdigest()
-    new_customer = Customer(fullname=fullname, email=email, password=scrambled_password)
-    with Session(engine) as session:
-        session.add(new_customer)
-        session.commit()
-    return RedirectResponse(url="/customer-login", status_code=303)
-
-@app.get("/customer-login", response_class=HTMLResponse)
-def customer_login_page():
-    return f"""
-    <html>
-        <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-            {NAVBAR}
-            <div style="padding: 50px; min-height: 60vh;">
-                <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-                    <h2 style="text-align: center; color: #2c3e50;">Customer Login</h2>
-                    <form action="/customer-login" method="POST">
-                        <label>Email Address:</label><br><input type="email" name="email" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                        <label>Password:</label><br><input type="password" name="password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                        <button type="submit" style="background-color: #2ecc71; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Login</button>
-                    </form>
-                    <p style="text-align: center; margin-top: 15px;"><a href="/customer-register" style="color: #3498db; text-decoration: none;">Need an account? Register here</a></p>
-                </div>
-            </div>
-            {FOOTER}
-        </body>
-    </html>
-    """
-
-@app.post("/customer-login")
-def process_customer_login(response: Response, email: str = Form(...), password: str = Form(...)):
-    scrambled_password = hashlib.sha256(password.encode()).hexdigest()
-    with Session(engine) as session:
-        customer = session.exec(select(Customer).where(Customer.email == email, Customer.password == scrambled_password)).first()
-        if customer:
-            redirect = RedirectResponse(url="/my-library", status_code=303)
-            redirect.set_cookie(key="customer_email", value=customer.email, httponly=True)
-            return redirect
-        return HTMLResponse(content=f"<h1>Login Failed. <a href='/customer-login'>Try again</a></h1>{FOOTER}", status_code=401)
-
-@app.get("/checkout/{author_id}", response_class=HTMLResponse)
-def checkout(request: Request, author_id: int):
-    customer_email = request.cookies.get("customer_email")
-    if not customer_email:
-        return RedirectResponse(url="/customer-login", status_code=303)
-    
-    with Session(engine) as session:
-        author = session.get(Author, author_id)
-        if not author:
-            return HTMLResponse(content=f"<h1>Book Not Found!</h1>{FOOTER}", status_code=404)
-        return f"""
-        <html>
-            <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-                {NAVBAR}
-                <div style="padding: 50px; min-height: 60vh;">
-                    <div style="background: white; padding: 40px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
-                        <h2 style="color: #2c3e50;">Checkout</h2>
-                        <img src="{author.cover_image}" style="width: 180px; height: 250px; object-fit: cover; border-radius: 4px; margin: 20px 0; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-                        <h3 style="margin: 0; color: #2c3e50;">{author.book_title}</h3>
-                        <h4 style="color: #2ecc71; font-size: 24px; margin: 15px 0;">{author.price} TZS</h4>
-                        <a href="/pay/{author.id}" style="background-color: #3498db; color: white; padding: 15px 20px; text-decoration: none; border-radius: 5px; display: block; margin-top: 20px; font-size: 16px; font-weight: bold;">Pay with Mobile Money</a>
-                    </div>
-                </div>
-                {FOOTER}
-            </body>
-        </html>
-        """
-
-@app.get("/pay/{author_id}")
-def process_payment(request: Request, author_id: int):
-    customer_email = request.cookies.get("customer_email")
-    if not customer_email:
-        return RedirectResponse(url="/customer-login", status_code=303)
-    
-    with Session(engine) as session:
-        customer = session.exec(select(Customer).where(Customer.email == customer_email)).first()
-        author = session.get(Author, author_id)
-        
-        existing = session.exec(select(Purchase).where(Purchase.customer_id == customer.id, Purchase.author_id == author.id)).first()
-        if not existing:
-            new_purchase = Purchase(customer_id=customer.id, author_id=author.id, book_title=author.book_title, pdf_file=author.pdf_file)
-            session.add(new_purchase)
-            session.commit()
-            
-    return RedirectResponse(url="/my-library", status_code=303)
-
-# --- 6. THE CUSTOMER LIBRARY & SECURE READER ---
-@app.get("/my-library", response_class=HTMLResponse)
-def my_library(request: Request):
-    customer_email = request.cookies.get("customer_email")
-    if not customer_email:
-        return RedirectResponse(url="/customer-login", status_code=303)
-    
-    with Session(engine) as session:
-        customer = session.exec(select(Customer).where(Customer.email == customer_email)).first()
-        purchases = session.exec(select(Purchase).where(Purchase.customer_id == customer.id)).all()
-        
-        html = f"""
-        <html>
-            <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-                {NAVBAR}
-                <div style="padding: 50px; min-height: 60vh;">
-                    <h1 style="text-align: center; color: #2c3e50;">📖 My Library</h1>
-                    <p style="text-align: center; color: #7f8c8d; margin-bottom: 30px;">Welcome back, {customer.fullname}!</p>
-        """
-        
-        if not purchases:
-            html += "<p style='text-align: center; font-size: 18px;'>You haven't bought any books yet. <a href='/store' style='color: #3498db;'>Visit the store</a></p>"
-        else:
-            html += "<div style='max-width: 600px; margin: auto;'>"
-            for p in purchases:
-                html += f"<div style='background: white; padding: 20px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;'><strong style='color: #2c3e50;'>{p.book_title}</strong> <a href='/read/{p.id}' style='background:#2ecc71; color:white; padding:8px 15px; text-decoration:none; border-radius:4px; font-weight: bold;'>Read Now</a></div>"
-            html += "</div>"
-            
-        html += f"""
-                </div>
-                {FOOTER}
-            </body>
-        </html>
-        """
-        return html
-
-@app.get("/read/{purchase_id}", response_class=HTMLResponse)
-def read_book(request: Request, purchase_id: int):
-    customer_email = request.cookies.get("customer_email")
-    if not customer_email:
-        return RedirectResponse(url="/customer-login", status_code=303)
-        
-    with Session(engine) as session:
-        purchase = session.get(Purchase, purchase_id)
-        customer = session.exec(select(Customer).where(Customer.email == customer_email)).first()
-        
-        if purchase.customer_id != customer.id:
-            return HTMLResponse(content=f"<h1>Access Denied</h1>{FOOTER}", status_code=403)
-            
-        return f"""
-        <html>
-            <head><title>Reading: {purchase.book_title}</title></head>
-            <body style="margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; background-color: #2c3e50;">
-                <div style="background: #1a252f; color: white; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                    <h3 style="margin: 0; font-family: Arial;">Gophigo Secure Reader - {purchase.book_title}</h3>
-                    <p style="font-size: 12px; color: #bdc3c7; margin: 5px 0 0 0;">Licensed to: {customer_email}. Screenshots are traceable.</p>
-                </div>
-                <iframe src="https://docs.google.com/viewer?url={purchase.pdf_file}&embedded=true" style="flex: 1; border: none; width: 100%; height: 100vh;"></iframe>
-            </body>
-        </html>
-        """
-
-@app.get("/customer-logout")
-def customer_logout():
-    response = RedirectResponse(url="/", status_code=303)
-    response.delete_cookie("customer_email")
-    return response
-
-# --- 7. AUTHOR LOGIN & DASHBOARD ---
 @app.get("/login", response_class=HTMLResponse)
 def login_page():
     return f"""
@@ -479,7 +302,187 @@ def logout():
     response.delete_cookie("author_email")
     return response
 
-# --- 8. ADMIN DASHBOARD & MODERATION ---
+# --- 6. CUSTOMER FLOW ---
+@app.get("/customer-login", response_class=HTMLResponse)
+def customer_login_page():
+    return f"""
+    <html>
+        <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+            {NAVBAR}
+            <div style="padding: 50px; min-height: 60vh;">
+                <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                    <h2 style="text-align: center; color: #2c3e50;">Customer Login</h2>
+                    <form action="/customer-login" method="POST">
+                        <label>Email Address:</label><br><input type="email" name="email" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                        <label>Password:</label><br><input type="password" name="password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                        <button type="submit" style="background-color: #2ecc71; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Login</button>
+                    </form>
+                    <p style="text-align: center; margin-top: 15px;"><a href="/customer-register" style="color: #3498db; text-decoration: none;">Need an account? Register here</a></p>
+                </div>
+            </div>
+            {FOOTER}
+        </body>
+    </html>
+    """
+
+@app.post("/customer-login")
+def process_customer_login(response: Response, email: str = Form(...), password: str = Form(...)):
+    scrambled_password = hashlib.sha256(password.encode()).hexdigest()
+    with Session(engine) as session:
+        customer = session.exec(select(Customer).where(Customer.email == email, Customer.password == scrambled_password)).first()
+        if customer:
+            redirect = RedirectResponse(url="/my-library", status_code=303)
+            redirect.set_cookie(key="customer_email", value=customer.email, httponly=True)
+            return redirect
+        return HTMLResponse(content=f"<h1>Login Failed. <a href='/customer-login'>Try again</a></h1>{FOOTER}", status_code=401)
+
+@app.get("/customer-register", response_class=HTMLResponse)
+def customer_register_page():
+    return f"""
+    <html>
+        <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+            {NAVBAR}
+            <div style="padding: 50px; min-height: 60vh;">
+                <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                    <h2 style="text-align: center; color: #2c3e50;">Create Customer Account</h2>
+                    <form action="/customer-register" method="POST">
+                        <label>Full Name:</label><br><input type="text" name="fullname" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                        <label>Email Address:</label><br><input type="email" name="email" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                        <label>Password:</label><br><input type="password" name="password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                        <button type="submit" style="background-color: #2ecc71; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Register</button>
+                    </form>
+                </div>
+            </div>
+            {FOOTER}
+        </body>
+    </html>
+    """
+
+@app.post("/customer-register")
+def process_customer_register(fullname: str = Form(...), email: str = Form(...), password: str = Form(...)):
+    scrambled_password = hashlib.sha256(password.encode()).hexdigest()
+    new_customer = Customer(fullname=fullname, email=email, password=scrambled_password)
+    with Session(engine) as session:
+        session.add(new_customer)
+        session.commit()
+    return RedirectResponse(url="/customer-login", status_code=303)
+
+# --- 7. CHECKOUT & PURCHASE ---
+@app.get("/checkout/{author_id}", response_class=HTMLResponse)
+def checkout(request: Request, author_id: int):
+    customer_email = request.cookies.get("customer_email")
+    # If they aren't logged in, send them straight to Customer Registration/Login
+    if not customer_email:
+        return RedirectResponse(url="/customer-register", status_code=303)
+    
+    with Session(engine) as session:
+        author = session.get(Author, author_id)
+        if not author:
+            return HTMLResponse(content=f"<h1>Book Not Found!</h1>{FOOTER}", status_code=404)
+        return f"""
+        <html>
+            <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+                {NAVBAR}
+                <div style="padding: 50px; min-height: 60vh;">
+                    <div style="background: white; padding: 40px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
+                        <h2 style="color: #2c3e50;">Checkout</h2>
+                        <img src="{author.cover_image}" style="width: 180px; height: 250px; object-fit: cover; border-radius: 4px; margin: 20px 0; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                        <h3 style="margin: 0; color: #2c3e50;">{author.book_title}</h3>
+                        <h4 style="color: #2ecc71; font-size: 24px; margin: 15px 0;">{author.price} TZS</h4>
+                        <a href="/pay/{author.id}" style="background-color: #3498db; color: white; padding: 15px 20px; text-decoration: none; border-radius: 5px; display: block; margin-top: 20px; font-size: 16px; font-weight: bold;">Pay with Mobile Money</a>
+                    </div>
+                </div>
+                {FOOTER}
+            </body>
+        </html>
+        """
+
+@app.get("/pay/{author_id}")
+def process_payment(request: Request, author_id: int):
+    customer_email = request.cookies.get("customer_email")
+    if not customer_email:
+        return RedirectResponse(url="/customer-login", status_code=303)
+    
+    with Session(engine) as session:
+        customer = session.exec(select(Customer).where(Customer.email == customer_email)).first()
+        author = session.get(Author, author_id)
+        
+        existing = session.exec(select(Purchase).where(Purchase.customer_id == customer.id, Purchase.author_id == author.id)).first()
+        if not existing:
+            new_purchase = Purchase(customer_id=customer.id, author_id=author.id, book_title=author.book_title, pdf_file=author.pdf_file)
+            session.add(new_purchase)
+            session.commit()
+            
+    return RedirectResponse(url="/my-library", status_code=303)
+
+@app.get("/my-library", response_class=HTMLResponse)
+def my_library(request: Request):
+    customer_email = request.cookies.get("customer_email")
+    if not customer_email:
+        return RedirectResponse(url="/customer-login", status_code=303)
+    
+    with Session(engine) as session:
+        customer = session.exec(select(Customer).where(Customer.email == customer_email)).first()
+        purchases = session.exec(select(Purchase).where(Purchase.customer_id == customer.id)).all()
+        
+        html = f"""
+        <html>
+            <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+                {NAVBAR}
+                <div style="padding: 50px; min-height: 60vh;">
+                    <h1 style="text-align: center; color: #2c3e50;">📖 My Library</h1>
+                    <p style="text-align: center; color: #7f8c8d; margin-bottom: 30px;">Welcome back, {customer.fullname}!</p>
+        """
+        
+        if not purchases:
+            html += "<p style='text-align: center; font-size: 18px;'>You haven't bought any books yet. <a href='/' style='color: #3498db;'>Visit the store</a></p>"
+        else:
+            html += "<div style='max-width: 600px; margin: auto;'>"
+            for p in purchases:
+                html += f"<div style='background: white; padding: 20px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;'><strong style='color: #2c3e50;'>{p.book_title}</strong> <a href='/read/{p.id}' style='background:#2ecc71; color:white; padding:8px 15px; text-decoration:none; border-radius:4px; font-weight: bold;'>Read Now</a></div>"
+            html += "</div>"
+            
+        html += f"""
+                </div>
+                {FOOTER}
+            </body>
+        </html>
+        """
+        return html
+
+@app.get("/read/{purchase_id}", response_class=HTMLResponse)
+def read_book(request: Request, purchase_id: int):
+    customer_email = request.cookies.get("customer_email")
+    if not customer_email:
+        return RedirectResponse(url="/customer-login", status_code=303)
+        
+    with Session(engine) as session:
+        purchase = session.get(Purchase, purchase_id)
+        customer = session.exec(select(Customer).where(Customer.email == customer_email)).first()
+        
+        if purchase.customer_id != customer.id:
+            return HTMLResponse(content=f"<h1>Access Denied</h1>{FOOTER}", status_code=403)
+            
+        return f"""
+        <html>
+            <head><title>Reading: {purchase.book_title}</title></head>
+            <body style="margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; background-color: #2c3e50;">
+                <div style="background: #1a252f; color: white; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                    <h3 style="margin: 0; font-family: Arial;">Gophigo Secure Reader - {purchase.book_title}</h3>
+                    <p style="font-size: 12px; color: #bdc3c7; margin: 5px 0 0 0;">Licensed to: {customer_email}. Screenshots are traceable.</p>
+                </div>
+                <iframe src="https://docs.google.com/viewer?url={purchase.pdf_file}&embedded=true" style="flex: 1; border: none; width: 100%; height: 100vh;"></iframe>
+            </body>
+        </html>
+        """
+
+@app.get("/customer-logout")
+def customer_logout():
+    response = RedirectResponse(url="/", status_code=303)
+    response.delete_cookie("customer_email")
+    return response
+
+# --- 8. ADMIN DASHBOARD ---
 @app.get("/admin-login", response_class=HTMLResponse)
 def admin_login_page():
     return f"""
@@ -509,68 +512,6 @@ def admin_login(response: Response, username: str = Form(...), password: str = F
         return redirect
     return HTMLResponse(content=f"<h1>Invalid Admin Credentials. <a href='/admin-login'>Try again</a></h1>{FOOTER}", status_code=401)
 
-@app.get("/admin", response_class=HTMLResponse)
-def admin_dashboard(request: Request):
-    if request.cookies.get("admin_session") != "true":
-        return RedirectResponse(url="/admin-login", status_code=303)
-
-    with Session(engine) as session:
-        authors = session.exec(select(Author)).all()
-        purchases = session.exec(select(Purchase)).all()
-        
-        total_sales = sum(author.price for author in authors if author.id in [p.author_id for p in purchases])
-        total_platform_revenue = total_sales * 0.50
-        total_author_payouts = total_sales * 0.50
-    
-    html = f"""
-    <html>
-        <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-            {NAVBAR}
-            <div style="padding: 50px; min-height: 60vh;">
-                <h1 style="color: #2c3e50;">Gophigo Admin Dashboard</h1>
-                
-                <div style='background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
-                    <h3 style="margin-top: 0;">Total Sales: {total_sales} TZS</h3>
-                    <p style='font-size: 18px; margin-bottom: 0;'>Gophigo Revenue (50%): <strong style="color: #2ecc71;">{total_platform_revenue} TZS</strong> | Author Payouts (50%): <strong style="color: #f39c12;">{total_author_payouts} TZS</strong></p>
-                </div>
-                
-                <div style="overflow-x: auto;">
-                    <table border='1' style='border-collapse: collapse; width: 100%; background: white; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'>
-                        <tr style='background-color: #34495e; color: white;'>
-                            <th style="padding: 10px;">ID</th>
-                            <th style="padding: 10px;">Cover</th>
-                            <th style="padding: 10px;">Name</th>
-                            <th style="padding: 10px;">Book</th>
-                            <th style="padding: 10px;">Status</th>
-                            <th style="padding: 10px;">Book Quality</th>
-                            <th style="padding: 10px;">Actions</th>
-                        </tr>
-    """
-    
-    for author in authors:
-        status_color = "green" if author.membership_status == "Active" else "red"
-        
-        if author.membership_status == "Active" and author.book_status == "Pending Review":
-            action_buttons = f"<a href='/approve/{author.id}' style='background-color: #2ecc71; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px; margin-right: 5px;'>Approve</a> <a href='/reject/{author.id}' style='background-color: #e74c3c; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px;'>Reject</a>"
-        else:
-            action_buttons = ""
-            
-        book_color = "green" if author.book_status == "Approved" else ("red" if author.book_status == "Rejected" else "#f39c12")
-        
-        html += f"<tr><td style='padding: 10px; text-align: center;'>{author.id}</td><td style='padding: 10px; text-align: center;'><img src='{author.cover_image}' style='width: 50px; height: 60px; object-fit: cover; border-radius: 4px;'></td><td style='padding: 10px;'>{author.fullname}</td><td style='padding: 10px;'>{author.book_title}</td><td style='padding: 10px; color: {status_color}; font-weight: bold;'>{author.membership_status}</td><td style='padding: 10px; color: {book_color}; font-weight: bold;'>{author.book_status}</td><td style='padding: 10px;'>{action_buttons}</td></tr>"
-        
-    html += f"""
-                    </table>
-                </div>
-                <br>
-                <a href='/admin-logout' style='background-color: #e74c3c; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Admin Logout</a>
-            </div>
-            {FOOTER}
-        </body>
-    </html>
-    """
-    
-    return html
 @app.get("/admin", response_class=HTMLResponse)
 def admin_dashboard(request: Request):
     if request.cookies.get("admin_session") != "true":
