@@ -302,6 +302,27 @@ def logout():
     response.delete_cookie("author_email")
     return response
 
+@app.get("/customer-gateway", response_class=HTMLResponse)
+def customer_gateway():
+    return f"""
+    <html>
+        <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+            {NAVBAR}
+            <div style="padding: 50px; min-height: 60vh;">
+                <div style="background: white; padding: 40px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
+                    <h2 style="color: #2c3e50;">Before you buy...</h2>
+                    <p style="color: #7f8c8d; margin-bottom: 30px;">Please log in or create an account to complete your purchase.</p>
+                    
+                    <a href="/customer-login" style="background-color: #3498db; color: white; padding: 12px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold; display: block; margin-bottom: 15px;">I already have an account (Login)</a>
+                    
+                    <a href="/customer-register" style="background-color: #2ecc71; color: white; padding: 12px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold; display: block;">I am a new customer (Register)</a>
+                </div>
+            </div>
+            {FOOTER}
+        </body>
+    </html>
+    """
+
 # --- 6. CUSTOMER FLOW ---
 @app.get("/customer-login", response_class=HTMLResponse)
 def customer_login_page():
@@ -373,7 +394,7 @@ def checkout(request: Request, author_id: int):
     customer_email = request.cookies.get("customer_email")
     # If they aren't logged in, send them straight to Customer Registration/Login
     if not customer_email:
-        return RedirectResponse(url="/customer-register", status_code=303)
+        return RedirectResponse(url="/customer-gateway", status_code=303)
     
     with Session(engine) as session:
         author = session.get(Author, author_id)
