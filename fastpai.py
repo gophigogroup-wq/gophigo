@@ -35,7 +35,10 @@ class Author(SQLModel, table=True):
     email: str
     password: str
     book_title: str
-    price: float = Field(default=0.0)
+    # NEW: Pricing and Format
+    ebook_price: float = Field(default=0.0)
+    paperback_price: float = Field(default=0.0)
+    book_format: str = Field(default="Ebook") # "Ebook", "Paperback", or "Both"
     membership_status: str = "Pending" 
     book_status: str = Field(default="Pending Review") 
     reset_token: str | None = Field(default=None)
@@ -54,6 +57,8 @@ class Purchase(SQLModel, table=True):
     author_id: int
     book_title: str
     pdf_file: str
+    format_bought: str = Field(default="Ebook") # NEW: Tracks if they bought Ebook or Paperback
+    shipping_address: str | None = Field(default=None) # NEW: For Paperbacks
 
 class Employee(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -94,7 +99,7 @@ FOOTER = """
 </footer>
 """
 
-# --- 4. THE STORE (WITH SEARCH) ---
+# --- 4. THE STORE (WITH SEARCH & FORMATS) ---
 @app.get("/", response_class=HTMLResponse)
 def store(search: str = None):
     with Session(engine) as session:
@@ -111,7 +116,6 @@ def store(search: str = None):
                 <div style="padding: 50px; min-height: 60vh;">
                     <h1 style="text-align: center; color: #2c3e50; margin-bottom: 20px;">📚 Gophigo Bookstore</h1>
                     
-                    <!-- SEARCH BAR -->
                     <form action="/" method="GET" style="max-width: 500px; margin: 0 auto 40px auto; display: flex; gap: 10px;">
                         <input type="text" name="search" placeholder="Search by book title or author..." value="{search if search else ''}" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px;">
                         <button type="submit" style="background-color: #3498db; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Search</button>
@@ -124,15 +128,23 @@ def store(search: str = None):
             html += "<p style='text-align: center; font-size: 18px; color: #7f8c8d;'>No books found matching your search.</p>"
             
         for author in active_authors:
+            # Logic to display format and buttons based on availability
+            format_badge = f"<span style='background: #e0e0e0; padding: 3px 8px; border-radius: 3px; font-size: 12px;'>{author.book_format}</span>"
+            
+            buy_buttons = ""
+            if author.book_format in ["Ebook", "Both"]:
+                buy_buttons += f"<a href='/checkout/{author.id}?format=Ebook' style='background-color: #3498db; color: white; padding: 10px; border-radius: 5px; text-decoration: none; display: block; margin-bottom: 5px; font-weight: bold;'>Buy Ebook ({author.ebook_price} TZS)</a>"
+            if author.book_format in ["Paperback", "Both"]:
+                buy_buttons += f"<a href='/checkout/{author.id}?format=Paperback' style='background-color: #f39c12; color: white; padding: 10px; border-radius: 5px; text-decoration: none; display: block; font-weight: bold;'>Buy Paperback ({author.paperback_price} TZS)</a>"
+
             html += f"""
-            <div style='background: white; border-radius: 8px; padding: 20px; width: 250px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;'>
+            <div style='background: white; border-radius: 8px; padding: 20px; width: 280px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;'>
                 <img src="{author.cover_image}" alt="Book Cover" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; margin-bottom: 15px; border: 1px solid #eee;">
                 <h3 style='color: #2c3e50; margin: 0 0 5px 0; font-size: 20px;'>{author.book_title}</h3>
-                <p style='color: #7f8c8d; margin: 0 0 15px 0; font-size: 14px;'>By {author.fullname}</p>
-                <h4 style='color: #2ecc71; margin: 0 0 15px 0; font-size: 18px;'>{author.price} TZS</h4>
-                <form action="/checkout/{author.id}" method="GET" style="margin: 0;">
-                    <button type="submit" style="background-color: #3498db; color: white; padding: 12px; border: none; border-radius: 5px; width: 100%; cursor: pointer; font-size: 16px; font-weight: bold;">Buy Now</button>
-                </form>
+                <p style='color: #7f8c8d; margin: 0 0 10px 0; font-size: 14px;'>By {author.fullname}</p>
+                {format_badge}
+                <br><br>
+                {buy_buttons}
             </div>
             """
             
@@ -145,62 +157,68 @@ def store(search: str = None):
         """
         return html
 
-# --- (The rest of the Author, Customer, and Store flows remain the same) ---
-
+# --- 5. AUTHOR REGISTRATION (WITH FORMATS) ---
 @app.get("/author-portal", response_class=HTMLResponse)
 def author_portal():
-    return f"""
-    <html>
-        <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-            {NAVBAR}
-            <div style="text-align: center; padding: 100px 20px; min-height: 60vh;">
-                <h1 style="color: #2c3e50; font-size: 36px;">Author Portal</h1>
-                <p style="font-size: 18px; color: #555; margin-bottom: 40px;">Publish your book and keep 50% of your sales.</p>
-                <a href="/register" style="background-color: #3498db; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; margin-right: 10px;">Register as a New Author</a>
-                <a href="/login" style="background-color: #2ecc71; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; margin-left: 10px;">Author Login</a>
-            </div>
-            {FOOTER}
-        </body>
-    </html>
-    """
+    return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='text-align: center; padding: 100px 20px; min-height: 60vh;'><h1 style='color: #2c3e50; font-size: 36px;'>Author Portal</h1><p style='font-size: 18px; color: #555; margin-bottom: 40px;'>Publish your book and keep 50% of your sales.</p><a href='/register' style='background-color: #3498db; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; margin-right: 10px;'>Register as a New Author</a><a href='/login' style='background-color: #2ecc71; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; margin-left: 10px;'>Author Login</a></div>{FOOTER}</body></html>"
 
 @app.get("/register", response_class=HTMLResponse)
 def register_page():
     return f"""
-    <html>
-        <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-            {NAVBAR}
-            <div style="padding: 50px; min-height: 60vh;">
-                <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-                    <h2 style="text-align: center; color: #2c3e50;">Author Registration</h2>
-                    <form action="/register" method="POST" enctype="multipart/form-data">
-                        <label>Full Name:</label><br><input type="text" name="fullname" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                        <label>Email Address:</label><br><input type="email" name="email" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                        <label>Password:</label><br><input type="password" name="password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                        <label>Book Title:</label><br><input type="text" name="book_title" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                        <label>Book Price (TZS):</label><br><input type="number" name="price" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                        <label>Book Cover Image:</label><br><input type="file" name="cover" accept="image/*" required style="width: 100%; padding: 10px; margin: 10px 0;"><br>
-                        <label>Manuscript (PDF):</label><br><input type="file" name="pdf_file" accept=".pdf" required style="width: 100%; padding: 10px; margin: 10px 0;"><br>
-                        <button type="submit" style="background-color: #2ecc71; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Submit</button>
-                    </form>
-                </div>
+    <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+        {NAVBAR}
+        <div style="padding: 50px; min-height: 60vh;">
+            <div style="background: white; padding: 30px; border-radius: 8px; max-width: 500px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                <h2 style="text-align: center; color: #2c3e50;">Author Registration</h2>
+                <form action="/register" method="POST" enctype="multipart/form-data">
+                    <label>Full Name:</label><br><input type="text" name="fullname" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                    <label>Email Address:</label><br><input type="email" name="email" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                    <label>Password:</label><br><input type="password" name="password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                    <label>Book Title:</label><br><input type="text" name="book_title" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                    
+                    <label>Book Format:</label><br>
+                    <select name="book_format" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="Ebook">Ebook Only</option>
+                        <option value="Paperback">Paperback Only</option>
+                        <option value="Both">Both Ebook & Paperback</option>
+                    </select><br>
+                    
+                    <label>Ebook Price (TZS):</label><br><input type="number" step="0.01" name="ebook_price" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                    <label>Paperback Price (TZS) - Enter 0 if not selling paperback:</label><br><input type="number" step="0.01" name="paperback_price" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                    
+                    <label>Book Cover Image:</label><br><input type="file" name="cover" accept="image/*" required style="width: 100%; padding: 10px; margin: 10px 0;"><br>
+                    <label>Manuscript (PDF) - Required for Ebooks:</label><br><input type="file" name="pdf_file" accept=".pdf" style="width: 100%; padding: 10px; margin: 10px 0;"><br>
+                    <button type="submit" style="background-color: #2ecc71; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Submit</button>
+                </form>
             </div>
-            {FOOTER}
-        </body>
-    </html>
+        </div>
+        {FOOTER}
+    </body></html>
     """
 
 @app.post("/register", response_class=HTMLResponse)
-def process_registration(fullname: str = Form(...), email: str = Form(...), password: str = Form(...), book_title: str = Form(...), price: float = Form(...), cover: UploadFile = File(...), pdf_file: UploadFile = File(...)):
+def process_registration(fullname: str = Form(...), email: str = Form(...), password: str = Form(...), book_title: str = Form(...), book_format: str = Form(...), ebook_price: float = Form(...), paperback_price: float = Form(...), cover: UploadFile = File(...), pdf_file: UploadFile = File(None)):
+    
     cover_result = cloudinary.uploader.upload(cover.file, folder="gophigo_covers", resource_type="image")
     cover_url = cover_result.get("secure_url")
-    pdf_result = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw", access_mode="public")
-    pdf_url = pdf_result.get("secure_url")
+    
+    pdf_url = None
+    if pdf_file and pdf_file.filename:
+        pdf_result = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw", access_mode="public")
+        pdf_url = pdf_result.get("secure_url")
+
     scrambled_password = hashlib.sha256(password.encode()).hexdigest()
-    new_author = Author(fullname=fullname, email=email, password=scrambled_password, book_title=book_title, price=price, cover_image=cover_url, pdf_file=pdf_url)
+    new_author = Author(
+        fullname=fullname, email=email, password=scrambled_password, 
+        book_title=book_title, book_format=book_format, 
+        ebook_price=ebook_price, paperback_price=paperback_price, 
+        cover_image=cover_url, pdf_file=pdf_url
+    )
+    
     with Session(engine) as session:
         session.add(new_author)
         session.commit()
+    
     return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='text-align: center; padding: 100px 20px; min-height: 60vh;'><h1 style='color: #2ecc71;'>Registration Successful!</h1><p style='font-size: 18px;'>Thank you, <strong>{fullname}</strong>. Your book is pending review.</p><a href='/login' style='background-color: #3498db; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-size: 16px;'>Go to Login</a></div>{FOOTER}</body></html>"
 
 @app.get("/login", response_class=HTMLResponse)
@@ -227,13 +245,22 @@ def author_dashboard(request: Request):
         author = session.exec(select(Author).where(Author.email == author_email)).first()
         if not author:
             return RedirectResponse(url="/login", status_code=303)
+        
+        # Calculate earnings based on whatever price they sold
         author_sales = session.exec(select(Purchase).where(Purchase.author_id == author.id)).all()
-        total_earned = len(author_sales) * (author.price * 0.50)
+        total_earned = 0
+        for sale in author_sales:
+            if sale.format_bought == "Ebook":
+                total_earned += author.ebook_price * 0.50
+            else:
+                total_earned += author.paperback_price * 0.50
+
         if author.membership_status == "Pending":
             payment_html = """<div style="background: #fff3cd; padding: 20px; border-radius: 8px; border: 1px solid #ffeeba; margin-top: 20px;"><h3 style="color: #856404;">Membership Payment Required</h3><p>Activate your account to start selling.</p><a href="/pay-membership" style="background-color: #2ecc71; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px; font-weight: bold;">Pay 20,000 TZS Annually</a></div>"""
         else:
             payment_html = f"""<div style="background: #d4edda; padding: 20px; border-radius: 8px; margin-top: 20px; border: 1px solid #c3e6cb;"><h3 style="color: #155724;">✅ Membership Active</h3><h4 style="color: #155724; margin: 10px 0 0 0;">Total Earnings (50%): {total_earned} TZS</h4></div><div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid #ffeeba;"><h4 style="color: #856404;">Book Status: {author.book_status}</h4></div>"""
-        return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='padding: 50px; text-align: center; min-height: 60vh;'><h1 style='color: #2c3e50;'>Author Dashboard</h1><h2 style='color: #555;'>Welcome Back, {author.fullname}!</h2><div style='background: white; padding: 30px; border-radius: 8px; max-width: 500px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'><img src='{author.cover_image}' style='width: 150px; height: 200px; object-fit: cover; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);'><h3 style='margin-top: 20px;'>Your Book: {author.book_title}</h3><p style='font-size: 18px;'><strong>Price:</strong> {author.price} TZS</p>{payment_html}</div><br><br><a href='/logout' style='background-color: #e74c3c; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Logout</a></div>{FOOTER}</body></html>"
+        
+        return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='padding: 50px; text-align: center; min-height: 60vh;'><h1 style='color: #2c3e50;'>Author Dashboard</h1><h2 style='color: #555;'>Welcome Back, {author.fullname}!</h2><div style='background: white; padding: 30px; border-radius: 8px; max-width: 500px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'><img src='{author.cover_image}' style='width: 150px; height: 200px; object-fit: cover; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);'><h3 style='margin-top: 20px;'>Your Book: {author.book_title}</h3><p style='font-size: 18px;'><strong>Format:</strong> {author.book_format}</p><p style='font-size: 18px;'><strong>Ebook Price:</strong> {author.ebook_price} TZS</p><p style='font-size: 18px;'><strong>Paperback Price:</strong> {author.paperback_price} TZS</p>{payment_html}</div><br><br><a href='/logout' style='background-color: #e74c3c; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Logout</a></div>{FOOTER}</body></html>"
 
 @app.get("/pay-membership")
 def pay_membership(request: Request):
@@ -254,6 +281,7 @@ def logout():
     response.delete_cookie("author_email")
     return response
 
+# --- 6. CUSTOMER FLOW ---
 @app.get("/customer-gateway", response_class=HTMLResponse)
 def customer_gateway():
     return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='padding: 50px; min-height: 60vh;'><div style='background: white; padding: 40px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;'><h2 style='color: #2c3e50;'>Before you buy...</h2><p style='color: #7f8c8d; margin-bottom: 30px;'>Please log in or create an account to complete your purchase.</p><a href='/customer-login' style='background-color: #3498db; color: white; padding: 12px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold; display: block; margin-bottom: 15px;'>I already have an account (Login)</a><a href='/customer-register' style='background-color: #2ecc71; color: white; padding: 12px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold; display: block;'>I am a new customer (Register)</a></div></div>{FOOTER}</body></html>"
@@ -286,8 +314,9 @@ def process_customer_register(fullname: str = Form(...), email: str = Form(...),
         session.commit()
     return RedirectResponse(url="/customer-login", status_code=303)
 
+# --- 7. CHECKOUT & PURCHASE ---
 @app.get("/checkout/{author_id}", response_class=HTMLResponse)
-def checkout(request: Request, author_id: int):
+def checkout(request: Request, author_id: int, format: str = "Ebook"):
     customer_email = request.cookies.get("customer_email")
     if not customer_email:
         return RedirectResponse(url="/customer-gateway", status_code=303)
@@ -295,21 +324,50 @@ def checkout(request: Request, author_id: int):
         author = session.get(Author, author_id)
         if not author:
             return HTMLResponse(content=f"<h1>Book Not Found!</h1>{FOOTER}", status_code=404)
-        return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='padding: 50px; min-height: 60vh;'><div style='background: white; padding: 40px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;'><h2 style='color: #2c3e50;'>Checkout</h2><img src='{author.cover_image}' style='width: 180px; height: 250px; object-fit: cover; border-radius: 4px; margin: 20px 0; box-shadow: 0 4px 8px rgba(0,0,0,0.2);'><h3 style='margin: 0; color: #2c3e50;'>{author.book_title}</h3><h4 style='color: #2ecc71; font-size: 24px; margin: 15px 0;'>{author.price} TZS</h4><a href='/pay/{author.id}' style='background-color: #3498db; color: white; padding: 15px 20px; text-decoration: none; border-radius: 5px; display: block; margin-top: 20px; font-size: 16px; font-weight: bold;'>Pay with Mobile Money</a></div></div>{FOOTER}</body></html>"
+            
+        price = author.ebook_price if format == "Ebook" else author.paperback_price
+        action_url = f"/pay/{author.id}?format={format}"
+            
+        return f"""
+        <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+            {NAVBAR}
+            <div style="padding: 50px; min-height: 60vh;">
+                <div style="background: white; padding: 40px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
+                    <h2 style="color: #2c3e50;">Checkout - {format}</h2>
+                    <img src="{author.cover_image}" style="width: 180px; height: 250px; object-fit: cover; border-radius: 4px; margin: 20px 0; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                    <h3 style="margin: 0; color: #2c3e50;">{author.book_title}</h3>
+                    <h4 style="color: #2ecc71; font-size: 24px; margin: 15px 0;">{price} TZS</h4>
+                    <a href="{action_url}" style="background-color: #3498db; color: white; padding: 15px 20px; text-decoration: none; border-radius: 5px; display: block; margin-top: 20px; font-size: 16px; font-weight: bold;">Pay with Mobile Money</a>
+                </div>
+            </div>
+            {FOOTER}
+        </body></html>
+        """
 
 @app.get("/pay/{author_id}")
-def process_payment(request: Request, author_id: int):
+def process_payment(request: Request, author_id: int, format: str = "Ebook"):
     customer_email = request.cookies.get("customer_email")
     if not customer_email:
         return RedirectResponse(url="/customer-login", status_code=303)
     with Session(engine) as session:
         customer = session.exec(select(Customer).where(Customer.email == customer_email)).first()
         author = session.get(Author, author_id)
-        existing = session.exec(select(Purchase).where(Purchase.customer_id == customer.id, Purchase.author_id == author.id)).first()
+        
+        # Check if already bought this format
+        existing = session.exec(select(Purchase).where(Purchase.customer_id == customer.id, Purchase.author_id == author.id, Purchase.format_bought == format)).first()
+        
         if not existing:
-            new_purchase = Purchase(customer_id=customer.id, author_id=author.id, book_title=author.book_title, pdf_file=author.pdf_file)
+            new_purchase = Purchase(
+                customer_id=customer.id, 
+                author_id=author.id, 
+                book_title=author.book_title, 
+                pdf_file=author.pdf_file if format == "Ebook" else None,
+                format_bought=format,
+                shipping_address="Address to be collected on next step" if format == "Paperback" else None
+            )
             session.add(new_purchase)
             session.commit()
+            
     return RedirectResponse(url="/my-library", status_code=303)
 
 @app.get("/my-library", response_class=HTMLResponse)
@@ -320,14 +378,22 @@ def my_library(request: Request):
     with Session(engine) as session:
         customer = session.exec(select(Customer).where(Customer.email == customer_email)).first()
         purchases = session.exec(select(Purchase).where(Purchase.customer_id == customer.id)).all()
+        
         html = f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='padding: 50px; min-height: 60vh;'><h1 style='text-align: center; color: #2c3e50;'>📖 My Library</h1><p style='text-align: center; color: #7f8c8d; margin-bottom: 30px;'>Welcome back, {customer.fullname}!</p>"
+        
         if not purchases:
             html += "<p style='text-align: center; font-size: 18px;'>You haven't bought any books yet. <a href='/' style='color: #3498db;'>Visit the store</a></p>"
         else:
-            html += "<div style='max-width: 600px; margin: auto;'>"
+            html += "<div style='max-width: 700px; margin: auto;'>"
             for p in purchases:
-                html += f"<div style='background: white; padding: 20px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;'><strong style='color: #2c3e50;'>{p.book_title}</strong> <a href='/read/{p.id}' style='background:#2ecc71; color:white; padding:8px 15px; text-decoration:none; border-radius:4px; font-weight: bold;'>Read Now</a></div>"
+                if p.format_bought == "Ebook":
+                    action_html = f"<a href='/read/{p.id}' style='background:#2ecc71; color:white; padding:8px 15px; text-decoration:none; border-radius:4px; font-weight: bold;'>Read Now</a>"
+                else:
+                    action_html = f"<span style='color: #f39c12; font-weight: bold;'>📦 Printing & Shipping</span>"
+                
+                html += f"<div style='background: white; padding: 20px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;'><div><strong style='color: #2c3e50;'>{p.book_title}</strong><br><small style='color: #7f8c8d;'>{p.format_bought}</small></div> {action_html}</div>"
             html += "</div>"
+            
         html += f"</div>{FOOTER}</body></html>"
         return html
 
@@ -339,7 +405,7 @@ def read_book(request: Request, purchase_id: int):
     with Session(engine) as session:
         purchase = session.get(Purchase, purchase_id)
         customer = session.exec(select(Customer).where(Customer.email == customer_email)).first()
-        if purchase.customer_id != customer.id:
+        if purchase.customer_id != customer.id or purchase.format_bought != "Ebook":
             return HTMLResponse(content=f"<h1>Access Denied</h1>{FOOTER}", status_code=403)
         return f"<html><head><title>Reading: {purchase.book_title}</title></head><body style='margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; background-color: #2c3e50;'><div style='background: #1a252f; color: white; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);'><h3 style='margin: 0; font-family: Arial;'>Gophigo Secure Reader - {purchase.book_title}</h3><p style='font-size: 12px; color: #bdc3c7; margin: 5px 0 0 0;'>Licensed to: {customer_email}. Screenshots are traceable.</p></div><iframe src='https://docs.google.com/viewer?url={purchase.pdf_file}&embedded=true' style='flex: 1; border: none; width: 100%; height: 100vh;'></iframe></body></html>"
 
@@ -349,7 +415,7 @@ def customer_logout():
     response.delete_cookie("customer_email")
     return response
 
-# --- 6. EMPLOYEE FLOW ---
+# --- 8. EMPLOYEE FLOW ---
 @app.get("/employee-login", response_class=HTMLResponse)
 def employee_login_page():
     return f"""
@@ -435,6 +501,7 @@ def employee_dashboard(request: Request):
             return RedirectResponse(url="/employee-login", status_code=303)
         if employee.must_change_password:
             return RedirectResponse(url="/employee-change-password", status_code=303)
+            
         books = []
         if employee.role == "Reviewer":
             books = session.exec(select(Author).where(Author.book_status == "Pending Review")).all()
@@ -442,6 +509,7 @@ def employee_dashboard(request: Request):
             books = session.exec(select(Author).where(Author.book_status == "Under Supervisor Review")).all()
         elif employee.role == "Approver":
             books = session.exec(select(Author).where(Author.book_status == "Pending Final Approval")).all()
+            
         html = f"""
         <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
             {NAVBAR}
@@ -457,7 +525,7 @@ def employee_dashboard(request: Request):
                 <div style="overflow-x: auto; margin-top: 20px;">
                     <table border='1' style='border-collapse: collapse; width: 100%; background: white; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'>
                         <tr style='background-color: #f39c12; color: white;'>
-                            <th style="padding: 10px;">ID</th><th style="padding: 10px;">Cover</th><th style="padding: 10px;">Name</th><th style="padding: 10px;">Book</th><th style="padding: 10px;">Status</th><th style="padding: 10px;">Action</th>
+                            <th style="padding: 10px;">ID</th><th style="padding: 10px;">Cover</th><th style="padding: 10px;">Name</th><th style="padding: 10px;">Book</th><th style="padding: 10px;">Format</th><th style="padding: 10px;">Status</th><th style="padding: 10px;">Action</th>
                         </tr>
         """
         for book in books:
@@ -468,7 +536,7 @@ def employee_dashboard(request: Request):
                 action_btn = f"<a href='/employee-forward/{book.id}/Pending Final Approval' style='background-color: #3498db; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px;'>Send to Approver</a>"
             elif employee.role == "Approver":
                 action_btn = f"<a href='/employee-approve/{book.id}' style='background-color: #2ecc71; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px; margin-right: 5px;'>Approve & Publish</a> <a href='/employee-request-delete/{book.id}' style='background-color: #e74c3c; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px;'>Request Deletion</a>"
-            html += f"<tr><td style='padding: 10px; text-align: center;'>{book.id}</td><td style='padding: 10px; text-align: center;'><img src='{book.cover_image}' style='width: 50px; height: 60px; object-fit: cover;'></td><td style='padding: 10px;'>{book.fullname}</td><td style='padding: 10px;'>{book.book_title}</td><td style='padding: 10px; color: #f39c12; font-weight: bold;'>{book.book_status}</td><td style='padding: 10px;'>{action_btn}</td></tr>"
+            html += f"<tr><td style='padding: 10px; text-align: center;'>{book.id}</td><td style='padding: 10px; text-align: center;'><img src='{book.cover_image}' style='width: 50px; height: 60px; object-fit: cover;'></td><td style='padding: 10px;'>{book.fullname}</td><td style='padding: 10px;'>{book.book_title}</td><td style='padding: 10px;'>{book.book_format}</td><td style='padding: 10px; color: #f39c12; font-weight: bold;'>{book.book_status}</td><td style='padding: 10px;'>{action_btn}</td></tr>"
         html += f"</table></div></div>{FOOTER}</body></html>"
         return html
 
@@ -508,7 +576,7 @@ def employee_logout():
     response.delete_cookie("employee_email")
     return response
 
-# --- 7. ADMIN DASHBOARD & MODERATION ---
+# --- 9. ADMIN DASHBOARD & MODERATION ---
 @app.get("/admin-login", response_class=HTMLResponse)
 def admin_login_page():
     return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='padding: 50px; min-height: 60vh;'><div style='background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'><h2 style='text-align: center; color: #e74c3c;'>Admin Login</h2><form action='/admin-login' method='POST'><label>Username:</label><br><input type='text' name='username' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><label>Password:</label><br><input type='password' name='password' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><button type='submit' style='background-color: #e74c3c; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;'>Admin Login</button></form></div></div>{FOOTER}</body></html>"
@@ -528,29 +596,37 @@ def admin_dashboard(request: Request):
     with Session(engine) as session:
         authors = session.exec(select(Author)).all()
         purchases = session.exec(select(Purchase)).all()
-        total_sales = sum(author.price for author in authors if author.id in [p.author_id for p in purchases])
-        total_platform_revenue = total_sales * 0.50
-        total_author_payouts = total_sales * 0.50
+        
+        # Calculate split properly
+        total_platform_revenue = 0
+        total_author_payouts = 0
+        for p in purchases:
+            author = session.get(Author, p.author_id)
+            if author:
+                price = author.ebook_price if p.format_bought == "Ebook" else author.paperback_price
+                total_platform_revenue += price * 0.50
+                total_author_payouts += price * 0.50
+        
     html = f"""
     <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
         {NAVBAR}
         <div style="padding: 50px; min-height: 60vh;">
             <h1 style="color: #2c3e50;">Gophigo Admin Dashboard</h1>
             <div style='background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
-                <h3 style="margin-top: 0;">Total Sales: {total_sales} TZS</h3>
+                <h3 style="margin-top: 0;">Total Sales: {len(purchases)} copies</h3>
                 <p style='font-size: 18px; margin-bottom: 0;'>Gophigo Revenue (50%): <strong style="color: #2ecc71;">{total_platform_revenue} TZS</strong> | Author Payouts (50%): <strong style="color: #f39c12;">{total_author_payouts} TZS</strong></p>
             </div>
             <div style="overflow-x: auto;">
                 <table border='1' style='border-collapse: collapse; width: 100%; background: white; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'>
                     <tr style='background-color: #34495e; color: white;'>
-                        <th style="padding: 10px;">ID</th><th style="padding: 10px;">Cover</th><th style="padding: 10px;">Name</th><th style="padding: 10px;">Book</th><th style="padding: 10px;">Status</th><th style="padding: 10px;">Book Quality</th><th style="padding: 10px;">Actions</th>
+                        <th style="padding: 10px;">ID</th><th style="padding: 10px;">Cover</th><th style="padding: 10px;">Name</th><th style="padding: 10px;">Book</th><th style="padding: 10px;">Format</th><th style="padding: 10px;">Status</th><th style="padding: 10px;">Actions</th>
                     </tr>
     """
     for author in authors:
         status_color = "green" if author.membership_status == "Active" else "red"
         book_color = "green" if author.book_status == "Approved" else ("red" if author.book_status == "Rejected" else "#f39c12")
         action_btn = f"<a href='/admin-confirm-delete/{author.id}' style='background-color: #e74c3c; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px;'>Confirm Delete</a>" if author.book_status == "Pending Deletion" else ""
-        html += f"<tr><td style='padding: 10px; text-align: center;'>{author.id}</td><td style='padding: 10px; text-align: center;'><img src='{author.cover_image}' style='width: 50px; height: 60px; object-fit: cover; border-radius: 4px;'></td><td style='padding: 10px;'>{author.fullname}</td><td style='padding: 10px;'>{author.book_title}</td><td style='padding: 10px; color: {status_color}; font-weight: bold;'>{author.membership_status}</td><td style='padding: 10px; color: {book_color}; font-weight: bold;'>{author.book_status}</td><td style='padding: 10px;'>{action_btn}</td></tr>"
+        html += f"<tr><td style='padding: 10px; text-align: center;'>{author.id}</td><td style='padding: 10px; text-align: center;'><img src='{author.cover_image}' style='width: 50px; height: 60px; object-fit: cover; border-radius: 4px;'></td><td style='padding: 10px;'>{author.fullname}</td><td style='padding: 10px;'>{author.book_title}</td><td style='padding: 10px;'>{author.book_format}</td><td style='padding: 10px; color: {book_color}; font-weight: bold;'>{author.book_status}</td><td style='padding: 10px;'>{action_btn}</td></tr>"
     html += f"</table></div><br><a href='/admin-logout' style='background-color: #e74c3c; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Admin Logout</a></div>{FOOTER}</body></html>"
     return html
 
