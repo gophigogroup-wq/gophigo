@@ -37,7 +37,6 @@ class Author(SQLModel, table=True):
     book_title: str
     price: float = Field(default=0.0)
     membership_status: str = "Pending" 
-    # NEW APPROVAL FLOW: Pending Review -> Under Supervisor Review -> Pending Final Approval -> Approved / Rejected
     book_status: str = Field(default="Pending Review") 
     reset_token: str | None = Field(default=None)
     cover_image: str | None = Field(default=None) 
@@ -56,17 +55,17 @@ class Purchase(SQLModel, table=True):
     book_title: str
     pdf_file: str
 
-# NEW: Employee Table for Staff
 class Employee(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str
     email: str
     password: str
-    role: str # "Reviewer", "Supervisor", or "Approver"
+    role: str 
+    must_change_password: bool = Field(default=True)
 
 SQLModel.metadata.create_all(engine)
 
-# Create default employees if they don't exist (for testing)
+# Create default employees
 with Session(engine) as session:
     if not session.exec(select(Employee)).first():
         session.add(Employee(fullname="Reviewer John", email="reviewer@gophigo.com", password=hashlib.sha256("pass123".encode()).hexdigest(), role="Reviewer"))
@@ -97,7 +96,6 @@ FOOTER = """
 """
 
 # --- 4. THE STORE & AUTHOR PAGES ---
-
 @app.get("/", response_class=HTMLResponse)
 def store():
     with Session(engine) as session:
@@ -513,7 +511,7 @@ def customer_logout():
     response.delete_cookie("customer_email")
     return response
 
-# --- 6. THE NEW EMPLOYEE (STAFF) FLOW ---
+# --- 6. EMPLOYEE FLOW ---
 @app.get("/employee-login", response_class=HTMLResponse)
 def employee_login_page():
     return f"""
@@ -541,10 +539,53 @@ def process_employee_login(response: Response, email: str = Form(...), password:
     with Session(engine) as session:
         employee = session.exec(select(Employee).where(Employee.email == email, Employee.password == scrambled_password)).first()
         if employee:
-            redirect = RedirectResponse(url="/employee-dashboard", status_code=303)
-            redirect.set_cookie(key="employee_email", value=employee.email, httponly=True)
-            return redirect
+            if employee.must_change_password:
+                redirect = RedirectResponse(url="/employee-change-password", status_code=303)
+                redirect.set_cookie(key="employee_email", value=employee.email, httponly=True)
+                return redirect
+            else:
+                redirect = RedirectResponse(url="/employee-dashboard", status_code=303)
+                redirect.set_cookie(key="employee_email", value=employee.email, httponly=True)
+                return redirect
     return HTMLResponse(content=f"<h1>Login Failed. <a href='/employee-login'>Try again</a></h1>{FOOTER}", status_code=401)
+
+@app.get("/employee-change-password", response_class=HTMLResponse)
+def employee_change_password_page(request: Request):
+    employee_email = request.cookies.get("employee_email")
+    if not employee_email:
+        return RedirectResponse(url="/employee-login", status_code=303)
+    return f"""
+    <html>
+        <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+            {NAVBAR}
+            <div style="padding: 50px; min-height: 60vh;">
+                <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                    <h2 style="text-align: center; color: #e74c3c;">Change Your Password</h2>
+                    <p style="text-align: center; font-size: 14px; color: #7f8c8d;">For security reasons, you must change your initial password before accessing your dashboard.</p>
+                    <form action="/employee-change-password" method="POST">
+                        <label>New Password:</label><br><input type="password" name="new_password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                        <button type="submit" style="background-color: #e74c3c; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Update Password</button>
+                    </form>
+                </div>
+            </div>
+            {FOOTER}
+        </body>
+    </html>
+    """
+
+@app.post("/employee-change-password")
+def process_employee_change_password(request: Request, new_password: str = Form(...)):
+    employee_email = request.cookies.get("employee_email")
+    if not employee_email:
+        return RedirectResponse(url="/employee-login", status_code=303)
+    with Session(engine) as session:
+        employee = session.exec(select(Employee).where(Employee.email == employee_email)).first()
+        if employee:
+            employee.password = hashlib.sha256(new_password.encode()).hexdigest()
+            employee.must_change_password = False
+            session.add(employee)
+            session.commit()
+    return RedirectResponse(url="/employee-dashboard", status_code=303)
 
 @app.get("/employee-dashboard", response_class=HTMLResponse)
 def employee_dashboard(request: Request):
@@ -556,8 +597,9 @@ def employee_dashboard(request: Request):
         employee = session.exec(select(Employee).where(Employee.email == employee_email)).first()
         if not employee:
             return RedirectResponse(url="/employee-login", status_code=303)
+        if employee.must_change_password:
+            return RedirectResponse(url="/employee-change-password", status_code=303)
 
-        # Fetch books based on the employee's role
         books = []
         if employee.role == "Reviewer":
             books = session.exec(select(Author).where(Author.book_status == "Pending Review")).all()
@@ -571,8 +613,13 @@ def employee_dashboard(request: Request):
             <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
                 {NAVBAR}
                 <div style="padding: 50px; min-height: 60vh;">
-                    <h1 style="color: #2c3e50;">{employee.role} Dashboard</h1>
-                    <p>Welcome, <strong>{employee.fullname}</strong>. You are logged in as a {employee.role}.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h1 style="color: #2c3e50; margin: 0;">{employee.role} Dashboard</h1>
+                            <p style="margin-top: 5px;">Welcome, <strong>{employee.fullname}</strong>.</p>
+                        </div>
+                        <a href="/employee-logout" style="background-color: #e74c3c; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Sign Out</a>
+                    </div>
                     <p>You have <strong>{len(books)}</strong> books waiting for your action.</p>
 
                     <div style="overflow-x: auto; margin-top: 20px;">
@@ -594,15 +641,13 @@ def employee_dashboard(request: Request):
             elif employee.role == "Supervisor":
                 action_btn = f"<a href='/employee-forward/{book.id}/Pending Final Approval' style='background-color: #3498db; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px;'>Send to Approver</a>"
             elif employee.role == "Approver":
-                action_btn = f"<a href='/employee-approve/{book.id}' style='background-color: #2ecc71; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px; margin-right: 5px;'>Approve & Publish</a> <a href='/employee-reject/{book.id}' style='background-color: #e74c3c; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px;'>Reject</a>"
+                action_btn = f"<a href='/employee-approve/{book.id}' style='background-color: #2ecc71; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px; margin-right: 5px;'>Approve & Publish</a> <a href='/employee-reject/{book.id}' style='background-color: #e74c3c; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px;'>Reject</a> <a href='/employee-delete/{book.id}' style='background-color: #7f8c8d; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px; margin-left: 5px;'>Delete</a>"
 
             html += f"<tr><td style='padding: 10px; text-align: center;'>{book.id}</td><td style='padding: 10px; text-align: center;'><img src='{book.cover_image}' style='width: 50px; height: 60px; object-fit: cover;'></td><td style='padding: 10px;'>{book.fullname}</td><td style='padding: 10px;'>{book.book_title}</td><td style='padding: 10px; color: #f39c12; font-weight: bold;'>{book.book_status}</td><td style='padding: 10px;'>{action_btn}</td></tr>"
 
         html += f"""
                         </table>
                     </div>
-                    <br>
-                    <a href="/employee-logout" style="background-color: #e74c3c; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Logout</a>
                 </div>
                 {FOOTER}
             </body>
@@ -637,6 +682,15 @@ def employee_reject(author_id: int):
         if author:
             author.book_status = "Rejected"
             session.add(author)
+            session.commit()
+    return RedirectResponse(url="/employee-dashboard", status_code=303)
+
+@app.get("/employee-delete/{author_id}")
+def employee_delete(author_id: int):
+    with Session(engine) as session:
+        author = session.get(Author, author_id)
+        if author:
+            session.delete(author)
             session.commit()
     return RedirectResponse(url="/employee-dashboard", status_code=303)
 
@@ -718,7 +772,7 @@ def admin_dashboard(request: Request):
         status_color = "green" if author.membership_status == "Active" else "red"
         book_color = "green" if author.book_status == "Approved" else ("red" if author.book_status == "Rejected" else "#f39c12")
         
-        html += f"<tr><td style='padding: 10px; text-align: center;'>{author.id}</td><td style='padding: 10px; text-align: center;'><img src='{author.cover_image}' style='width: 50px; height: 60px; object-fit: cover; border-radius: 4px;'></td><td style='padding: 10px;'>{author.fullname}</td><td style='padding: 10px;'>{author.book_title}</td><td style='padding: 10px; color: {status_color}; font-weight: bold;'>{author.membership_status}</td><td style='padding: 10px; color: {book_color}; font-weight: bold;'>{author.book_status}</td><td style='padding: 10px;'>Managed by Staff</td></tr>"
+        html += f"<tr><td style='padding: 10px; text-align: center;'>{author.id}</td><td style='padding: 10px; text-align: center;'><img src='{author.cover_image}' style='width: 50px; height: 60px; object-fit: cover; border-radius: 4px;'></td><td style='padding: 10px;'>{author.fullname}</td><td style='padding: 10px;'>{author.book_title}</td><td style='padding: 10px; color: {status_color}; font-weight: bold;'>{author.membership_status}</td><td style='padding: 10px; color: {book_color}; font-weight: bold;'>{author.book_status}</td><td style='padding: 10px;'><a href='/admin-delete/{author.id}' style='background-color: #7f8c8d; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px;'>Delete</a></td></tr>"
         
     html += f"""
                     </table>
@@ -732,6 +786,15 @@ def admin_dashboard(request: Request):
     """
     
     return html
+
+@app.get("/admin-delete/{author_id}")
+def admin_delete(author_id: int):
+    with Session(engine) as session:
+        author = session.get(Author, author_id)
+        if author:
+            session.delete(author)
+            session.commit()
+    return RedirectResponse(url="/admin", status_code=303)
 
 @app.get("/admin-logout")
 def admin_logout():
