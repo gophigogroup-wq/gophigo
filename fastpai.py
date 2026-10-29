@@ -37,6 +37,7 @@ class Author(SQLModel, table=True):
     book_title: str
     price: float = Field(default=0.0)
     membership_status: str = "Pending" 
+    # NEW APPROVAL FLOW: Pending Review -> Under Supervisor Review -> Pending Final Approval -> Approved / Rejected
     book_status: str = Field(default="Pending Review") 
     reset_token: str | None = Field(default=None)
     cover_image: str | None = Field(default=None) 
@@ -55,10 +56,25 @@ class Purchase(SQLModel, table=True):
     book_title: str
     pdf_file: str
 
+# NEW: Employee Table for Staff
+class Employee(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    fullname: str
+    email: str
+    password: str
+    role: str # "Reviewer", "Supervisor", or "Approver"
+
 SQLModel.metadata.create_all(engine)
 
-# --- 3. SHARED DESIGN (NAVBAR & FOOTER) ---
-# Notice we removed "Bookstore" from the nav, and combined Author Login/Register
+# Create default employees if they don't exist (for testing)
+with Session(engine) as session:
+    if not session.exec(select(Employee)).first():
+        session.add(Employee(fullname="Reviewer John", email="reviewer@gophigo.com", password=hashlib.sha256("pass123".encode()).hexdigest(), role="Reviewer"))
+        session.add(Employee(fullname="Supervisor Mary", email="supervisor@gophigo.com", password=hashlib.sha256("pass123".encode()).hexdigest(), role="Supervisor"))
+        session.add(Employee(fullname="Approver Boss", email="approver@gophigo.com", password=hashlib.sha256("pass123".encode()).hexdigest(), role="Approver"))
+        session.commit()
+
+# --- 3. SHARED DESIGN ---
 NAVBAR = """
 <nav style="background-color: #2c3e50; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: Arial; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
     <div style="font-size: 24px; font-weight: bold;">
@@ -67,6 +83,7 @@ NAVBAR = """
     <div>
         <a href="/author-portal" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Author Portal</a>
         <a href="/customer-login" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Customer Login</a>
+        <a href="/employee-login" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">Staff Login</a>
         <a href="/admin-login" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">Admin Login</a>
     </div>
 </nav>
@@ -79,9 +96,8 @@ FOOTER = """
 </footer>
 """
 
-# --- 4. THE WEB PAGES ---
+# --- 4. THE STORE & AUTHOR PAGES ---
 
-# The Homepage is now the Store!
 @app.get("/", response_class=HTMLResponse)
 def store():
     with Session(engine) as session:
@@ -101,7 +117,7 @@ def store():
             
         for author in active_authors:
             html += f"""
-            <div style='background: white; border-radius: 8px; padding: 20px; width: 250px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; transition: transform 0.2s;'>
+            <div style='background: white; border-radius: 8px; padding: 20px; width: 250px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;'>
                 <img src="{author.cover_image}" alt="Book Cover" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; margin-bottom: 15px; border: 1px solid #eee;">
                 <h3 style='color: #2c3e50; margin: 0 0 5px 0; font-size: 20px;'>{author.book_title}</h3>
                 <p style='color: #7f8c8d; margin: 0 0 15px 0; font-size: 14px;'>By {author.fullname}</p>
@@ -121,7 +137,6 @@ def store():
         """
         return html
 
-# --- 5. AUTHOR PORTAL (Login & Register) ---
 @app.get("/author-portal", response_class=HTMLResponse)
 def author_portal():
     return f"""
@@ -210,7 +225,6 @@ def login_page():
                         <label>Password:</label><br><input type="password" name="password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
                         <button type="submit" style="background-color: #3498db; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Login</button>
                     </form>
-                    <div style="text-align: center; margin-top: 15px;"><a href="/forgot-password" style="color: #e74c3c; text-decoration: none;">Forgot Password?</a></div>
                 </div>
             </div>
             {FOOTER}
@@ -302,6 +316,7 @@ def logout():
     response.delete_cookie("author_email")
     return response
 
+# --- 5. CUSTOMER FLOW ---
 @app.get("/customer-gateway", response_class=HTMLResponse)
 def customer_gateway():
     return f"""
@@ -312,9 +327,7 @@ def customer_gateway():
                 <div style="background: white; padding: 40px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
                     <h2 style="color: #2c3e50;">Before you buy...</h2>
                     <p style="color: #7f8c8d; margin-bottom: 30px;">Please log in or create an account to complete your purchase.</p>
-                    
                     <a href="/customer-login" style="background-color: #3498db; color: white; padding: 12px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold; display: block; margin-bottom: 15px;">I already have an account (Login)</a>
-                    
                     <a href="/customer-register" style="background-color: #2ecc71; color: white; padding: 12px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold; display: block;">I am a new customer (Register)</a>
                 </div>
             </div>
@@ -323,7 +336,6 @@ def customer_gateway():
     </html>
     """
 
-# --- 6. CUSTOMER FLOW ---
 @app.get("/customer-login", response_class=HTMLResponse)
 def customer_login_page():
     return f"""
@@ -388,11 +400,9 @@ def process_customer_register(fullname: str = Form(...), email: str = Form(...),
         session.commit()
     return RedirectResponse(url="/customer-login", status_code=303)
 
-# --- 7. CHECKOUT & PURCHASE ---
 @app.get("/checkout/{author_id}", response_class=HTMLResponse)
 def checkout(request: Request, author_id: int):
     customer_email = request.cookies.get("customer_email")
-    # If they aren't logged in, send them straight to Customer Registration/Login
     if not customer_email:
         return RedirectResponse(url="/customer-gateway", status_code=303)
     
@@ -503,7 +513,140 @@ def customer_logout():
     response.delete_cookie("customer_email")
     return response
 
-# --- 8. ADMIN DASHBOARD ---
+# --- 6. THE NEW EMPLOYEE (STAFF) FLOW ---
+@app.get("/employee-login", response_class=HTMLResponse)
+def employee_login_page():
+    return f"""
+    <html>
+        <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+            {NAVBAR}
+            <div style="padding: 50px; min-height: 60vh;">
+                <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                    <h2 style="text-align: center; color: #f39c12;">Staff Login</h2>
+                    <form action="/employee-login" method="POST">
+                        <label>Email Address:</label><br><input type="email" name="email" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                        <label>Password:</label><br><input type="password" name="password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                        <button type="submit" style="background-color: #f39c12; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Login</button>
+                    </form>
+                </div>
+            </div>
+            {FOOTER}
+        </body>
+    </html>
+    """
+
+@app.post("/employee-login")
+def process_employee_login(response: Response, email: str = Form(...), password: str = Form(...)):
+    scrambled_password = hashlib.sha256(password.encode()).hexdigest()
+    with Session(engine) as session:
+        employee = session.exec(select(Employee).where(Employee.email == email, Employee.password == scrambled_password)).first()
+        if employee:
+            redirect = RedirectResponse(url="/employee-dashboard", status_code=303)
+            redirect.set_cookie(key="employee_email", value=employee.email, httponly=True)
+            return redirect
+    return HTMLResponse(content=f"<h1>Login Failed. <a href='/employee-login'>Try again</a></h1>{FOOTER}", status_code=401)
+
+@app.get("/employee-dashboard", response_class=HTMLResponse)
+def employee_dashboard(request: Request):
+    employee_email = request.cookies.get("employee_email")
+    if not employee_email:
+        return RedirectResponse(url="/employee-login", status_code=303)
+    
+    with Session(engine) as session:
+        employee = session.exec(select(Employee).where(Employee.email == employee_email)).first()
+        if not employee:
+            return RedirectResponse(url="/employee-login", status_code=303)
+
+        # Fetch books based on the employee's role
+        books = []
+        if employee.role == "Reviewer":
+            books = session.exec(select(Author).where(Author.book_status == "Pending Review")).all()
+        elif employee.role == "Supervisor":
+            books = session.exec(select(Author).where(Author.book_status == "Under Supervisor Review")).all()
+        elif employee.role == "Approver":
+            books = session.exec(select(Author).where(Author.book_status == "Pending Final Approval")).all()
+
+        html = f"""
+        <html>
+            <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+                {NAVBAR}
+                <div style="padding: 50px; min-height: 60vh;">
+                    <h1 style="color: #2c3e50;">{employee.role} Dashboard</h1>
+                    <p>Welcome, <strong>{employee.fullname}</strong>. You are logged in as a {employee.role}.</p>
+                    <p>You have <strong>{len(books)}</strong> books waiting for your action.</p>
+
+                    <div style="overflow-x: auto; margin-top: 20px;">
+                        <table border='1' style='border-collapse: collapse; width: 100%; background: white; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'>
+                            <tr style='background-color: #f39c12; color: white;'>
+                                <th style="padding: 10px;">ID</th>
+                                <th style="padding: 10px;">Cover</th>
+                                <th style="padding: 10px;">Name</th>
+                                <th style="padding: 10px;">Book</th>
+                                <th style="padding: 10px;">Status</th>
+                                <th style="padding: 10px;">Action</th>
+                            </tr>
+        """
+
+        for book in books:
+            action_btn = ""
+            if employee.role == "Reviewer":
+                action_btn = f"<a href='/employee-forward/{book.id}/Under Supervisor Review' style='background-color: #3498db; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px;'>Send to Supervisor</a>"
+            elif employee.role == "Supervisor":
+                action_btn = f"<a href='/employee-forward/{book.id}/Pending Final Approval' style='background-color: #3498db; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px;'>Send to Approver</a>"
+            elif employee.role == "Approver":
+                action_btn = f"<a href='/employee-approve/{book.id}' style='background-color: #2ecc71; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px; margin-right: 5px;'>Approve & Publish</a> <a href='/employee-reject/{book.id}' style='background-color: #e74c3c; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px;'>Reject</a>"
+
+            html += f"<tr><td style='padding: 10px; text-align: center;'>{book.id}</td><td style='padding: 10px; text-align: center;'><img src='{book.cover_image}' style='width: 50px; height: 60px; object-fit: cover;'></td><td style='padding: 10px;'>{book.fullname}</td><td style='padding: 10px;'>{book.book_title}</td><td style='padding: 10px; color: #f39c12; font-weight: bold;'>{book.book_status}</td><td style='padding: 10px;'>{action_btn}</td></tr>"
+
+        html += f"""
+                        </table>
+                    </div>
+                    <br>
+                    <a href="/employee-logout" style="background-color: #e74c3c; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Logout</a>
+                </div>
+                {FOOTER}
+            </body>
+        </html>
+        """
+        return html
+
+@app.get("/employee-forward/{author_id}/{new_status}")
+def employee_forward(author_id: int, new_status: str):
+    with Session(engine) as session:
+        author = session.get(Author, author_id)
+        if author:
+            author.book_status = new_status
+            session.add(author)
+            session.commit()
+    return RedirectResponse(url="/employee-dashboard", status_code=303)
+
+@app.get("/employee-approve/{author_id}")
+def employee_approve(author_id: int):
+    with Session(engine) as session:
+        author = session.get(Author, author_id)
+        if author:
+            author.book_status = "Approved"
+            session.add(author)
+            session.commit()
+    return RedirectResponse(url="/employee-dashboard", status_code=303)
+
+@app.get("/employee-reject/{author_id}")
+def employee_reject(author_id: int):
+    with Session(engine) as session:
+        author = session.get(Author, author_id)
+        if author:
+            author.book_status = "Rejected"
+            session.add(author)
+            session.commit()
+    return RedirectResponse(url="/employee-dashboard", status_code=303)
+
+@app.get("/employee-logout")
+def employee_logout():
+    response = RedirectResponse(url="/", status_code=303)
+    response.delete_cookie("employee_email")
+    return response
+
+# --- 7. ADMIN DASHBOARD & MODERATION ---
 @app.get("/admin-login", response_class=HTMLResponse)
 def admin_login_page():
     return f"""
@@ -573,15 +716,9 @@ def admin_dashboard(request: Request):
     
     for author in authors:
         status_color = "green" if author.membership_status == "Active" else "red"
-        
-        if author.membership_status == "Active" and author.book_status == "Pending Review":
-            action_buttons = f"<a href='/approve/{author.id}' style='background-color: #2ecc71; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px; margin-right: 5px;'>Approve</a> <a href='/reject/{author.id}' style='background-color: #e74c3c; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px;'>Reject</a>"
-        else:
-            action_buttons = ""
-            
         book_color = "green" if author.book_status == "Approved" else ("red" if author.book_status == "Rejected" else "#f39c12")
         
-        html += f"<tr><td style='padding: 10px; text-align: center;'>{author.id}</td><td style='padding: 10px; text-align: center;'><img src='{author.cover_image}' style='width: 50px; height: 60px; object-fit: cover; border-radius: 4px;'></td><td style='padding: 10px;'>{author.fullname}</td><td style='padding: 10px;'>{author.book_title}</td><td style='padding: 10px; color: {status_color}; font-weight: bold;'>{author.membership_status}</td><td style='padding: 10px; color: {book_color}; font-weight: bold;'>{author.book_status}</td><td style='padding: 10px;'>{action_buttons}</td></tr>"
+        html += f"<tr><td style='padding: 10px; text-align: center;'>{author.id}</td><td style='padding: 10px; text-align: center;'><img src='{author.cover_image}' style='width: 50px; height: 60px; object-fit: cover; border-radius: 4px;'></td><td style='padding: 10px;'>{author.fullname}</td><td style='padding: 10px;'>{author.book_title}</td><td style='padding: 10px; color: {status_color}; font-weight: bold;'>{author.membership_status}</td><td style='padding: 10px; color: {book_color}; font-weight: bold;'>{author.book_status}</td><td style='padding: 10px;'>Managed by Staff</td></tr>"
         
     html += f"""
                     </table>
@@ -595,26 +732,6 @@ def admin_dashboard(request: Request):
     """
     
     return html
-
-@app.get("/approve/{author_id}")
-def approve_book(author_id: int):
-    with Session(engine) as session:
-        author = session.get(Author, author_id)
-        if author:
-            author.book_status = "Approved"
-            session.add(author)
-            session.commit()
-    return RedirectResponse(url="/admin", status_code=303)
-
-@app.get("/reject/{author_id}")
-def reject_book(author_id: int):
-    with Session(engine) as session:
-        author = session.get(Author, author_id)
-        if author:
-            author.book_status = "Rejected"
-            session.add(author)
-            session.commit()
-    return RedirectResponse(url="/admin", status_code=303)
 
 @app.get("/admin-logout")
 def admin_logout():
