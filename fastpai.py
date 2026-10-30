@@ -305,14 +305,120 @@ def process_customer_login(response: Response, email: str = Form(...), password:
 def customer_register_page():
     return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='padding: 50px; min-height: 60vh;'><div style='background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'><h2 style='text-align: center; color: #2c3e50;'>Create Customer Account</h2><form action='/customer-register' method='POST'><label>Full Name:</label><br><input type='text' name='fullname' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><label>Email Address:</label><br><input type='email' name='email' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><label>Password:</label><br><input type='password' name='password' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><button type='submit' style='background-color: #2ecc71; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;'>Register</button></form></div></div>{FOOTER}</body></html>"
 
+# --- 6. CUSTOMER FLOW ---
+@app.get("/customer-gateway", response_class=HTMLResponse)
+def customer_gateway(next: str = "/"):
+    return f"""
+    <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+        {NAVBAR}
+        <div style="padding: 50px; min-height: 60vh;">
+            <div style="background: white; padding: 40px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
+                <h2 style="color: #2c3e50;">Before you buy...</h2>
+                <p style="color: #7f8c8d; margin-bottom: 30px;">Please log in or create an account to complete your purchase.</p>
+                <a href="/customer-login?next={next}" style="background-color: #3498db; color: white; padding: 12px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold; display: block; margin-bottom: 15px;">I already have an account (Login)</a>
+                <a href="/customer-register?next={next}" style="background-color: #2ecc71; color: white; padding: 12px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold; display: block;">I am a new customer (Register)</a>
+            </div>
+        </div>
+        {FOOTER}
+    </body></html>
+    """
+
+@app.get("/customer-login", response_class=HTMLResponse)
+def customer_login_page(next: str = "/"):
+    return f"""
+    <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+        {NAVBAR}
+        <div style="padding: 50px; min-height: 60vh;">
+            <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                <h2 style="text-align: center; color: #2c3e50;">Customer Login</h2>
+                <form action="/customer-login?next={next}" method="POST">
+                    <label>Email Address:</label><br><input type="email" name="email" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                    <label>Password:</label><br><input type="password" name="password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                    <button type="submit" style="background-color: #2ecc71; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Login</button>
+                </form>
+                <p style="text-align: center; margin-top: 15px;"><a href="/customer-register?next={next}" style="color: #3498db; text-decoration: none;">Need an account? Register here</a></p>
+            </div>
+        </div>
+        {FOOTER}
+    </body></html>
+    """
+
+@app.post("/customer-login")
+def process_customer_login(response: Response, email: str = Form(...), password: str = Form(...), next: str = Form("/")):
+    scrambled_password = hashlib.sha256(password.encode()).hexdigest()
+    with Session(engine) as session:
+        customer = session.exec(select(Customer).where(Customer.email == email, Customer.password == scrambled_password)).first()
+        if customer:
+            redirect = RedirectResponse(url=next, status_code=303)
+            redirect.set_cookie(key="customer_email", value=customer.email, httponly=True)
+            return redirect
+        return HTMLResponse(content=f"<h1>Login Failed. <a href='/customer-login?next={next}'>Try again</a></h1>{FOOTER}", status_code=401)
+
+@app.get("/customer-register", response_class=HTMLResponse)
+def customer_register_page(next: str = "/"):
+    return f"""
+    <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+        {NAVBAR}
+        <div style="padding: 50px; min-height: 60vh;">
+            <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                <h2 style="text-align: center; color: #2c3e50;">Create Customer Account</h2>
+                <form action="/customer-register?next={next}" method="POST">
+                    <label>Full Name:</label><br><input type="text" name="fullname" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                    <label>Email Address:</label><br><input type="email" name="email" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                    <label>Password:</label><br><input type="password" name="password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                    <button type="submit" style="background-color: #2ecc71; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Register</button>
+                </form>
+            </div>
+        </div>
+        {FOOTER}
+    </body></html>
+    """
+
 @app.post("/customer-register")
-def process_customer_register(fullname: str = Form(...), email: str = Form(...), password: str = Form(...)):
+def process_customer_register(fullname: str = Form(...), email: str = Form(...), password: str = Form(...), next: str = Form("/")):
     scrambled_password = hashlib.sha256(password.encode()).hexdigest()
     new_customer = Customer(fullname=fullname, email=email, password=scrambled_password)
     with Session(engine) as session:
         session.add(new_customer)
         session.commit()
-    return RedirectResponse(url="/customer-login", status_code=303)
+    
+    # Automatically log them in and send them to the checkout page!
+    redirect = RedirectResponse(url=next, status_code=303)
+    redirect.set_cookie(key="customer_email", value=email, httponly=True)
+    return redirect
+
+# --- 7. CHECKOUT & PURCHASE ---
+@app.get("/checkout/{author_id}", response_class=HTMLResponse)
+def checkout(request: Request, author_id: int, format: str = "Ebook"):
+    customer_email = request.cookies.get("customer_email")
+    if not customer_email:
+        # Remember the exact book and format they want!
+        next_url = f"/checkout/{author_id}?format={format}"
+        return RedirectResponse(url=f"/customer-gateway?next={next_url}", status_code=303)
+    
+    with Session(engine) as session:
+        author = session.get(Author, author_id)
+        if not author:
+            return HTMLResponse(content=f"<h1>Book Not Found!</h1>{FOOTER}", status_code=404)
+            
+        price = author.ebook_price if format == "Ebook" else author.paperback_price
+        action_url = f"/pay/{author.id}?format={format}"
+            
+        return f"""
+        <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+            {NAVBAR}
+            <div style="padding: 50px; min-height: 60vh;">
+                <div style="background: white; padding: 40px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
+                    <h2 style="color: #2c3e50;">Checkout - {format}</h2>
+                    <img src="{author.cover_image}" style="width: 180px; height: 250px; object-fit: cover; border-radius: 4px; margin: 20px 0; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                    <h3 style="margin: 0; color: #2c3e50;">{author.book_title}</h3>
+                    <h4 style="color: #2ecc71; font-size: 24px; margin: 15px 0;">{price} TZS</h4>
+                    <a href="{action_url}" style="background-color: #3498db; color: white; padding: 15px 20px; text-decoration: none; border-radius: 5px; display: block; margin-top: 20px; font-size: 16px; font-weight: bold;">Pay with Mobile Money</a>
+                </div>
+            </div>
+            {FOOTER}
+        </body></html>
+        """
 
 # --- 7. CHECKOUT & PURCHASE ---
 @app.get("/checkout/{author_id}", response_class=HTMLResponse)
