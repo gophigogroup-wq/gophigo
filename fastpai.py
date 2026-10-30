@@ -86,8 +86,8 @@ def get_navbar(request: Request):
     employee_email = request.cookies.get("employee_email")
     admin_session = request.cookies.get("admin_session")
 
-    links = '<a href="/" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Home</a>'
-    links += '<a href="/store" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Bookstore</a>'
+    # Notice we removed "Home" and "Bookstore" is now the main logo/home!
+    links = ''
 
     if author_email:
         links += f'<a href="/author-dashboard" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">Author Dashboard</a>'
@@ -109,7 +109,7 @@ def get_navbar(request: Request):
     return f"""
     <nav style="background-color: #2c3e50; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: 'Poppins', Arial, sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <div style="font-size: 24px; font-weight: bold;">
-            <a href="/" style="color: white; text-decoration: none;">📚 Gophigo</a>
+            <a href="/" style="color: white; text-decoration: none;">📚 Gophigo Bookstore</a>
         </div>
         <div>{links}</div>
     </nav>
@@ -122,52 +122,8 @@ FOOTER = """
 </footer>
 """
 
-# --- 4. LANDING PAGE & STORE ---
+# --- 4. THE HOMEPAGE IS NOW THE STORE ---
 @app.get("/", response_class=HTMLResponse)
-def landing_page(request: Request):
-    return f"""
-    <html>
-        <head>
-            <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-            <style>
-                body {{ font-family: 'Poppins', sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }}
-                .hero {{ background: linear-gradient(135deg, #1a252f 0%, #2c3e50 100%); color: white; padding: 100px 20px; text-align: center; }}
-                .hero h1 {{ font-size: 48px; margin-bottom: 20px; }}
-                .hero p {{ font-size: 20px; color: #bdc3c7; margin-bottom: 40px; }}
-                .features {{ display: flex; justify-content: center; gap: 30px; padding: 50px 20px; flex-wrap: wrap; }}
-                .feature-card {{ background: white; padding: 30px; border-radius: 8px; width: 300px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }}
-                .feature-card h3 {{ color: #3498db; }}
-                .btn {{ padding: 15px 30px; border-radius: 5px; text-decoration: none; font-size: 18px; font-weight: bold; display: inline-block; margin: 10px; }}
-            </style>
-        </head>
-        <body>
-            {get_navbar(request)}
-            <div class="hero">
-                <h1>Welcome to Gophigo Publishing</h1>
-                <p>The global marketplace where authors keep 50% of their sales.</p>
-                <a href="/store" class="btn" style="background-color: #f39c12; color: white;">📚 Browse the Bookstore</a>
-                <a href="/author-portal" class="btn" style="background-color: #3498db; color: white;">✍️ Become an Author</a>
-            </div>
-            <div class="features">
-                <div class="feature-card">
-                    <h3>💰 50% Royalties</h3>
-                    <p>We believe in fair pay. Authors keep half of every sale.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>🔒 Secure DRM</h3>
-                    <p>Your manuscripts are protected. No unauthorized downloads.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>🌍 Global Reach</h3>
-                    <p>Sell your ebooks and paperbacks to readers everywhere.</p>
-                </div>
-            </div>
-            {FOOTER}
-        </body>
-    </html>
-    """
-
-@app.get("/store", response_class=HTMLResponse)
 def store(request: Request, search: str = None):
     with Session(engine) as session:
         query = select(Author).where(Author.membership_status == "Active", Author.book_status == "Approved")
@@ -191,9 +147,9 @@ def store(request: Request, search: str = None):
             <body style="margin: 0; padding: 0; background-color: #f4f4f4;">
                 {get_navbar(request)}
                 <div style="padding: 50px; min-height: 60vh;">
-                    <h1 style="text-align: center; color: #2c3e50; margin-bottom: 20px;">📚 Gophigo Bookstore</h1>
+                    <h1 style="text-align: center; color: #2c3e50; margin-bottom: 20px;">Gophigo Bookstore</h1>
                     
-                    <form action="/store" method="GET" style="max-width: 500px; margin: 0 auto 40px auto; display: flex; gap: 10px;">
+                    <form action="/" method="GET" style="max-width: 500px; margin: 0 auto 40px auto; display: flex; gap: 10px;">
                         <input type="text" name="search" placeholder="Search by book title or author..." value="{search if search else ''}" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px;">
                         <button type="submit" style="background-color: #3498db; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Search</button>
                     </form>
@@ -233,10 +189,50 @@ def store(request: Request, search: str = None):
         """
         return html
 
-# --- 5. AUTHOR REGISTRATION & LOGIN ---
+# --- 5. AUTHOR PORTAL (NOW THE BEAUTIFUL LANDING PAGE) ---
 @app.get("/author-portal", response_class=HTMLResponse)
 def author_portal(request: Request):
-    return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{get_navbar(request)}<div style='text-align: center; padding: 100px 20px; min-height: 60vh;'><h1 style='color: #2c3e50; font-size: 36px;'>Author Portal</h1><p style='font-size: 18px; color: #555; margin-bottom: 40px;'>Publish your book and keep 50% of your sales.</p><a href='/register' style='background-color: #3498db; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; margin-right: 10px;'>Register as a New Author</a><a href='/login' style='background-color: #2ecc71; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; margin-left: 10px;'>Author Login</a></div>{FOOTER}</body></html>"
+    return f"""
+    <html>
+        <head>
+            <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+            <style>
+                body {{ font-family: 'Poppins', sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }}
+                .hero {{ background: linear-gradient(135deg, #1a252f 0%, #2c3e50 100%); color: white; padding: 100px 20px; text-align: center; }}
+                .hero h1 {{ font-size: 48px; margin-bottom: 20px; }}
+                .hero p {{ font-size: 20px; color: #bdc3c7; margin-bottom: 40px; }}
+                .features {{ display: flex; justify-content: center; gap: 30px; padding: 50px 20px; flex-wrap: wrap; }}
+                .feature-card {{ background: white; padding: 30px; border-radius: 8px; width: 300px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }}
+                .feature-card h3 {{ color: #3498db; }}
+                .btn {{ padding: 15px 30px; border-radius: 5px; text-decoration: none; font-size: 18px; font-weight: bold; display: inline-block; margin: 10px; }}
+            </style>
+        </head>
+        <body>
+            {get_navbar(request)}
+            <div class="hero">
+                <h1>Become a Gophigo Author</h1>
+                <p>The global marketplace where authors keep 50% of their sales.</p>
+                <a href="/register" class="btn" style="background-color: #3498db; color: white;">✍️ Register as a New Author</a>
+                <a href="/login" class="btn" style="background-color: #2ecc71; color: white;">Author Login</a>
+            </div>
+            <div class="features">
+                <div class="feature-card">
+                    <h3>💰 50% Royalties</h3>
+                    <p>We believe in fair pay. Authors keep half of every sale.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🔒 Secure DRM</h3>
+                    <p>Your manuscripts are protected. No unauthorized downloads.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🌍 Global Reach</h3>
+                    <p>Sell your ebooks and paperbacks to readers everywhere.</p>
+                </div>
+            </div>
+            {FOOTER}
+        </body>
+    </html>
+    """
 
 @app.get("/register", response_class=HTMLResponse)
 def register_page(request: Request):
@@ -621,7 +617,7 @@ def my_library(request: Request):
         html = f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{get_navbar(request)}<div style='padding: 50px; min-height: 60vh;'><h1 style='text-align: center; color: #2c3e50;'>📖 My Library</h1><p style='text-align: center; color: #7f8c8d; margin-bottom: 30px;'>Welcome back, {customer.fullname}!</p>"
         
         if not purchases:
-            html += "<p style='text-align: center; font-size: 18px;'>You haven't bought any books yet. <a href='/store' style='color: #3498db;'>Visit the store</a></p>"
+            html += "<p style='text-align: center; font-size: 18px;'>You haven't bought any books yet. <a href='/' style='color: #3498db;'>Visit the store</a></p>"
         else:
             html += "<div style='max-width: 700px; margin: auto;'>"
             for p in purchases:
