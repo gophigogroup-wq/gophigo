@@ -336,7 +336,7 @@ def process_forgot_password(email: str = Form(...)):
             session.add(author)
             session.commit()
             found = True
-            reset_link = f"http://127.0.0.1:8001/reset-password?token={token}&type=author" # Assuming local testing, but in production it would be the domain
+            reset_link = f"/reset-password?token={token}&type=author" # Assuming local testing, but in production it would be the domain
 
         # Check if Employee
         employee = session.exec(select(Employee).where(Employee.email == email)).first()
@@ -345,7 +345,7 @@ def process_forgot_password(email: str = Form(...)):
             session.add(employee)
             session.commit()
             found = True
-            reset_link = f"http://127.0.0.1:8001/reset-password?token={token}&type=employee"
+            reset_link = f"/reset-password?token={token}&type=employee"
 
     if found:
         # In production, you would email this link. Since we don't have an email server, we display it.
