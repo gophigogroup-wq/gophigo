@@ -40,7 +40,7 @@ class Author(SQLModel, table=True):
     book_format: str = Field(default="Ebook")
     membership_status: str = "Pending" 
     book_status: str = Field(default="Pending Review") 
-    reset_token: str | None = Field(default=None) # For password reset
+    reset_token: str | None = Field(default=None)
     cover_image: str | None = Field(default=None) 
     pdf_file: str | None = Field(default=None) 
 
@@ -49,7 +49,7 @@ class Customer(SQLModel, table=True):
     fullname: str
     email: str
     password: str
-    reset_token: str | None = Field(default=None) # For password reset
+    reset_token: str | None = Field(default=None)
 
 class Purchase(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -67,7 +67,7 @@ class Employee(SQLModel, table=True):
     password: str
     role: str 
     must_change_password: bool = Field(default=True)
-    reset_token: str | None = Field(default=None) # For password reset
+    reset_token: str | None = Field(default=None)
 
 SQLModel.metadata.create_all(engine)
 
@@ -79,19 +79,41 @@ with Session(engine) as session:
         session.add(Employee(fullname="Approver Boss", email="approver@gophigo.com", password=hashlib.sha256("pass123".encode()).hexdigest(), role="Approver"))
         session.commit()
 
-# --- 3. SHARED DESIGN ---
-NAVBAR = """
-<nav style="background-color: #2c3e50; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: 'Poppins', Arial, sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-    <div style="font-size: 24px; font-weight: bold;">
-        <a href="/" style="color: white; text-decoration: none;">📚 Gophigo</a>
-    </div>
-    <div>
-        <a href="/author-portal" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Author Portal</a>
-        <a href="/customer-login" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Customer Login</a>
-        <a href="/employee-login" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">Staff Login</a>
-    </div>
-</nav>
-"""
+# --- 3. DYNAMIC SHARED DESIGN ---
+def get_navbar(request: Request):
+    author_email = request.cookies.get("author_email")
+    customer_email = request.cookies.get("customer_email")
+    employee_email = request.cookies.get("employee_email")
+    admin_session = request.cookies.get("admin_session")
+
+    links = '<a href="/" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Home</a>'
+    links += '<a href="/store" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Bookstore</a>'
+
+    if author_email:
+        links += f'<a href="/author-dashboard" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">Author Dashboard</a>'
+        links += '<a href="/logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-size: 16px;">Logout</a>'
+    elif customer_email:
+        links += f'<a href="/my-library" style="color: #2ecc71; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">My Library</a>'
+        links += '<a href="/customer-logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-size: 16px;">Logout</a>'
+    elif employee_email:
+        links += f'<a href="/employee-dashboard" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">Staff Dashboard</a>'
+        links += '<a href="/employee-logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-size: 16px;">Logout</a>'
+    elif admin_session:
+        links += f'<a href="/admin" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">Admin Dashboard</a>'
+        links += '<a href="/admin-logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-size: 16px;">Logout</a>'
+    else:
+        links += '<a href="/author-portal" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Author Portal</a>'
+        links += '<a href="/customer-login" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Customer Login</a>'
+        links += '<a href="/employee-login" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">Staff Login</a>'
+
+    return f"""
+    <nav style="background-color: #2c3e50; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: 'Poppins', Arial, sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div style="font-size: 24px; font-weight: bold;">
+            <a href="/" style="color: white; text-decoration: none;">📚 Gophigo</a>
+        </div>
+        <div>{links}</div>
+    </nav>
+    """
 
 FOOTER = """
 <footer style="background-color: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px; font-family: Arial; font-size: 14px;">
@@ -100,9 +122,53 @@ FOOTER = """
 </footer>
 """
 
-# --- 4. THE STORE (WITH SEARCH & FORMATS) ---
+# --- 4. LANDING PAGE & STORE ---
 @app.get("/", response_class=HTMLResponse)
-def store(search: str = None):
+def landing_page(request: Request):
+    return f"""
+    <html>
+        <head>
+            <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+            <style>
+                body {{ font-family: 'Poppins', sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }}
+                .hero {{ background: linear-gradient(135deg, #1a252f 0%, #2c3e50 100%); color: white; padding: 100px 20px; text-align: center; }}
+                .hero h1 {{ font-size: 48px; margin-bottom: 20px; }}
+                .hero p {{ font-size: 20px; color: #bdc3c7; margin-bottom: 40px; }}
+                .features {{ display: flex; justify-content: center; gap: 30px; padding: 50px 20px; flex-wrap: wrap; }}
+                .feature-card {{ background: white; padding: 30px; border-radius: 8px; width: 300px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }}
+                .feature-card h3 {{ color: #3498db; }}
+                .btn {{ padding: 15px 30px; border-radius: 5px; text-decoration: none; font-size: 18px; font-weight: bold; display: inline-block; margin: 10px; }}
+            </style>
+        </head>
+        <body>
+            {get_navbar(request)}
+            <div class="hero">
+                <h1>Welcome to Gophigo Publishing</h1>
+                <p>The global marketplace where authors keep 50% of their sales.</p>
+                <a href="/store" class="btn" style="background-color: #f39c12; color: white;">📚 Browse the Bookstore</a>
+                <a href="/author-portal" class="btn" style="background-color: #3498db; color: white;">✍️ Become an Author</a>
+            </div>
+            <div class="features">
+                <div class="feature-card">
+                    <h3>💰 50% Royalties</h3>
+                    <p>We believe in fair pay. Authors keep half of every sale.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🔒 Secure DRM</h3>
+                    <p>Your manuscripts are protected. No unauthorized downloads.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🌍 Global Reach</h3>
+                    <p>Sell your ebooks and paperbacks to readers everywhere.</p>
+                </div>
+            </div>
+            {FOOTER}
+        </body>
+    </html>
+    """
+
+@app.get("/store", response_class=HTMLResponse)
+def store(request: Request, search: str = None):
     with Session(engine) as session:
         query = select(Author).where(Author.membership_status == "Active", Author.book_status == "Approved")
         if search:
@@ -123,11 +189,11 @@ def store(search: str = None):
                 </style>
             </head>
             <body style="margin: 0; padding: 0; background-color: #f4f4f4;">
-                {NAVBAR}
+                {get_navbar(request)}
                 <div style="padding: 50px; min-height: 60vh;">
                     <h1 style="text-align: center; color: #2c3e50; margin-bottom: 20px;">📚 Gophigo Bookstore</h1>
                     
-                    <form action="/" method="GET" style="max-width: 500px; margin: 0 auto 40px auto; display: flex; gap: 10px;">
+                    <form action="/store" method="GET" style="max-width: 500px; margin: 0 auto 40px auto; display: flex; gap: 10px;">
                         <input type="text" name="search" placeholder="Search by book title or author..." value="{search if search else ''}" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px;">
                         <button type="submit" style="background-color: #3498db; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Search</button>
                     </form>
@@ -169,14 +235,14 @@ def store(search: str = None):
 
 # --- 5. AUTHOR REGISTRATION & LOGIN ---
 @app.get("/author-portal", response_class=HTMLResponse)
-def author_portal():
-    return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='text-align: center; padding: 100px 20px; min-height: 60vh;'><h1 style='color: #2c3e50; font-size: 36px;'>Author Portal</h1><p style='font-size: 18px; color: #555; margin-bottom: 40px;'>Publish your book and keep 50% of your sales.</p><a href='/register' style='background-color: #3498db; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; margin-right: 10px;'>Register as a New Author</a><a href='/login' style='background-color: #2ecc71; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; margin-left: 10px;'>Author Login</a></div>{FOOTER}</body></html>"
+def author_portal(request: Request):
+    return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{get_navbar(request)}<div style='text-align: center; padding: 100px 20px; min-height: 60vh;'><h1 style='color: #2c3e50; font-size: 36px;'>Author Portal</h1><p style='font-size: 18px; color: #555; margin-bottom: 40px;'>Publish your book and keep 50% of your sales.</p><a href='/register' style='background-color: #3498db; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; margin-right: 10px;'>Register as a New Author</a><a href='/login' style='background-color: #2ecc71; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; margin-left: 10px;'>Author Login</a></div>{FOOTER}</body></html>"
 
 @app.get("/register", response_class=HTMLResponse)
-def register_page():
+def register_page(request: Request):
     return f"""
     <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-        {NAVBAR}
+        {get_navbar(request)}
         <div style="padding: 50px; min-height: 60vh;">
             <div style="background: white; padding: 30px; border-radius: 8px; max-width: 500px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                 <h2 style="text-align: center; color: #2c3e50;">Author Registration</h2>
@@ -225,13 +291,13 @@ def process_registration(fullname: str = Form(...), email: str = Form(...), pass
         session.add(new_author)
         session.commit()
     
-    return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='text-align: center; padding: 100px 20px; min-height: 60vh;'><h1 style='color: #2ecc71;'>Registration Successful!</h1><p style='font-size: 18px;'>Thank you, <strong>{fullname}</strong>. Your book is pending review.</p><a href='/login' style='background-color: #3498db; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-size: 16px;'>Go to Login</a></div>{FOOTER}</body></html>"
+    return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{get_navbar(request)}<div style='text-align: center; padding: 100px 20px; min-height: 60vh;'><h1 style='color: #2ecc71;'>Registration Successful!</h1><p style='font-size: 18px;'>Thank you, <strong>{fullname}</strong>. Your book is pending review.</p><a href='/login' style='background-color: #3498db; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-size: 16px;'>Go to Login</a></div>{FOOTER}</body></html>"
 
 @app.get("/login", response_class=HTMLResponse)
-def login_page():
+def login_page(request: Request):
     return f"""
     <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-        {NAVBAR}
+        {get_navbar(request)}
         <div style="padding: 50px; min-height: 60vh;">
             <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                 <h2 style="text-align: center; color: #2c3e50;">Author Login</h2>
@@ -281,7 +347,7 @@ def author_dashboard(request: Request):
         else:
             payment_html = f"""<div style="background: #d4edda; padding: 20px; border-radius: 8px; margin-top: 20px; border: 1px solid #c3e6cb;"><h3 style="color: #155724;">✅ Membership Active</h3><h4 style="color: #155724; margin: 10px 0 0 0;">Total Earnings (50%): {total_earned} TZS</h4></div><div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid #ffeeba;"><h4 style="color: #856404;">Book Status: {author.book_status}</h4></div>"""
         
-        return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='padding: 50px; text-align: center; min-height: 60vh;'><h1 style='color: #2c3e50;'>Author Dashboard</h1><h2 style='color: #555;'>Welcome Back, {author.fullname}!</h2><div style='background: white; padding: 30px; border-radius: 8px; max-width: 500px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'><img src='{author.cover_image}' style='width: 150px; height: 200px; object-fit: cover; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);'><h3 style='margin-top: 20px;'>Your Book: {author.book_title}</h3><p style='font-size: 18px;'><strong>Format:</strong> {author.book_format}</p><p style='font-size: 18px;'><strong>Ebook Price:</strong> {author.ebook_price} TZS</p><p style='font-size: 18px;'><strong>Paperback Price:</strong> {author.paperback_price} TZS</p>{payment_html}</div><br><br><a href='/logout' style='background-color: #e74c3c; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Logout</a></div>{FOOTER}</body></html>"
+        return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{get_navbar(request)}<div style='padding: 50px; text-align: center; min-height: 60vh;'><h1 style='color: #2c3e50;'>Author Dashboard</h1><h2 style='color: #555;'>Welcome Back, {author.fullname}!</h2><div style='background: white; padding: 30px; border-radius: 8px; max-width: 500px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'><img src='{author.cover_image}' style='width: 150px; height: 200px; object-fit: cover; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);'><h3 style='margin-top: 20px;'>Your Book: {author.book_title}</h3><p style='font-size: 18px;'><strong>Format:</strong> {author.book_format}</p><p style='font-size: 18px;'><strong>Ebook Price:</strong> {author.ebook_price} TZS</p><p style='font-size: 18px;'><strong>Paperback Price:</strong> {author.paperback_price} TZS</p>{payment_html}</div></div>{FOOTER}</body></html>"
 
 @app.get("/pay-membership")
 def pay_membership(request: Request):
@@ -304,10 +370,10 @@ def logout():
 
 # --- 6. UNIFIED FORGOT PASSWORD FLOW ---
 @app.get("/forgot-password", response_class=HTMLResponse)
-def forgot_password_page():
+def forgot_password_page(request: Request):
     return f"""
     <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-        {NAVBAR}
+        {get_navbar(request)}
         <div style="padding: 50px; min-height: 60vh;">
             <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                 <h2 style="text-align: center; color: #2c3e50;">Reset Password</h2>
@@ -323,22 +389,20 @@ def forgot_password_page():
     """
 
 @app.post("/forgot-password", response_class=HTMLResponse)
-def process_forgot_password(email: str = Form(...)):
+def process_forgot_password(request: Request, email: str = Form(...)):
     token = secrets.token_hex(16)
     found = False
     reset_link = ""
 
     with Session(engine) as session:
-        # Check if Author
         author = session.exec(select(Author).where(Author.email == email)).first()
         if author:
             author.reset_token = token
             session.add(author)
             session.commit()
             found = True
-            reset_link = f"/reset-password?token={token}&type=author" # Assuming local testing, but in production it would be the domain
+            reset_link = f"/reset-password?token={token}&type=author"
 
-        # Check if Employee
         employee = session.exec(select(Employee).where(Employee.email == email)).first()
         if employee:
             employee.reset_token = token
@@ -348,10 +412,9 @@ def process_forgot_password(email: str = Form(...)):
             reset_link = f"/reset-password?token={token}&type=employee"
 
     if found:
-        # In production, you would email this link. Since we don't have an email server, we display it.
         return f"""
         <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-            {NAVBAR}
+            {get_navbar(request)}
             <div style="text-align: center; padding: 100px 20px; min-height: 60vh;">
                 <h2 style="color: #2ecc71;">Simulated Email Sent!</h2>
                 <p>In a real app, a link would be emailed to <strong>{email}</strong>.</p>
@@ -365,10 +428,10 @@ def process_forgot_password(email: str = Form(...)):
         return HTMLResponse(content=f"<h1>Email not found. <a href='/forgot-password'>Try again</a></h1>{FOOTER}", status_code=404)
 
 @app.get("/reset-password", response_class=HTMLResponse)
-def reset_password_page(token: str, type: str = "author"):
+def reset_password_page(request: Request, token: str, type: str = "author"):
     return f"""
     <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-        {NAVBAR}
+        {get_navbar(request)}
         <div style="padding: 50px; min-height: 60vh;">
             <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                 <h2 style="text-align: center; color: #2c3e50;">Enter New Password</h2>
@@ -385,7 +448,7 @@ def reset_password_page(token: str, type: str = "author"):
     """
 
 @app.post("/reset-password", response_class=HTMLResponse)
-def process_reset_password(token: str = Form(...), new_password: str = Form(...), type: str = Form("author")):
+def process_reset_password(request: Request, token: str = Form(...), new_password: str = Form(...), type: str = Form("author")):
     scrambled_password = hashlib.sha256(new_password.encode()).hexdigest()
     success = False
 
@@ -402,24 +465,23 @@ def process_reset_password(token: str = Form(...), new_password: str = Form(...)
             employee = session.exec(select(Employee).where(Employee.reset_token == token)).first()
             if employee:
                 employee.password = scrambled_password
-                employee.must_change_password = False # Since they just set a new one
+                employee.must_change_password = False 
                 employee.reset_token = None
                 session.add(employee)
                 session.commit()
                 success = True
 
     if success:
-        return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='text-align: center; padding: 100px 20px; min-height: 60vh;'><h1 style='color: #2ecc71;'>Password Updated!</h1><p>You can now log in with your new password.</p><a href='/login'>Go to Author Login</a> | <a href='/employee-login'>Go to Staff Login</a></div>{FOOTER}</body></html>"
+        return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{get_navbar(request)}<div style='text-align: center; padding: 100px 20px; min-height: 60vh;'><h1 style='color: #2ecc71;'>Password Updated!</h1><p>You can now log in with your new password.</p><a href='/login'>Go to Author Login</a> | <a href='/employee-login'>Go to Staff Login</a></div>{FOOTER}</body></html>"
     else:
         return HTMLResponse(content=f"<h1>Invalid or expired token. <a href='/forgot-password'>Try again</a></h1>{FOOTER}", status_code=400)
 
-
 # --- 7. CUSTOMER FLOW (WITH NEXT URL) ---
 @app.get("/customer-gateway", response_class=HTMLResponse)
-def customer_gateway(next: str = "/"):
+def customer_gateway(request: Request, next: str = "/"):
     return f"""
     <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-        {NAVBAR}
+        {get_navbar(request)}
         <div style="padding: 50px; min-height: 60vh;">
             <div style="background: white; padding: 40px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
                 <h2 style="color: #2c3e50;">Before you buy...</h2>
@@ -433,10 +495,10 @@ def customer_gateway(next: str = "/"):
     """
 
 @app.get("/customer-login", response_class=HTMLResponse)
-def customer_login_page(next: str = "/"):
+def customer_login_page(request: Request, next: str = "/"):
     return f"""
     <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-        {NAVBAR}
+        {get_navbar(request)}
         <div style="padding: 50px; min-height: 60vh;">
             <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                 <h2 style="text-align: center; color: #2c3e50;">Customer Login</h2>
@@ -465,10 +527,10 @@ def process_customer_login(response: Response, email: str = Form(...), password:
         return HTMLResponse(content=f"<h1>Login Failed. <a href='/customer-login?next={next}'>Try again</a></h1>{FOOTER}", status_code=401)
 
 @app.get("/customer-register", response_class=HTMLResponse)
-def customer_register_page(next: str = "/"):
+def customer_register_page(request: Request, next: str = "/"):
     return f"""
     <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-        {NAVBAR}
+        {get_navbar(request)}
         <div style="padding: 50px; min-height: 60vh;">
             <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                 <h2 style="text-align: center; color: #2c3e50;">Create Customer Account</h2>
@@ -512,7 +574,7 @@ def checkout(request: Request, author_id: int, format: str = "Ebook"):
             
         return f"""
         <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-            {NAVBAR}
+            {get_navbar(request)}
             <div style="padding: 50px; min-height: 60vh;">
                 <div style="background: white; padding: 40px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
                     <h2 style="color: #2c3e50;">Checkout - {format}</h2>
@@ -556,10 +618,10 @@ def my_library(request: Request):
         customer = session.exec(select(Customer).where(Customer.email == customer_email)).first()
         purchases = session.exec(select(Purchase).where(Purchase.customer_id == customer.id)).all()
         
-        html = f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='padding: 50px; min-height: 60vh;'><h1 style='text-align: center; color: #2c3e50;'>📖 My Library</h1><p style='text-align: center; color: #7f8c8d; margin-bottom: 30px;'>Welcome back, {customer.fullname}!</p>"
+        html = f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{get_navbar(request)}<div style='padding: 50px; min-height: 60vh;'><h1 style='text-align: center; color: #2c3e50;'>📖 My Library</h1><p style='text-align: center; color: #7f8c8d; margin-bottom: 30px;'>Welcome back, {customer.fullname}!</p>"
         
         if not purchases:
-            html += "<p style='text-align: center; font-size: 18px;'>You haven't bought any books yet. <a href='/' style='color: #3498db;'>Visit the store</a></p>"
+            html += "<p style='text-align: center; font-size: 18px;'>You haven't bought any books yet. <a href='/store' style='color: #3498db;'>Visit the store</a></p>"
         else:
             html += "<div style='max-width: 700px; margin: auto;'>"
             for p in purchases:
@@ -594,10 +656,10 @@ def customer_logout():
 
 # --- 9. EMPLOYEE FLOW ---
 @app.get("/employee-login", response_class=HTMLResponse)
-def employee_login_page():
+def employee_login_page(request: Request):
     return f"""
     <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-        {NAVBAR}
+        {get_navbar(request)}
         <div style="padding: 50px; min-height: 60vh;">
             <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                 <h2 style="text-align: center; color: #f39c12;">Staff Login</h2>
@@ -639,7 +701,7 @@ def employee_change_password_page(request: Request):
         return RedirectResponse(url="/employee-login", status_code=303)
     return f"""
     <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-        {NAVBAR}
+        {get_navbar(request)}
         <div style="padding: 50px; min-height: 60vh;">
             <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                 <h2 style="text-align: center; color: #e74c3c;">Change Your Password</h2>
@@ -690,7 +752,7 @@ def employee_dashboard(request: Request):
             
         html = f"""
         <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-            {NAVBAR}
+            {get_navbar(request)}
             <div style="padding: 50px; min-height: 60vh;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
@@ -756,8 +818,8 @@ def employee_logout():
 
 # --- 10. ADMIN DASHBOARD & MODERATION ---
 @app.get("/admin-login", response_class=HTMLResponse)
-def admin_login_page():
-    return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='padding: 50px; min-height: 60vh;'><div style='background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'><h2 style='text-align: center; color: #e74c3c;'>Admin Login</h2><form action='/admin-login' method='POST'><label>Username:</label><br><input type='text' name='username' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><label>Password:</label><br><input type='password' name='password' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><button type='submit' style='background-color: #e74c3c; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;'>Admin Login</button></form></div></div>{FOOTER}</body></html>"
+def admin_login_page(request: Request):
+    return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{get_navbar(request)}<div style='padding: 50px; min-height: 60vh;'><div style='background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'><h2 style='text-align: center; color: #e74c3c;'>Admin Login</h2><form action='/admin-login' method='POST'><label>Username:</label><br><input type='text' name='username' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><label>Password:</label><br><input type='password' name='password' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><button type='submit' style='background-color: #e74c3c; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;'>Admin Login</button></form></div></div>{FOOTER}</body></html>"
 
 @app.post("/admin-login")
 def admin_login(response: Response, username: str = Form(...), password: str = Form(...)):
@@ -786,7 +848,7 @@ def admin_dashboard(request: Request):
         
     html = f"""
     <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-        {NAVBAR}
+        {get_navbar(request)}
         <div style="padding: 50px; min-height: 60vh;">
             <h1 style="color: #2c3e50;">Gophigo Admin Dashboard</h1>
             <div style='background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
