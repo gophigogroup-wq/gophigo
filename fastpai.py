@@ -35,13 +35,12 @@ class Author(SQLModel, table=True):
     email: str
     password: str
     book_title: str
-    # NEW: Pricing and Format
     ebook_price: float = Field(default=0.0)
     paperback_price: float = Field(default=0.0)
-    book_format: str = Field(default="Ebook") # "Ebook", "Paperback", or "Both"
+    book_format: str = Field(default="Ebook")
     membership_status: str = "Pending" 
     book_status: str = Field(default="Pending Review") 
-    reset_token: str | None = Field(default=None)
+    reset_token: str | None = Field(default=None) # For password reset
     cover_image: str | None = Field(default=None) 
     pdf_file: str | None = Field(default=None) 
 
@@ -50,6 +49,7 @@ class Customer(SQLModel, table=True):
     fullname: str
     email: str
     password: str
+    reset_token: str | None = Field(default=None) # For password reset
 
 class Purchase(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -57,8 +57,8 @@ class Purchase(SQLModel, table=True):
     author_id: int
     book_title: str
     pdf_file: str
-    format_bought: str = Field(default="Ebook") # NEW: Tracks if they bought Ebook or Paperback
-    shipping_address: str | None = Field(default=None) # NEW: For Paperbacks
+    format_bought: str = Field(default="Ebook")
+    shipping_address: str | None = Field(default=None)
 
 class Employee(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -67,6 +67,7 @@ class Employee(SQLModel, table=True):
     password: str
     role: str 
     must_change_password: bool = Field(default=True)
+    reset_token: str | None = Field(default=None) # For password reset
 
 SQLModel.metadata.create_all(engine)
 
@@ -80,7 +81,7 @@ with Session(engine) as session:
 
 # --- 3. SHARED DESIGN ---
 NAVBAR = """
-<nav style="background-color: #2c3e50; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: Arial; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+<nav style="background-color: #2c3e50; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: 'Poppins', Arial, sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
     <div style="font-size: 24px; font-weight: bold;">
         <a href="/" style="color: white; text-decoration: none;">📚 Gophigo</a>
     </div>
@@ -112,23 +113,13 @@ def store(search: str = None):
         html = f"""
         <html>
             <head>
-                <!-- NEW: Modern Google Font -->
                 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
                 <style>
                     body {{ font-family: 'Poppins', sans-serif; }}
-                    .book-card {{
-                        transition: transform 0.3s ease, box-shadow 0.3s ease;
-                    }}
-                    .book-card:hover {{
-                        transform: translateY(-8px);
-                        box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important;
-                    }}
-                    .buy-btn {{
-                        transition: background-color 0.2s ease;
-                    }}
-                    .buy-btn:hover {{
-                        filter: brightness(1.1);
-                    }}
+                    .book-card {{ transition: transform 0.3s ease, box-shadow 0.3s ease; }}
+                    .book-card:hover {{ transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important; }}
+                    .buy-btn {{ transition: background-color 0.2s ease; }}
+                    .buy-btn:hover {{ filter: brightness(1.1); }}
                 </style>
             </head>
             <body style="margin: 0; padding: 0; background-color: #f4f4f4;">
@@ -176,7 +167,7 @@ def store(search: str = None):
         """
         return html
 
-# --- 5. AUTHOR REGISTRATION (WITH FORMATS) ---
+# --- 5. AUTHOR REGISTRATION & LOGIN ---
 @app.get("/author-portal", response_class=HTMLResponse)
 def author_portal():
     return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='text-align: center; padding: 100px 20px; min-height: 60vh;'><h1 style='color: #2c3e50; font-size: 36px;'>Author Portal</h1><p style='font-size: 18px; color: #555; margin-bottom: 40px;'>Publish your book and keep 50% of your sales.</p><a href='/register' style='background-color: #3498db; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; margin-right: 10px;'>Register as a New Author</a><a href='/login' style='background-color: #2ecc71; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 18px; font-weight: bold; margin-left: 10px;'>Author Login</a></div>{FOOTER}</body></html>"
@@ -194,19 +185,16 @@ def register_page():
                     <label>Email Address:</label><br><input type="email" name="email" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
                     <label>Password:</label><br><input type="password" name="password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
                     <label>Book Title:</label><br><input type="text" name="book_title" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                    
                     <label>Book Format:</label><br>
                     <select name="book_format" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;">
                         <option value="Ebook">Ebook Only</option>
                         <option value="Paperback">Paperback Only</option>
                         <option value="Both">Both Ebook & Paperback</option>
                     </select><br>
-                    
                     <label>Ebook Price (TZS):</label><br><input type="number" step="0.01" name="ebook_price" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                    <label>Paperback Price (TZS) - Enter 0 if not selling paperback:</label><br><input type="number" step="0.01" name="paperback_price" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                    
+                    <label>Paperback Price (TZS):</label><br><input type="number" step="0.01" name="paperback_price" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
                     <label>Book Cover Image:</label><br><input type="file" name="cover" accept="image/*" required style="width: 100%; padding: 10px; margin: 10px 0;"><br>
-                    <label>Manuscript (PDF) - Required for Ebooks:</label><br><input type="file" name="pdf_file" accept=".pdf" style="width: 100%; padding: 10px; margin: 10px 0;"><br>
+                    <label>Manuscript (PDF):</label><br><input type="file" name="pdf_file" accept=".pdf" style="width: 100%; padding: 10px; margin: 10px 0;"><br>
                     <button type="submit" style="background-color: #2ecc71; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Submit</button>
                 </form>
             </div>
@@ -217,7 +205,6 @@ def register_page():
 
 @app.post("/register", response_class=HTMLResponse)
 def process_registration(fullname: str = Form(...), email: str = Form(...), password: str = Form(...), book_title: str = Form(...), book_format: str = Form(...), ebook_price: float = Form(...), paperback_price: float = Form(...), cover: UploadFile = File(...), pdf_file: UploadFile = File(None)):
-    
     cover_result = cloudinary.uploader.upload(cover.file, folder="gophigo_covers", resource_type="image")
     cover_url = cover_result.get("secure_url")
     
@@ -242,7 +229,23 @@ def process_registration(fullname: str = Form(...), email: str = Form(...), pass
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page():
-    return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='padding: 50px; min-height: 60vh;'><div style='background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'><h2 style='text-align: center; color: #2c3e50;'>Author Login</h2><form action='/login' method='POST'><label>Email Address:</label><br><input type='email' name='email' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><label>Password:</label><br><input type='password' name='password' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><button type='submit' style='background-color: #3498db; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;'>Login</button></form></div></div>{FOOTER}</body></html>"
+    return f"""
+    <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+        {NAVBAR}
+        <div style="padding: 50px; min-height: 60vh;">
+            <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                <h2 style="text-align: center; color: #2c3e50;">Author Login</h2>
+                <form action="/login" method="POST">
+                    <label>Email Address:</label><br><input type="email" name="email" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                    <label>Password:</label><br><input type="password" name="password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                    <button type="submit" style="background-color: #3498db; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Login</button>
+                </form>
+                <div style="text-align: center; margin-top: 15px;"><a href="/forgot-password" style="color: #e74c3c; text-decoration: none;">Forgot Password?</a></div>
+            </div>
+        </div>
+        {FOOTER}
+    </body></html>
+    """
 
 @app.post("/login")
 def process_login(response: Response, email: str = Form(...), password: str = Form(...)):
@@ -265,7 +268,6 @@ def author_dashboard(request: Request):
         if not author:
             return RedirectResponse(url="/login", status_code=303)
         
-        # Calculate earnings based on whatever price they sold
         author_sales = session.exec(select(Purchase).where(Purchase.author_id == author.id)).all()
         total_earned = 0
         for sale in author_sales:
@@ -300,31 +302,119 @@ def logout():
     response.delete_cookie("author_email")
     return response
 
-# --- 6. CUSTOMER FLOW ---
-@app.get("/customer-gateway", response_class=HTMLResponse)
-def customer_gateway():
-    return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='padding: 50px; min-height: 60vh;'><div style='background: white; padding: 40px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;'><h2 style='color: #2c3e50;'>Before you buy...</h2><p style='color: #7f8c8d; margin-bottom: 30px;'>Please log in or create an account to complete your purchase.</p><a href='/customer-login' style='background-color: #3498db; color: white; padding: 12px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold; display: block; margin-bottom: 15px;'>I already have an account (Login)</a><a href='/customer-register' style='background-color: #2ecc71; color: white; padding: 12px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold; display: block;'>I am a new customer (Register)</a></div></div>{FOOTER}</body></html>"
+# --- 6. UNIFIED FORGOT PASSWORD FLOW ---
+@app.get("/forgot-password", response_class=HTMLResponse)
+def forgot_password_page():
+    return f"""
+    <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+        {NAVBAR}
+        <div style="padding: 50px; min-height: 60vh;">
+            <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                <h2 style="text-align: center; color: #2c3e50;">Reset Password</h2>
+                <p style="text-align: center; font-size: 14px; color: #7f8c8d;">Enter your email to receive a reset link.</p>
+                <form action="/forgot-password" method="POST">
+                    <label>Email Address:</label><br><input type="email" name="email" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                    <button type="submit" style="background-color: #e74c3c; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Generate Reset Link</button>
+                </form>
+            </div>
+        </div>
+        {FOOTER}
+    </body></html>
+    """
 
-@app.get("/customer-login", response_class=HTMLResponse)
-def customer_login_page():
-    return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='padding: 50px; min-height: 60vh;'><div style='background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'><h2 style='text-align: center; color: #2c3e50;'>Customer Login</h2><form action='/customer-login' method='POST'><label>Email Address:</label><br><input type='email' name='email' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><label>Password:</label><br><input type='password' name='password' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><button type='submit' style='background-color: #2ecc71; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;'>Login</button></form><p style='text-align: center; margin-top: 15px;'><a href='/customer-register' style='color: #3498db; text-decoration: none;'>Need an account? Register here</a></p></div></div>{FOOTER}</body></html>"
+@app.post("/forgot-password", response_class=HTMLResponse)
+def process_forgot_password(email: str = Form(...)):
+    token = secrets.token_hex(16)
+    found = False
+    reset_link = ""
 
-@app.post("/customer-login")
-def process_customer_login(response: Response, email: str = Form(...), password: str = Form(...)):
-    scrambled_password = hashlib.sha256(password.encode()).hexdigest()
     with Session(engine) as session:
-        customer = session.exec(select(Customer).where(Customer.email == email, Customer.password == scrambled_password)).first()
-        if customer:
-            redirect = RedirectResponse(url="/my-library", status_code=303)
-            redirect.set_cookie(key="customer_email", value=customer.email, httponly=True)
-            return redirect
-        return HTMLResponse(content=f"<h1>Login Failed. <a href='/customer-login'>Try again</a></h1>{FOOTER}", status_code=401)
+        # Check if Author
+        author = session.exec(select(Author).where(Author.email == email)).first()
+        if author:
+            author.reset_token = token
+            session.add(author)
+            session.commit()
+            found = True
+            reset_link = f"http://127.0.0.1:8001/reset-password?token={token}&type=author" # Assuming local testing, but in production it would be the domain
 
-@app.get("/customer-register", response_class=HTMLResponse)
-def customer_register_page():
-    return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='padding: 50px; min-height: 60vh;'><div style='background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'><h2 style='text-align: center; color: #2c3e50;'>Create Customer Account</h2><form action='/customer-register' method='POST'><label>Full Name:</label><br><input type='text' name='fullname' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><label>Email Address:</label><br><input type='email' name='email' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><label>Password:</label><br><input type='password' name='password' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><button type='submit' style='background-color: #2ecc71; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;'>Register</button></form></div></div>{FOOTER}</body></html>"
+        # Check if Employee
+        employee = session.exec(select(Employee).where(Employee.email == email)).first()
+        if employee:
+            employee.reset_token = token
+            session.add(employee)
+            session.commit()
+            found = True
+            reset_link = f"http://127.0.0.1:8001/reset-password?token={token}&type=employee"
 
-# --- 6. CUSTOMER FLOW ---
+    if found:
+        # In production, you would email this link. Since we don't have an email server, we display it.
+        return f"""
+        <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+            {NAVBAR}
+            <div style="text-align: center; padding: 100px 20px; min-height: 60vh;">
+                <h2 style="color: #2ecc71;">Simulated Email Sent!</h2>
+                <p>In a real app, a link would be emailed to <strong>{email}</strong>.</p>
+                <p>Since this is a local test, click the link below to reset your password:</p>
+                <a href="{reset_link}" style="background-color: #3498db; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-size: 16px; margin-top: 20px; display: inline-block;">Click Here to Reset Password</a>
+            </div>
+            {FOOTER}
+        </body></html>
+        """
+    else:
+        return HTMLResponse(content=f"<h1>Email not found. <a href='/forgot-password'>Try again</a></h1>{FOOTER}", status_code=404)
+
+@app.get("/reset-password", response_class=HTMLResponse)
+def reset_password_page(token: str, type: str = "author"):
+    return f"""
+    <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+        {NAVBAR}
+        <div style="padding: 50px; min-height: 60vh;">
+            <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                <h2 style="text-align: center; color: #2c3e50;">Enter New Password</h2>
+                <form action="/reset-password" method="POST">
+                    <input type="hidden" name="token" value="{token}">
+                    <input type="hidden" name="type" value="{type}">
+                    <label>New Password:</label><br><input type="password" name="new_password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
+                    <button type="submit" style="background-color: #2ecc71; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Update Password</button>
+                </form>
+            </div>
+        </div>
+        {FOOTER}
+    </body></html>
+    """
+
+@app.post("/reset-password", response_class=HTMLResponse)
+def process_reset_password(token: str = Form(...), new_password: str = Form(...), type: str = Form("author")):
+    scrambled_password = hashlib.sha256(new_password.encode()).hexdigest()
+    success = False
+
+    with Session(engine) as session:
+        if type == "author":
+            author = session.exec(select(Author).where(Author.reset_token == token)).first()
+            if author:
+                author.password = scrambled_password
+                author.reset_token = None 
+                session.add(author)
+                session.commit()
+                success = True
+        elif type == "employee":
+            employee = session.exec(select(Employee).where(Employee.reset_token == token)).first()
+            if employee:
+                employee.password = scrambled_password
+                employee.must_change_password = False # Since they just set a new one
+                employee.reset_token = None
+                session.add(employee)
+                session.commit()
+                success = True
+
+    if success:
+        return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='text-align: center; padding: 100px 20px; min-height: 60vh;'><h1 style='color: #2ecc71;'>Password Updated!</h1><p>You can now log in with your new password.</p><a href='/login'>Go to Author Login</a> | <a href='/employee-login'>Go to Staff Login</a></div>{FOOTER}</body></html>"
+    else:
+        return HTMLResponse(content=f"<h1>Invalid or expired token. <a href='/forgot-password'>Try again</a></h1>{FOOTER}", status_code=400)
+
+
+# --- 7. CUSTOMER FLOW (WITH NEXT URL) ---
 @app.get("/customer-gateway", response_class=HTMLResponse)
 def customer_gateway(next: str = "/"):
     return f"""
@@ -356,6 +446,7 @@ def customer_login_page(next: str = "/"):
                     <button type="submit" style="background-color: #2ecc71; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Login</button>
                 </form>
                 <p style="text-align: center; margin-top: 15px;"><a href="/customer-register?next={next}" style="color: #3498db; text-decoration: none;">Need an account? Register here</a></p>
+                <div style="text-align: center; margin-top: 15px;"><a href="/forgot-password" style="color: #e74c3c; text-decoration: none;">Forgot Password?</a></div>
             </div>
         </div>
         {FOOTER}
@@ -400,51 +491,17 @@ def process_customer_register(fullname: str = Form(...), email: str = Form(...),
     with Session(engine) as session:
         session.add(new_customer)
         session.commit()
-    
-    # Automatically log them in and send them to the checkout page!
     redirect = RedirectResponse(url=next, status_code=303)
     redirect.set_cookie(key="customer_email", value=email, httponly=True)
     return redirect
 
-# --- 7. CHECKOUT & PURCHASE ---
+# --- 8. CHECKOUT & PURCHASE ---
 @app.get("/checkout/{author_id}", response_class=HTMLResponse)
 def checkout(request: Request, author_id: int, format: str = "Ebook"):
     customer_email = request.cookies.get("customer_email")
     if not customer_email:
-        # Remember the exact book and format they want!
         next_url = f"/checkout/{author_id}?format={format}"
         return RedirectResponse(url=f"/customer-gateway?next={next_url}", status_code=303)
-    
-    with Session(engine) as session:
-        author = session.get(Author, author_id)
-        if not author:
-            return HTMLResponse(content=f"<h1>Book Not Found!</h1>{FOOTER}", status_code=404)
-            
-        price = author.ebook_price if format == "Ebook" else author.paperback_price
-        action_url = f"/pay/{author.id}?format={format}"
-            
-        return f"""
-        <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-            {NAVBAR}
-            <div style="padding: 50px; min-height: 60vh;">
-                <div style="background: white; padding: 40px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
-                    <h2 style="color: #2c3e50;">Checkout - {format}</h2>
-                    <img src="{author.cover_image}" style="width: 180px; height: 250px; object-fit: cover; border-radius: 4px; margin: 20px 0; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-                    <h3 style="margin: 0; color: #2c3e50;">{author.book_title}</h3>
-                    <h4 style="color: #2ecc71; font-size: 24px; margin: 15px 0;">{price} TZS</h4>
-                    <a href="{action_url}" style="background-color: #3498db; color: white; padding: 15px 20px; text-decoration: none; border-radius: 5px; display: block; margin-top: 20px; font-size: 16px; font-weight: bold;">Pay with Mobile Money</a>
-                </div>
-            </div>
-            {FOOTER}
-        </body></html>
-        """
-
-# --- 7. CHECKOUT & PURCHASE ---
-@app.get("/checkout/{author_id}", response_class=HTMLResponse)
-def checkout(request: Request, author_id: int, format: str = "Ebook"):
-    customer_email = request.cookies.get("customer_email")
-    if not customer_email:
-        return RedirectResponse(url="/customer-gateway", status_code=303)
     with Session(engine) as session:
         author = session.get(Author, author_id)
         if not author:
@@ -477,22 +534,17 @@ def process_payment(request: Request, author_id: int, format: str = "Ebook"):
     with Session(engine) as session:
         customer = session.exec(select(Customer).where(Customer.email == customer_email)).first()
         author = session.get(Author, author_id)
-        
-        # Check if already bought this format
         existing = session.exec(select(Purchase).where(Purchase.customer_id == customer.id, Purchase.author_id == author.id, Purchase.format_bought == format)).first()
         
         if not existing:
             new_purchase = Purchase(
-                customer_id=customer.id, 
-                author_id=author.id, 
-                book_title=author.book_title, 
+                customer_id=customer.id, author_id=author.id, book_title=author.book_title, 
                 pdf_file=author.pdf_file if format == "Ebook" else None,
                 format_bought=format,
                 shipping_address="Address to be collected on next step" if format == "Paperback" else None
             )
             session.add(new_purchase)
             session.commit()
-            
     return RedirectResponse(url="/my-library", status_code=303)
 
 @app.get("/my-library", response_class=HTMLResponse)
@@ -540,7 +592,7 @@ def customer_logout():
     response.delete_cookie("customer_email")
     return response
 
-# --- 8. EMPLOYEE FLOW ---
+# --- 9. EMPLOYEE FLOW ---
 @app.get("/employee-login", response_class=HTMLResponse)
 def employee_login_page():
     return f"""
@@ -554,6 +606,7 @@ def employee_login_page():
                     <label>Password:</label><br><input type="password" name="password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
                     <button type="submit" style="background-color: #f39c12; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Login</button>
                 </form>
+                <div style="text-align: center; margin-top: 15px;"><a href="/forgot-password" style="color: #e74c3c; text-decoration: none;">Forgot Password?</a></div>
                 <div style="text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
                     <a href="/admin-login" style="color: #e74c3c; text-decoration: none; font-size: 14px; font-weight: bold;">Admin Login</a>
                 </div>
@@ -701,7 +754,7 @@ def employee_logout():
     response.delete_cookie("employee_email")
     return response
 
-# --- 9. ADMIN DASHBOARD & MODERATION ---
+# --- 10. ADMIN DASHBOARD & MODERATION ---
 @app.get("/admin-login", response_class=HTMLResponse)
 def admin_login_page():
     return f"<html><body style='font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;'>{NAVBAR}<div style='padding: 50px; min-height: 60vh;'><div style='background: white; padding: 30px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'><h2 style='text-align: center; color: #e74c3c;'>Admin Login</h2><form action='/admin-login' method='POST'><label>Username:</label><br><input type='text' name='username' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><label>Password:</label><br><input type='password' name='password' required style='width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;'><br><button type='submit' style='background-color: #e74c3c; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;'>Admin Login</button></form></div></div>{FOOTER}</body></html>"
@@ -722,7 +775,6 @@ def admin_dashboard(request: Request):
         authors = session.exec(select(Author)).all()
         purchases = session.exec(select(Purchase)).all()
         
-        # Calculate split properly
         total_platform_revenue = 0
         total_author_payouts = 0
         for p in purchases:
