@@ -111,7 +111,27 @@ def store(search: str = None):
         
         html = f"""
         <html>
-            <body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
+            <head>
+                <!-- NEW: Modern Google Font -->
+                <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+                <style>
+                    body {{ font-family: 'Poppins', sans-serif; }}
+                    .book-card {{
+                        transition: transform 0.3s ease, box-shadow 0.3s ease;
+                    }}
+                    .book-card:hover {{
+                        transform: translateY(-8px);
+                        box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important;
+                    }}
+                    .buy-btn {{
+                        transition: background-color 0.2s ease;
+                    }}
+                    .buy-btn:hover {{
+                        filter: brightness(1.1);
+                    }}
+                </style>
+            </head>
+            <body style="margin: 0; padding: 0; background-color: #f4f4f4;">
                 {NAVBAR}
                 <div style="padding: 50px; min-height: 60vh;">
                     <h1 style="text-align: center; color: #2c3e50; margin-bottom: 20px;">📚 Gophigo Bookstore</h1>
@@ -128,19 +148,18 @@ def store(search: str = None):
             html += "<p style='text-align: center; font-size: 18px; color: #7f8c8d;'>No books found matching your search.</p>"
             
         for author in active_authors:
-            # Logic to display format and buttons based on availability
-            format_badge = f"<span style='background: #e0e0e0; padding: 3px 8px; border-radius: 3px; font-size: 12px;'>{author.book_format}</span>"
+            format_badge = f"<span style='background: #e0e0e0; color: #333; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;'>{author.book_format}</span>"
             
             buy_buttons = ""
             if author.book_format in ["Ebook", "Both"]:
-                buy_buttons += f"<a href='/checkout/{author.id}?format=Ebook' style='background-color: #3498db; color: white; padding: 10px; border-radius: 5px; text-decoration: none; display: block; margin-bottom: 5px; font-weight: bold;'>Buy Ebook ({author.ebook_price} TZS)</a>"
+                buy_buttons += f"<a href='/checkout/{author.id}?format=Ebook' class='buy-btn' style='background-color: #3498db; color: white; padding: 10px; border-radius: 5px; text-decoration: none; display: block; margin-bottom: 5px; font-weight: bold;'>Buy Ebook ({author.ebook_price} TZS)</a>"
             if author.book_format in ["Paperback", "Both"]:
-                buy_buttons += f"<a href='/checkout/{author.id}?format=Paperback' style='background-color: #f39c12; color: white; padding: 10px; border-radius: 5px; text-decoration: none; display: block; font-weight: bold;'>Buy Paperback ({author.paperback_price} TZS)</a>"
+                buy_buttons += f"<a href='/checkout/{author.id}?format=Paperback' class='buy-btn' style='background-color: #f39c12; color: white; padding: 10px; border-radius: 5px; text-decoration: none; display: block; font-weight: bold;'>Buy Paperback ({author.paperback_price} TZS)</a>"
 
             html += f"""
-            <div style='background: white; border-radius: 8px; padding: 20px; width: 280px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;'>
+            <div class="book-card" style='background: white; border-radius: 8px; padding: 20px; width: 280px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;'>
                 <img src="{author.cover_image}" alt="Book Cover" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; margin-bottom: 15px; border: 1px solid #eee;">
-                <h3 style='color: #2c3e50; margin: 0 0 5px 0; font-size: 20px;'>{author.book_title}</h3>
+                <h3 style='color: #2c3e50; margin: 0 0 5px 0; font-size: 20px; font-weight: 600;'>{author.book_title}</h3>
                 <p style='color: #7f8c8d; margin: 0 0 10px 0; font-size: 14px;'>By {author.fullname}</p>
                 {format_badge}
                 <br><br>
