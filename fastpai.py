@@ -241,12 +241,20 @@ def process_customer_register(fullname: str = Form(...), email: str = Form(...),
 @app.get("/checkout/{author_id}", response_class=HTMLResponse)
 def checkout(request: Request, author_id: int, format: str = "Ebook"):
     customer_email = request.cookies.get("customer_email")
-    if not customer_email: return RedirectResponse(url=f"/customer-gateway?next=/checkout/{author_id}?format={format}", status_code=303)
+    if not customer_email: 
+        return RedirectResponse(url=f"/customer-gateway?next=/checkout/{author_id}?format={format}")
+    
     with Session(engine) as session:
         a = session.get(Author, author_id)
-        price = a.ebook_price if format == "Ebook" else a.paperback_price
-        return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:40px; border-radius:8px; max-width:400px; margin:auto; text-align:center;"><h2>Checkout - {format}</h2><img src="{a.cover_image}" style="width:180px; height:250px; object-fit:cover; margin:20px 0;"><h3>{a.book_title}</h3><h4 style="color:#2ecc71;">{price} TZS</h4><a href="/pay/{a.id}?format={format}" style="background:#3498db; color:white; padding:15px; text-decoration:none; border-radius:5px; display:block; margin-top:20px;">Pay with Mobile Money</a></div></div>{FOOTER}</body></html>"""
-
+        
+        # --- NEW LOGIC GOES HERE ---
+        if format == "Paperback":
+            # Redirect them to the shipping form instead of payment!
+            return RedirectResponse(url=f"/shipping-address/{author_id}", status_code=303)
+        
+        # If it's an Ebook, it falls through to here:
+        price = a.ebook_price 
+        return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="... (your rest of the code)
 @app.get("/pay/{author_id}")
 def process_payment(request: Request, author_id: int, format: str = "Ebook"):
     customer_email = request.cookies.get("customer_email")
