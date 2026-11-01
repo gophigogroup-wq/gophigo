@@ -1,85 +1,52 @@
 from fastapi import FastAPI, Form, Depends, HTTPException, status, Request, Response, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
 from sqlmodel import SQLModel, Field, Session, create_engine, select, func
-import hashlib
-import secrets
-import os
-import uuid
-import cloudinary
-import cloudinary.uploader
+import hashlib, secrets, os, uuid, cloudinary, cloudinary.uploader
 
 app = FastAPI()
 
-# --- 1. CLOUDINARY SETUP ---
 cloudinary.config(
     cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
     api_key=os.environ.get("CLOUDINARY_API_KEY"),
     api_secret=os.environ.get("CLOUDINARY_API_SECRET")
 )
 
-# --- 2. DATABASE SETUP ---
 database_url = os.environ.get("DATABASE_URL")
 if database_url:
     database_url = database_url.replace("postgres://", "postgresql://", 1)
     sqlite_url = database_url
 else:
-    sqlite_file_name = "gophigo.db"
-    sqlite_url = f"sqlite:///{sqlite_file_name}"
-
+    sqlite_url = "sqlite:///gophigo.db"
 engine = create_engine(sqlite_url)
 
 class Author(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    fullname: str
-    email: str
-    password: str
-    book_title: str
-    ebook_price: float = Field(default=0.0)
-    paperback_price: float = Field(default=0.0)
-    book_format: str = Field(default="Ebook")
-    membership_status: str = "Pending" 
-    book_status: str = Field(default="Pending Review") 
-    reset_token: str | None = Field(default=None)
-    cover_image: str | None = Field(default=None) 
-    pdf_file: str | None = Field(default=None) 
+    fullname: str; email: str; password: str; book_title: str
+    ebook_price: float = Field(default=0.0); paperback_price: float = Field(default=0.0)
+    book_format: str = Field(default="Ebook"); membership_status: str = "Pending" 
+    book_status: str = Field(default="Pending Review"); reset_token: str | None = Field(default=None)
+    cover_image: str | None = Field(default=None); pdf_file: str | None = Field(default=None) 
 
 class Customer(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    fullname: str
-    email: str
-    password: str
-    reset_token: str | None = Field(default=None)
+    fullname: str; email: str; password: str; reset_token: str | None = Field(default=None)
 
 class Purchase(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    customer_id: int
-    author_id: int
-    book_title: str
-    pdf_file: str
-    format_bought: str = Field(default="Ebook")
-    shipping_address: str | None = Field(default=None)
+    customer_id: int; author_id: int; book_title: str; pdf_file: str
+    format_bought: str = Field(default="Ebook"); shipping_address: str | None = Field(default=None)
 
 class Employee(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    fullname: str
-    email: str
-    password: str
-    role: str 
-    must_change_password: bool = Field(default=True)
-    reset_token: str | None = Field(default=None)
+    fullname: str; email: str; password: str; role: str 
+    must_change_password: bool = Field(default=True); reset_token: str | None = Field(default=None)
 
-# NEW: Review Table
 class Review(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    author_id: int
-    customer_id: int
-    rating: int
-    comment: str
+    author_id: int; customer_id: int; rating: int; comment: str
 
 SQLModel.metadata.create_all(engine)
 
-# Create default employees
 with Session(engine) as session:
     if not session.exec(select(Employee)).first():
         session.add(Employee(fullname="Reviewer John", email="reviewer@gophigo.com", password=hashlib.sha256("pass123".encode()).hexdigest(), role="Reviewer"))
@@ -87,192 +54,307 @@ with Session(engine) as session:
         session.add(Employee(fullname="Approver Boss", email="approver@gophigo.com", password=hashlib.sha256("pass123".encode()).hexdigest(), role="Approver"))
         session.commit()
 
-# --- 3. DYNAMIC SHARED DESIGN ---
 def get_navbar(request: Request):
-    author_email = request.cookies.get("author_email")
-    customer_email = request.cookies.get("customer_email")
-    employee_email = request.cookies.get("employee_email")
-    admin_session = request.cookies.get("admin_session")
-
+    a = request.cookies.get("author_email"); c = request.cookies.get("customer_email")
+    e = request.cookies.get("employee_email"); ad = request.cookies.get("admin_session")
     links = ''
-
-    if author_email:
-        links += f'<a href="/author-dashboard" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">Author Dashboard</a>'
-        links += '<a href="/logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-size: 16px;">Logout</a>'
-    elif customer_email:
-        links += f'<a href="/my-library" style="color: #2ecc71; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">My Library</a>'
-        links += '<a href="/customer-logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-size: 16px;">Logout</a>'
-    elif employee_email:
-        links += f'<a href="/employee-dashboard" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">Staff Dashboard</a>'
-        links += '<a href="/employee-logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-size: 16px;">Logout</a>'
-    elif admin_session:
-        links += f'<a href="/admin" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">Admin Dashboard</a>'
-        links += '<a href="/admin-logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-size: 16px;">Logout</a>'
+    if a:
+        links += '<a href="/author-dashboard" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-weight: bold;">Author Dashboard</a><a href="/logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px;">Logout</a>'
+    elif c:
+        links += '<a href="/my-library" style="color: #2ecc71; text-decoration: none; margin-left: 20px; font-weight: bold;">My Library</a><a href="/customer-logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px;">Logout</a>'
+    elif e:
+        links += '<a href="/employee-dashboard" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-weight: bold;">Staff Dashboard</a><a href="/employee-logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px;">Logout</a>'
+    elif ad:
+        links += '<a href="/admin" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-weight: bold;">Admin Dashboard</a><a href="/admin-logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px;">Logout</a>'
     else:
-        links += '<a href="/author-portal" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Author Portal</a>'
-        links += '<a href="/customer-login" style="color: white; text-decoration: none; margin-left: 20px; font-size: 16px;">Customer Login</a>'
-        links += '<a href="/employee-login" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-size: 16px; font-weight: bold;">Staff Login</a>'
+        links += '<a href="/author-portal" style="color: white; text-decoration: none; margin-left: 20px;">Author Portal</a><a href="/customer-login" style="color: white; text-decoration: none; margin-left: 20px;">Customer Login</a><a href="/employee-login" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-weight: bold;">Staff Login</a>'
+    return f'<nav style="background-color: #2c3e50; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: Poppins, sans-serif;"><div style="font-size: 24px; font-weight: bold;"><a href="/" style="color: white; text-decoration: none;">📚 Gophigo Bookstore</a></div><div>{links}</div></nav>'
 
-    return f"""
-    <nav style="background-color: #2c3e50; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: 'Poppins', Arial, sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <div style="font-size: 24px; font-weight: bold;">
-            <a href="/" style="color: white; text-decoration: none;">📚 Gophigo Bookstore</a>
-        </div>
-        <div>{links}</div>
-    </nav>
-    """
+FOOTER = '<footer style="background-color: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px; font-family: Arial;"><p>&copy; 2026 Gophigo Publishing. All rights reserved.</p></footer>'
 
-FOOTER = """
-<footer style="background-color: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px; font-family: Arial; font-size: 14px;">
-    <p>&copy; 2026 Gophigo Publishing. All rights reserved.</p>
-    <p>Empowering Authors Globally.</p>
-</footer>
-"""
-# --- 4. THE STORE (WITH SEARCH, FORMATS, & REVIEWS) ---
 @app.get("/", response_class=HTMLResponse)
 def store(request: Request, search: str = None):
     with Session(engine) as session:
         query = select(Author).where(Author.membership_status == "Active", Author.book_status == "Approved")
-        if search:
-            query = query.where((Author.book_title.contains(search)) | (Author.fullname.contains(search)))
-            
+        if search: query = query.where((Author.book_title.contains(search)) | (Author.fullname.contains(search)))
         active_authors = session.exec(query).all()
         
-        html = f"""
-        <html>
-            <head>
-                <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-                <style>
-                    body {{ font-family: 'Poppins', sans-serif; }}
-                    .book-card {{ transition: transform 0.3s ease, box-shadow 0.3s ease; }}
-                    .book-card:hover {{ transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important; }}
-                    .buy-btn {{ transition: background-color 0.2s ease; }}
-                    .buy-btn:hover {{ filter: brightness(1.1); }}
-                    .book-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; padding: 20px; }}
-                </style>
-            </head>
-            <body style="margin: 0; padding: 0; background-color: #f4f4f4;">
-                {get_navbar(request)}
-                <div style="padding: 50px; min-height: 60vh;">
-                    <h1 style="text-align: center; color: #2c3e50; margin-bottom: 20px;">Gophigo Bookstore</h1>
-                    
-                    <form action="/" method="GET" style="max-width: 500px; margin: 0 auto 40px auto; display: flex; gap: 10px;">
-                        <input type="text" name="search" placeholder="Search by book title or author..." value="{search if search else ''}" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px;">
-                        <button type="submit" style="background-color: #3498db; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Search</button>
-                    </form>
-
-                    <div class="book-grid">
-        """
+        html = f"""<html><head><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"><style>body{{font-family:Poppins,sans-serif;}} .book-card{{transition:0.3s;}} .book-card:hover{{transform:translateY(-8px); box-shadow:0 12px 24px rgba(0,0,0,0.15)!important;}} .book-grid{{display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:20px;}}</style></head><body style="margin:0; background-color:#f4f4f4;">{get_navbar(request)}<div style="padding:40px; min-height:60vh;"><h1 style="text-align:center; color:#2c3e50;">Gophigo Bookstore</h1><form action="/" method="GET" style="max-width:500px; margin:0 auto 40px; display:flex; gap:10px;"><input type="text" name="search" placeholder="Search..." value="{search or ''}" style="flex:1; padding:12px; border:1px solid #ccc; border-radius:5px;"><button type="submit" style="background:#3498db; color:white; padding:12px 25px; border:none; border-radius:5px; cursor:pointer;">Search</button></form><div class="book-grid">"""
         
-        if not active_authors:
-            html += "<p style='text-align: center; font-size: 18px; color: #7f8c8d; grid-column: 1/-1;'>No books found matching your search.</p>"
-            
-        for author in active_authors:
-            reviews = session.exec(select(Review).where(Review.author_id == author.id)).all()
-            avg_rating = sum([r.rating for r in reviews]) / len(reviews) if reviews else 0
-            stars = "⭐" * int(round(avg_rating)) if reviews else "No reviews yet"
+        if not active_authors: html += "<p style='text-align:center; grid-column:1/-1;'>No books found.</p>"
+        for a in active_authors:
+            reviews = session.exec(select(Review).where(Review.author_id == a.id)).all()
+            avg = sum(r.rating for r in reviews)/len(reviews) if reviews else 0
+            stars = "⭐" * int(round(avg)) if reviews else "No reviews yet"
+            btns = ""
+            if a.book_format in ["Ebook","Both"]: btns += f"<a href='/checkout/{a.id}?format=Ebook' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>Buy Ebook ({a.ebook_price} TZS)</a>"
+            if a.book_format in ["Paperback","Both"]: btns += f"<a href='/checkout/{a.id}?format=Paperback' style='background:#f39c12; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; font-weight:bold;'>Buy Paperback ({a.paperback_price} TZS)</a>"
+            html += f"""<div class="book-card" style="background:white; border-radius:8px; padding:15px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.1);"><img src="{a.cover_image}" style="width:100%; height:250px; object-fit:cover; border-radius:4px; margin-bottom:10px;"><h3 style="color:#2c3e50; margin:0 0 5px; font-size:18px;">{a.book_title}</h3><p style="color:#7f8c8d; margin:0 0 5px; font-size:13px;">By {a.fullname}</p><p style="color:#f1c40f; margin:0 0 10px; font-size:14px;">{stars} ({len(reviews)})</p><span style="background:#e0e0e0; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600;">{a.book_format}</span><br><br>{btns}</div>"""
+        return html + f"</div></div>{FOOTER}</body></html>"
 
-            format_badge = f"<span style='background: #e0e0e0; color: #333; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;'>{author.book_format}</span>"
-            
-            buy_buttons = ""
-            if author.book_format in ["Ebook", "Both"]:
-                buy_buttons += f"<a href='/checkout/{author.id}?format=Ebook' class='buy-btn' style='background-color: #3498db; color: white; padding: 10px; border-radius: 5px; text-decoration: none; display: block; margin-bottom: 5px; font-weight: bold;'>Buy Ebook ({author.ebook_price} TZS)</a>"
-            if author.book_format in ["Paperback", "Both"]:
-                buy_buttons += f"<a href='/checkout/{author.id}?format=Paperback' class='buy-btn' style='background-color: #f39c12; color: white; padding: 10px; border-radius: 5px; text-decoration: none; display: block; font-weight: bold;'>Buy Paperback ({author.paperback_price} TZS)</a>"
+@app.get("/review/{purchase_id}", response_class=HTMLResponse)
+def review_page(request: Request, purchase_id: int):
+    customer_email = request.cookies.get("customer_email")
+    if not customer_email: return RedirectResponse(url="/customer-login", status_code=303)
+    with Session(engine) as session:
+        purchase = session.get(Purchase, purchase_id)
+        return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto; text-align:center;"><h2>Review: {purchase.book_title}</h2><form action="/review/{purchase_id}" method="POST"><label>Rating (1-5):</label><br><input type="number" name="rating" min="1" max="5" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Comment:</label><br><textarea name="comment" required style="width:100%; padding:10px; margin:10px 0;"></textarea><br><button type="submit" style="background:#2ecc71; color:white; padding:12px; width:100%; border:none; border-radius:5px; cursor:pointer;">Submit Review</button></form></div></div>{FOOTER}</body></html>"""
 
-            html += f"""
-            <div class="book-card" style='background: white; border-radius: 8px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;'>
-                <img src="{author.cover_image}" alt="Book Cover" style="width: 100%; height: 250px; object-fit: cover; border-radius: 4px; margin-bottom: 15px; border: 1px solid #eee;">
-                <h3 style='color: #2c3e50; margin: 0 0 5px 0; font-size: 18px; font-weight: 600;'>{author.book_title}</h3>
-                <p style='color: #7f8c8d; margin: 0 0 5px 0; font-size: 13px;'>By {author.fullname}</p>
-                <p style='color: #f1c40f; margin: 0 0 10px 0; font-size: 14px;'>{stars} ({len(reviews)})</p>
-                {format_badge}
-                <br><br>
-                {buy_buttons}
-            </div>
-            """
-            
-        html += f"""
-                    </div>
-                </div>
-                {FOOTER}
-            </body>
-        </html>
-        """
-        return html
+@app.post("/review/{purchase_id}")
+def process_review(request: Request, purchase_id: int, rating: int = Form(...), comment: str = Form(...)):
+    customer_email = request.cookies.get("customer_email")
+    with Session(engine) as session:
+        purchase = session.get(Purchase, purchase_id)
+        customer = session.exec(select(Customer).where(Customer.email == customer_email)).first()
+        new_review = Review(author_id=purchase.author_id, customer_id=customer.id, rating=rating, comment=comment)
+        session.add(new_review); session.commit()
+    return RedirectResponse(url="/my-library", status_code=303)
 
-# --- 5. AUTHOR PORTAL & REGISTRATION ---
+@app.get("/my-library", response_class=HTMLResponse)
+def my_library(request: Request):
+    customer_email = request.cookies.get("customer_email")
+    if not customer_email: return RedirectResponse(url="/customer-login", status_code=303)
+    with Session(engine) as session:
+        customer = session.exec(select(Customer).where(Customer.email == customer_email)).first()
+        purchases = session.exec(select(Purchase).where(Purchase.customer_id == customer.id)).all()
+        html = f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><h1 style="text-align:center;">📖 My Library</h1><p style="text-align:center;">Welcome, {customer.fullname}!</p><div style="max-width:700px; margin:auto;">"""
+        if not purchases: html += "<p style='text-align:center;'>You haven't bought any books yet. <a href='/'>Visit the store</a></p>"
+        for p in purchases:
+            action = f"<a href='/read/{p.id}' style='background:#2ecc71; color:white; padding:8px 15px; text-decoration:none; border-radius:4px;'>Read Now</a>" if p.format_bought == "Ebook" else "<span style='color:#f39c12; font-weight:bold;'>📦 Printing & Shipping</span>"
+            review_btn = f"<a href='/review/{p.id}' style='background:#f1c40f; color:black; padding:8px 15px; text-decoration:none; border-radius:4px; margin-left:10px;'>⭐ Leave Review</a>"
+            html += f"<div style='background:white; padding:20px; margin-bottom:15px; border-radius:8px; display:flex; justify-content:space-between;'><div><strong>{p.book_title}</strong><br><small>{p.format_bought}</small></div><div>{action} {review_btn}</div></div>"
+        return html + f"</div></div>{FOOTER}</body></html>"
+
+# --- AUTH & PORTAL ROUTES (Condensed for space) ---
 @app.get("/author-portal", response_class=HTMLResponse)
 def author_portal(request: Request):
-    return f"""
-    <html>
-        <head>
-            <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-            <style>
-                body {{ font-family: 'Poppins', sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }}
-                .hero {{ background: linear-gradient(135deg, #1a252f 0%, #2c3e50 100%); color: white; padding: 100px 20px; text-align: center; }}
-                .hero h1 {{ font-size: 48px; margin-bottom: 20px; }}
-                .hero p {{ font-size: 20px; color: #bdc3c7; margin-bottom: 40px; }}
-                .features {{ display: flex; justify-content: center; gap: 30px; padding: 50px 20px; flex-wrap: wrap; }}
-                .feature-card {{ background: white; padding: 30px; border-radius: 8px; width: 300px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }}
-                .feature-card h3 {{ color: #3498db; }}
-                .btn {{ padding: 15px 30px; border-radius: 5px; text-decoration: none; font-size: 18px; font-weight: bold; display: inline-block; margin: 10px; }}
-            </style>
-        </head>
-        <body>
-            {get_navbar(request)}
-            <div class="hero">
-                <h1>Become a Gophigo Author</h1>
-                <p>The global marketplace where authors keep 50% of their sales.</p>
-                <a href="/register" class="btn" style="background-color: #3498db; color: white;">✍️ Register as a New Author</a>
-                <a href="/login" class="btn" style="background-color: #2ecc71; color: white;">Author Login</a>
-            </div>
-            <div class="features">
-                <div class="feature-card">
-                    <h3>💰 50% Royalties</h3>
-                    <p>We believe in fair pay. Authors keep half of every sale.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>🔒 Secure DRM</h3>
-                    <p>Your manuscripts are protected. No unauthorized downloads.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>🌍 Global Reach</h3>
-                    <p>Sell your ebooks and paperbacks to readers everywhere.</p>
-                </div>
-            </div>
-            {FOOTER}
-        </body>
-    </html>
-    """
+    return f"""<html><head><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet"><style>body{{font-family:Poppins; margin:0;}} .hero{{background:linear-gradient(135deg,#1a252f,#2c3e50); color:white; padding:100px 20px; text-align:center;}} .btn{{padding:15px 30px; border-radius:5px; text-decoration:none; font-weight:bold; display:inline-block; margin:10px;}}</style></head><body>{get_navbar(request)}<div class="hero"><h1 style="font-size:48px;">Become a Gophigo Author</h1><p style="font-size:20px;">The global marketplace where authors keep 50% of their sales.</p><a href="/register" class="btn" style="background:#3498db; color:white;">✍️ Register</a><a href="/login" class="btn" style="background:#2ecc71; color:white;">Author Login</a></div><div style="display:flex; justify-content:center; gap:30px; padding:50px; flex-wrap:wrap;"><div style="background:white; padding:30px; border-radius:8px; width:300px; text-align:center;"><h3>💰 50% Royalties</h3><p>Authors keep half of every sale.</p></div><div style="background:white; padding:30px; border-radius:8px; width:300px; text-align:center;"><h3>🔒 Secure DRM</h3><p>Manuscripts are protected.</p></div><div style="background:white; padding:30px; border-radius:8px; width:300px; text-align:center;"><h3>🌍 Global Reach</h3><p>Sell ebooks and paperbacks globally.</p></div></div>{FOOTER}</body></html>"""
 
 @app.get("/register", response_class=HTMLResponse)
 def register_page(request: Request):
-    return f"""
-    <html><body style="font-family: Arial; margin: 0; padding: 0; background-color: #f4f4f4;">
-        {get_navbar(request)}
-        <div style="padding: 50px; min-height: 60vh;">
-            <div style="background: white; padding: 30px; border-radius: 8px; max-width: 500px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-                <h2 style="text-align: center; color: #2c3e50;">Author Registration</h2>
-                <form action="/register" method="POST" enctype="multipart/form-data">
-                    <label>Full Name:</label><br><input type="text" name="fullname" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                    <label>Email Address:</label><br><input type="email" name="email" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                    <label>Password:</label><br><input type="password" name="password" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                    <label>Book Title:</label><br><input type="text" name="book_title" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                    <label>Book Format:</label><br>
-                    <select name="book_format" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;">
-                        <option value="Ebook">Ebook Only</option>
-                        <option value="Paperback">Paperback Only</option>
-                        <option value="Both">Both Ebook & Paperback</option>
-                    </select><br>
-                    <label>Ebook Price (TZS):</label><br><input type="number" step="0.01" name="ebook_price" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                    <label>Paperback Price (TZS):</label><br><input type="number" step="0.01" name="paperback_price" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px;"><br>
-                    <label>Book Cover Image:</label><br><input type="file" name="cover" accept="image/*" required style="width: 100%; padding: 10px; margin: 10px 0;"><br>
-                    <label>Manuscript (PDF):</label><br><input type="file" name="pdf_file" accept=".pdf" style="width: 100%; padding: 10px; margin: 10px 0;"><br>
-                    <button type="submit" style="background-color: #2ecc71; color: white; padding: 12px; border: none; width: 100%; margin-top: 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Submit</button>
-                </form>
-            </div>
-        </div>
-        {FOOTER}
-    </body></html>
-    """
+    return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;"><h2 style="text-align:center;">Author Registration</h2><form action="/register" method="POST" enctype="multipart/form-data"><label>Name:</label><br><input type="text" name="fullname" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Email:</label><br><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Password:</label><br><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Book Title:</label><br><input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Format:</label><br><select name="book_format" style="width:100%; padding:10px; margin:10px 0;"><option value="Ebook">Ebook</option><option value="Paperback">Paperback</option><option value="Both">Both</option></select><br><label>Ebook Price:</label><br><input type="number" name="ebook_price" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Paperback Price:</label><br><input type="number" name="paperback_price" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Cover Image:</label><br><input type="file" name="cover" accept="image/*" required style="width:100%; padding:10px; margin:10px 0;"><br><label>PDF Manuscript:</label><br><input type="file" name="pdf_file" accept=".pdf" style="width:100%; padding:10px; margin:10px 0;"><br><button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Submit</button></form></div></div>{FOOTER}</body></html>"""
+
+@app.post("/register", response_class=HTMLResponse)
+def process_registration(request: Request, fullname: str = Form(...), email: str = Form(...), password: str = Form(...), book_title: str = Form(...), book_format: str = Form(...), ebook_price: float = Form(...), paperback_price: float = Form(...), cover: UploadFile = File(...), pdf_file: UploadFile = File(None)):
+    cover_url = cloudinary.uploader.upload(cover.file, folder="gophigo_covers", resource_type="image").get("secure_url")
+    pdf_url = None
+    if pdf_file and pdf_file.filename: pdf_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw", access_mode="public").get("secure_url")
+    new_author = Author(fullname=fullname, email=email, password=hashlib.sha256(password.encode()).hexdigest(), book_title=book_title, book_format=book_format, ebook_price=ebook_price, paperback_price=paperback_price, cover_image=cover_url, pdf_file=pdf_url)
+    with Session(engine) as session: session.add(new_author); session.commit()
+    return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='text-align:center; padding:100px;'><h1 style='color:#2ecc71;'>Registration Successful!</h1><a href='/login'>Go to Login</a></div>{FOOTER}</body></html>"
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center;">Author Login</h2><form action="/login" method="POST"><label>Email:</label><br><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Password:</label><br><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;"><br><button type="submit" style="background:#3498db; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button></form><div style="text-align:center; margin-top:15px;"><a href="/forgot-password">Forgot Password?</a></div></div></div>{FOOTER}</body></html>"""
+
+@app.post("/login")
+def process_login(response: Response, email: str = Form(...), password: str = Form(...)):
+    with Session(engine) as session:
+        author = session.exec(select(Author).where(Author.email == email, Author.password == hashlib.sha256(password.encode()).hexdigest())).first()
+        if author:
+            redirect = RedirectResponse(url="/author-dashboard", status_code=303)
+            redirect.set_cookie(key="author_email", value=author.email, httponly=True)
+            return redirect
+    return HTMLResponse(content=f"<h1>Login Failed. <a href='/login'>Try again</a></h1>{FOOTER}", status_code=401)
+
+@app.get("/author-dashboard", response_class=HTMLResponse)
+def author_dashboard(request: Request):
+    author_email = request.cookies.get("author_email")
+    if not author_email: return RedirectResponse(url="/login", status_code=303)
+    with Session(engine) as session:
+        author = session.exec(select(Author).where(Author.email == author_email)).first()
+        sales = session.exec(select(Purchase).where(Purchase.author_id == author.id)).all()
+        total = sum(author.ebook_price * 0.5 if s.format_bought == "Ebook" else author.paperback_price * 0.5 for s in sales)
+        pay_html = """<div style="background:#fff3cd; padding:20px; border-radius:8px;"><h3>Membership Payment Required</h3><a href="/pay-membership" style="background:#2ecc71; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Pay 20,000 TZS</a></div>""" if author.membership_status == "Pending" else f"""<div style="background:#d4edda; padding:20px; border-radius:8px;"><h3>✅ Active</h3><h4>Earnings: {total} TZS</h4></div><div style="background:#fff3cd; padding:20px; margin-top:10px;"><h4>Book: {author.book_status}</h4></div>"""
+        return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='padding:50px; text-align:center;'><h2>Welcome, {author.fullname}!</h2><div style='background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;'><img src='{author.cover_image}' style='width:150px; height:200px; object-fit:cover; border-radius:4px;'><h3>{author.book_title}</h3><p>{author.book_format} | {author.ebook_price} TZS</p>{pay_html}</div></div>{FOOTER}</body></html>"
+
+@app.get("/pay-membership")
+def pay_membership(request: Request):
+    author_email = request.cookies.get("author_email")
+    with Session(engine) as session:
+        author = session.exec(select(Author).where(Author.email == author_email)).first()
+        if author: author.membership_status = "Active"; session.add(author); session.commit()
+    return RedirectResponse(url="/author-dashboard", status_code=303)
+
+@app.get("/logout")
+def logout():
+    res = RedirectResponse(url="/", status_code=303); res.delete_cookie("author_email"); return res
+
+@app.get("/forgot-password", response_class=HTMLResponse)
+def forgot_password_page(request: Request):
+    return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center;">Reset Password</h2><form action="/forgot-password" method="POST"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><button type="submit" style="background:#e74c3c; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Generate Reset Link</button></form></div></div>{FOOTER}</body></html>"""
+
+@app.post("/forgot-password", response_class=HTMLResponse)
+def process_forgot_password(request: Request, email: str = Form(...)):
+    token = secrets.token_hex(16); found = False; link = ""
+    with Session(engine) as session:
+        a = session.exec(select(Author).where(Author.email == email)).first()
+        if a: a.reset_token = token; session.add(a); session.commit(); found = True; link = f"/reset-password?token={token}&type=author"
+        e = session.exec(select(Employee).where(Employee.email == email)).first()
+        if e: e.reset_token = token; session.add(e); session.commit(); found = True; link = f"/reset-password?token={token}&type=employee"
+    if found: return f"<html><body style='text-align:center; padding:50px;'>{get_navbar(request)}<h2 style='color:green;'>Simulated Email Sent</h2><a href='{link}' style='background:#3498db; color:white; padding:12px; text-decoration:none; border-radius:5px;'>Click to Reset</a>{FOOTER}</body></html>"
+    return HTMLResponse(content=f"<h1>Email not found. <a href='/forgot-password'>Try again</a></h1>{FOOTER}", status_code=404)
+
+@app.get("/reset-password", response_class=HTMLResponse)
+def reset_password_page(request: Request, token: str, type: str = "author"):
+    return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2>New Password</h2><form action="/reset-password" method="POST"><input type="hidden" name="token" value="{token}"><input type="hidden" name="type" value="{type}"><input type="password" name="new_password" required style="width:100%; padding:10px; margin:10px 0;"><button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Update</button></form></div></div>{FOOTER}</body></html>"""
+
+@app.post("/reset-password", response_class=HTMLResponse)
+def process_reset_password(request: Request, token: str = Form(...), new_password: str = Form(...), type: str = Form("author")):
+    pwd = hashlib.sha256(new_password.encode()).hexdigest(); success = False
+    with Session(engine) as session:
+        if type == "author":
+            a = session.exec(select(Author).where(Author.reset_token == token)).first()
+            if a: a.password = pwd; a.reset_token = None; session.add(a); session.commit(); success = True
+        elif type == "employee":
+            e = session.exec(select(Employee).where(Employee.reset_token == token)).first()
+            if e: e.password = pwd; e.must_change_password = False; e.reset_token = None; session.add(e); session.commit(); success = True
+    if success: return f"<html><body style='text-align:center; padding:50px;'><h1 style='color:green;'>Password Updated!</h1><a href='/login'>Login</a></body></html>"
+    return HTMLResponse(content=f"<h1>Invalid token. <a href='/forgot-password'>Try again</a></h1>{FOOTER}", status_code=400)
+
+@app.get("/customer-gateway", response_class=HTMLResponse)
+def customer_gateway(request: Request, next: str = "/"):
+    return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:40px; border-radius:8px; max-width:400px; margin:auto; text-align:center;"><h2>Before you buy...</h2><a href="/customer-login?next={next}" style="background:#3498db; color:white; padding:12px; text-decoration:none; border-radius:5px; display:block; margin-bottom:15px;">Login</a><a href="/customer-register?next={next}" style="background:#2ecc71; color:white; padding:12px; text-decoration:none; border-radius:5px; display:block;">Register</a></div></div>{FOOTER}</body></html>"""
+
+@app.get("/customer-login", response_class=HTMLResponse)
+def customer_login_page(request: Request, next: str = "/"):
+    return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2>Customer Login</h2><form action="/customer-login?next={next}" method="POST"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button></form><p style="text-align:center; margin-top:15px;"><a href="/customer-register?next={next}">Register here</a></p><p style="text-align:center;"><a href="/forgot-password" style="color:#e74c3c;">Forgot Password?</a></p></div></div>{FOOTER}</body></html>"""
+
+@app.post("/customer-login")
+def process_customer_login(response: Response, email: str = Form(...), password: str = Form(...), next: str = Form("/")):
+    with Session(engine) as session:
+        c = session.exec(select(Customer).where(Customer.email == email, Customer.password == hashlib.sha256(password.encode()).hexdigest())).first()
+        if c:
+            res = RedirectResponse(url=next, status_code=303); res.set_cookie(key="customer_email", value=c.email, httponly=True); return res
+    return HTMLResponse(content=f"<h1>Login Failed. <a href='/customer-login?next={next}'>Try again</a></h1>{FOOTER}", status_code=401)
+
+@app.get("/customer-register", response_class=HTMLResponse)
+def customer_register_page(request: Request, next: str = "/"):
+    return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2>Create Account</h2><form action="/customer-register?next={next}" method="POST"><input type="text" name="fullname" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Name"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Register</button></form></div></div>{FOOTER}</body></html>"""
+
+@app.post("/customer-register")
+def process_customer_register(fullname: str = Form(...), email: str = Form(...), password: str = Form(...), next: str = Form("/")):
+    with Session(engine) as session:
+        session.add(Customer(fullname=fullname, email=email, password=hashlib.sha256(password.encode()).hexdigest())); session.commit()
+    res = RedirectResponse(url=next, status_code=303); res.set_cookie(key="customer_email", value=email, httponly=True); return res
+
+@app.get("/checkout/{author_id}", response_class=HTMLResponse)
+def checkout(request: Request, author_id: int, format: str = "Ebook"):
+    customer_email = request.cookies.get("customer_email")
+    if not customer_email: return RedirectResponse(url=f"/customer-gateway?next=/checkout/{author_id}?format={format}", status_code=303)
+    with Session(engine) as session:
+        a = session.get(Author, author_id)
+        price = a.ebook_price if format == "Ebook" else a.paperback_price
+        return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:40px; border-radius:8px; max-width:400px; margin:auto; text-align:center;"><h2>Checkout - {format}</h2><img src="{a.cover_image}" style="width:180px; height:250px; object-fit:cover; margin:20px 0;"><h3>{a.book_title}</h3><h4 style="color:#2ecc71;">{price} TZS</h4><a href="/pay/{a.id}?format={format}" style="background:#3498db; color:white; padding:15px; text-decoration:none; border-radius:5px; display:block; margin-top:20px;">Pay with Mobile Money</a></div></div>{FOOTER}</body></html>"""
+
+@app.get("/pay/{author_id}")
+def process_payment(request: Request, author_id: int, format: str = "Ebook"):
+    customer_email = request.cookies.get("customer_email")
+    with Session(engine) as session:
+        c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
+        a = session.get(Author, author_id)
+        if not session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.author_id == a.id, Purchase.format_bought == format)).first():
+            session.add(Purchase(customer_id=c.id, author_id=a.id, book_title=a.book_title, pdf_file=a.pdf_file if format == "Ebook" else None, format_bought=format, shipping_address="Address to be collected" if format == "Paperback" else None)); session.commit()
+    return RedirectResponse(url="/my-library", status_code=303)
+
+@app.get("/read/{purchase_id}", response_class=HTMLResponse)
+def read_book(request: Request, purchase_id: int):
+    with Session(engine) as session:
+        p = session.get(Purchase, purchase_id)
+        return f"<html><body style='margin:0; height:100vh; display:flex; flex-direction:column;'><div style='background:#2c3e50; color:white; padding:15px; text-align:center;'><h3>Gophigo Reader - {p.book_title}</h3></div><iframe src='https://docs.google.com/viewer?url={p.pdf_file}&embedded=true' style='flex:1; border:none; width:100%; height:100vh;'></iframe></body></html>"
+
+@app.get("/customer-logout")
+def customer_logout():
+    res = RedirectResponse(url="/", status_code=303); res.delete_cookie("customer_email"); return res
+
+@app.get("/employee-login", response_class=HTMLResponse)
+def employee_login_page(request: Request):
+    return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="color:#f39c12; text-align:center;">Staff Login</h2><form action="/employee-login" method="POST"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#f39c12; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button></form><p style="text-align:center; margin-top:15px;"><a href="/forgot-password" style="color:#e74c3c;">Forgot Password?</a></p><p style="text-align:center;"><a href="/admin-login">Admin Login</a></p></div></div>{FOOTER}</body></html>"""
+
+@app.post("/employee-login")
+def process_employee_login(response: Response, email: str = Form(...), password: str = Form(...)):
+    with Session(engine) as session:
+        e = session.exec(select(Employee).where(Employee.email == email, Employee.password == hashlib.sha256(password.encode()).hexdigest())).first()
+        if e:
+            url = "/employee-change-password" if e.must_change_password else "/employee-dashboard"
+            res = RedirectResponse(url=url, status_code=303); res.set_cookie(key="employee_email", value=e.email, httponly=True); return res
+    return HTMLResponse(content=f"<h1>Login Failed. <a href='/employee-login'>Try again</a></h1>{FOOTER}", status_code=401)
+
+@app.get("/employee-change-password", response_class=HTMLResponse)
+def employee_change_password_page(request: Request):
+    return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center; color:#e74c3c;">Change Password</h2><form action="/employee-change-password" method="POST"><input type="password" name="new_password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="New Password"><button type="submit" style="background:#e74c3c; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Update</button></form></div></div>{FOOTER}</body></html>"""
+
+@app.post("/employee-change-password")
+def process_employee_change_password(request: Request, new_password: str = Form(...)):
+    with Session(engine) as session:
+        e = session.exec(select(Employee).where(Employee.email == request.cookies.get("employee_email"))).first()
+        e.password = hashlib.sha256(new_password.encode()).hexdigest(); e.must_change_password = False; session.add(e); session.commit()
+    return RedirectResponse(url="/employee-dashboard", status_code=303)
+
+@app.get("/employee-dashboard", response_class=HTMLResponse)
+def employee_dashboard(request: Request):
+    employee_email = request.cookies.get("employee_email")
+    if not employee_email: return RedirectResponse(url="/employee-login", status_code=303)
+    with Session(engine) as session:
+        e = session.exec(select(Employee).where(Employee.email == employee_email)).first()
+        if e.must_change_password: return RedirectResponse(url="/employee-change-password", status_code=303)
+        books = session.exec(select(Author).where(Author.book_status == ("Pending Review" if e.role == "Reviewer" else "Under Supervisor Review" if e.role == "Supervisor" else "Pending Final Approval"))).all()
+        html = f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="display:flex; justify-content:space-between;"><h1>{e.role} Dashboard</h1><a href="/employee-logout" style="background:#e74c3c; color:white; padding:10px 20px; text-decoration:none; border-radius:5px; height:fit-content;">Sign Out</a></div><p>Welcome, <strong>{e.fullname}</strong>. You have {len(books)} books.</p><table border="1" style="width:100%; background:white; border-collapse:collapse;"><tr style="background:#f39c12; color:white;"><th>ID</th><th>Cover</th><th>Book</th><th>Status</th><th>Action</th></tr>"""
+        for b in books:
+            btn = f"<a href='/employee-forward/{b.id}/Under Supervisor Review' style='background:#3498db; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Send to Supervisor</a>" if e.role == "Reviewer" else f"<a href='/employee-forward/{b.id}/Pending Final Approval' style='background:#3498db; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Send to Approver</a>" if e.role == "Supervisor" else f"<a href='/employee-approve/{b.id}' style='background:#2ecc71; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Approve</a> <a href='/employee-request-delete/{b.id}' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Request Delete</a>"
+            html += f"<tr><td>{b.id}</td><td><img src='{b.cover_image}' style='width:50px;'></td><td>{b.book_title}</td><td>{b.book_status}</td><td>{btn}</td></tr>"
+        return html + f"</table></div>{FOOTER}</body></html>"
+
+@app.get("/employee-forward/{author_id}/{new_status}")
+def employee_forward(author_id: int, new_status: str):
+    with Session(engine) as session:
+        a = session.get(Author, author_id); a.book_status = new_status; session.add(a); session.commit()
+    return RedirectResponse(url="/employee-dashboard", status_code=303)
+
+@app.get("/employee-approve/{author_id}")
+def employee_approve(author_id: int):
+    with Session(engine) as session:
+        a = session.get(Author, author_id); a.book_status = "Approved"; session.add(a); session.commit()
+    return RedirectResponse(url="/employee-dashboard", status_code=303)
+
+@app.get("/employee-request-delete/{author_id}")
+def employee_request_delete(author_id: int):
+    with Session(engine) as session:
+        a = session.get(Author, author_id); a.book_status = "Pending Deletion"; session.add(a); session.commit()
+    return RedirectResponse(url="/employee-dashboard", status_code=303)
+
+@app.get("/employee-logout")
+def employee_logout():
+    res = RedirectResponse(url="/", status_code=303); res.delete_cookie("employee_email"); return res
+
+@app.get("/admin-login", response_class=HTMLResponse)
+def admin_login_page(request: Request):
+    return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="color:#e74c3c; text-align:center;">Admin Login</h2><form action="/admin-login" method="POST"><input type="text" name="username" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Username"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#e74c3c; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button></form></div></div>{FOOTER}</body></html>"""
+
+@app.post("/admin-login")
+def admin_login(response: Response, username: str = Form(...), password: str = Form(...)):
+    if username == "admin" and password == "gophigo2026":
+        res = RedirectResponse(url="/admin", status_code=303); res.set_cookie(key="admin_session", value="true", httponly=True); return res
+    return HTMLResponse(content=f"<h1>Invalid Credentials. <a href='/admin-login'>Try again</a></h1>{FOOTER}", status_code=401)
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin_dashboard(request: Request):
+    if request.cookies.get("admin_session") != "true": return RedirectResponse(url="/admin-login", status_code=303)
+    with Session(engine) as session:
+        authors = session.exec(select(Author)).all(); purchases = session.exec(select(Purchase)).all()
+        rev = sum((session.get(Author, p.author_id).ebook_price if p.format_bought == "Ebook" else session.get(Author, p.author_id).paperback_price) * 0.5 for p in purchases)
+        html = f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><h1>Admin Dashboard</h1><div style="background:#2c3e50; color:white; padding:20px; border-radius:8px;"><h3>Sales: {len(purchases)} | Revenue (50%): {rev} TZS</h3></div><table border="1" style="width:100%; background:white; margin-top:20px;"><tr style="background:#34495e; color:white;"><th>ID</th><th>Name</th><th>Book</th><th>Status</th><th>Action</th></tr>"""
+        for a in authors:
+            btn = f"<a href='/admin-confirm-delete/{a.id}' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Confirm Delete</a>" if a.book_status == "Pending Deletion" else ""
+            html += f"<tr><td>{a.id}</td><td>{a.fullname}</td><td>{a.book_title}</td><td>{a.book_status}</td><td>{btn}</td></tr>"
+        return html + f"</table></div>{FOOTER}</body></html>"
+
+@app.get("/admin-confirm-delete/{author_id}")
+def admin_confirm_delete(author_id: int):
+    with Session(engine) as session:
+        a = session.get(Author, author_id); session.delete(a); session.commit()
+    return RedirectResponse(url="/admin", status_code=303)
+
+@app.get("/admin-logout")
+def admin_logout():
+    res = RedirectResponse(url="/admin-login", status_code=303); res.delete_cookie("admin_session"); return res
