@@ -261,8 +261,19 @@ def process_payment(request: Request, author_id: int, format: str = "Ebook"):
     with Session(engine) as session:
         c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
         a = session.get(Author, author_id)
-        if not session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.author_id == a.id, Purchase.format_bought == format)).first():
-            session.add(Purchase(customer_id=c.id, author_id=a.id, book_title=a.book_title, pdf_file=a.pdf_file if format == "Ebook" else None, format_bought=format, shipping_address="Address to be collected" if format == "Paperback" else None)); session.commit()
+      if not session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.author_id == a.id, Purchase.format_bought == format)).first():
+            # Fix: Use a dummy string for PDF if it's a Paperback, so the database doesn't crash
+            pdf_value = a.pdf_file if format == "Ebook" else "No PDF - Physical Book"
+            
+            session.add(Purchase(
+                customer_id=c.id, 
+                author_id=a.id, 
+                book_title=a.book_title, 
+                pdf_file=pdf_value, 
+                format_bought=format, 
+                shipping_address="Address to be collected" if format == "Paperback" else None
+            ))
+            session.commit()
     return RedirectResponse(url="/my-library", status_code=303)
 
 @app.get("/read/{purchase_id}", response_class=HTMLResponse)
