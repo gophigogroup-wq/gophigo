@@ -242,9 +242,26 @@ def process_customer_login(response: Response, email: str = Form(...), password:
 
 @app.get("/customer-register", response_class=HTMLResponse)
 def customer_register_page(request: Request, next: str = "/"):
-    return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2>Create Account</h2><form action="/customer-register?next={next}" method="POST"><input type="text" name="fullname
-     required style="width:100%; padding:10px; margin:10px 0;" placeholder="Name"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Register</button></form></div></div>{FOOTER}</body></html>"""
-
+    return f"""
+    <html><body style="font-family:Arial; background:#f4f4f4;">
+        {get_navbar(request)}
+        <div style="padding:50px;">
+            <div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;">
+                <h2 style="text-align:center;">Create Account</h2>
+                <form action="/customer-register?next={next}" method="POST">
+                    <label>Full Name:</label><br>
+                    <input type="text" name="fullname" required style="width:100%; padding:10px; margin:10px 0;"><br>
+                    <label>Email:</label><br>
+                    <input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;"><br>
+                    <label>Password:</label><br>
+                    <input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;"><br>
+                    <button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Register</button>
+                </form>
+            </div>
+        </div>
+        {FOOTER}
+    </body></html>
+    """
 @app.post("/customer-register")
 def process_customer_register(fullname: str = Form(...), email: str = Form(...), password: str = Form(...), next: str = Form("/")):
     with Session(engine) as session:
