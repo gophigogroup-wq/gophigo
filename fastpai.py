@@ -114,7 +114,7 @@ def shipping_address_form(request: Request, author_id: int):
 
 @app.post("/calculate-shipping/{author_id}", response_class=HTMLResponse)
 def calculate_shipping(request: Request, author_id: int, phone: str = Form(...), region: str = Form(...), address: str = Form(...)):  
-with Session(engine) as session:
+    with Session(engine) as session:
         a = session.get(Author, author_id)
         book_price = a.paperback_price
         shipping_fee = 15000.0  # Flat rate for Tanzania
