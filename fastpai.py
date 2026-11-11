@@ -219,9 +219,18 @@ def process_payment(request: Request, author_id: int, format: str = "Ebook"):
                 data = response.json()
                 payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
                 
-                if not payment_url:
-                    return HTMLResponse(content=f"<h1>Snippe Error</h1><p>No payment URL found. Response: {data}</p>", status_code=400)
-
+                                if not payment_url:
+                    # Snippe sends a USSD push to the phone, no URL needed!
+                    return HTMLResponse(content=f"""
+                    <html><body style="font-family:Arial; text-align:center; padding:50px;">
+                        <h1 style="color:#2ecc71;">Payment Prompt Sent!</h1>
+                        <p>We have sent a payment request to your phone.</p>
+                        <p>Please check your phone and enter your mobile money PIN to complete the purchase.</p>
+                        <p style="color:#7f8c8d;">Reference: {data.get('data', {}).get('reference')}</p>
+                        <br>
+                        <a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">I have paid - Go to My Library</a>
+                    </body></html>
+                    """, status_code=200)
                 existing = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.author_id == a.id, Purchase.format_bought == "Ebook")).first()
                 if not existing:
                     session.add(Purchase(customer_id=c.id, author_id=a.id, book_title=a.book_title, pdf_file=a.pdf_file, format_bought="Ebook"))
