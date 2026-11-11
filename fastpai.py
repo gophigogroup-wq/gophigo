@@ -194,17 +194,25 @@ def process_payment(request: Request, author_id: int, format: str = "Ebook"):
             "Content-Type": "application/json"
         }
         # Snippe API payload to create a payment
+               # 1. Prepare the data for Snippe
+        api_key = os.environ.get("SNIPPE_API_KEY")
+        amount = a.ebook_price
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        # Snippe API payload to create a payment
         payload = {
-            "amount": amount,
+            "amount": int(amount), 
             "currency": "TZS",
             "customer": {
                 "name": c.fullname,
-                "email": c.email
+                "email": c.email,
+                "phone": "255700000000" # Temporary dummy number for testing
             },
-            "description": f"Ebook purchase: {a.book_title}",
-            "callback_url": "https://www.gophigo.co.tz/snippe-webhook" # We will build this next
+            "description": f"Ebook: {a.book_title}",
+            "callback_url": "https://www.gophigo.co.tz/snippe-webhook"
         }
-
         # 2. Talk to Snippe API
         try:
             response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers)
