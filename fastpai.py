@@ -187,32 +187,25 @@ def process_payment(request: Request, author_id: int, format: str = "Ebook"):
         a = session.get(Author, author_id)
         
         # 1. Prepare the data for Snippe
-        api_key = os.environ.get("SNIPPE_API_KEY")
-        amount = a.ebook_price
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-        # Snippe API payload to create a payment
-               # 1. Prepare the data for Snippe
-        api_key = os.environ.get("SNIPPE_API_KEY")
-        amount = a.ebook_price
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-        # Snippe API payload to create a payment
+                # Split the customer's name into first and last
+        name_parts = c.fullname.split(" ", 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else "Customer"
+
         payload = {
-            "amount": int(amount), 
-            "currency": "TZS",
+            "phone_number": "255700000000", # Dummy number for testing
+            "webhook_url": "https://www.gophigo.co.tz/snippe-webhook",
             "customer": {
-                "name": c.fullname,
-                "email": c.email,
-                "phone": "255700000000" # Temporary dummy number for testing
+                "firstname": first_name,
+                "lastname": last_name,
+                "email": c.email
             },
-            "description": f"Ebook: {a.book_title}",
-            "callback_url": "https://www.gophigo.co.tz/snippe-webhook"
-        }
+            "details": {
+                "amount": int(amount),
+                "currency": "TZS",
+                "description": f"Ebook: {a.book_title}"
+            }
+        }}
         # 2. Talk to Snippe API
         try:
             response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers)
