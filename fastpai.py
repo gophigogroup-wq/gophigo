@@ -178,14 +178,51 @@ def confirm_paperback(request: Request, author_id: int, phone: str = Form(...), 
 def process_payment(request: Request, author_id: int, format: str = "Ebook"):
     customer_email = request.cookies.get("customer_email")
     if not customer_email: return RedirectResponse(url="/customer-login", status_code=303)
+    if format == "Paperback":
+        return RedirectResponse(url=f"/shipping-address/{author_id}", status_code=303)
+        
     with Session(engine) as session:
         c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
         a = session.get(Author, author_id)
-        if not session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.author_id == a.id, Purchase.format_bought == format)).first():
-            session.add(Purchase(customer_id=c.id, author_id=a.id, book_title=a.book_title, pdf_file=a.pdf_file, format_bought=format))
-            session.commit()
-    return RedirectResponse(url="/my-library", status_code=303)
+        
+        # 1. Prepare the data for Snippe
+        api_key = os.environ.get("SNIPPE_API_KEY")
+        amount = a.ebook_price
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        # Snippe API payload to create a payment
+        payload = {
+            "amount": amount,
+            "currency": "TZS",
+            "customer": {
+                "name": c.fullname,
+                "email": c.email
+            },
+            "description": f"Ebook purchase: {a.book_title}",
+            "callback_url": "https://www.gophigo.co.tz/snippe-webhook" # We will build this next
+        }
 
+        # 2. Talk to Snippe API
+        try:
+            response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers)
+            if response.status_code == 200 or response.status_code == 201:
+                data = response.json()
+                payment_url = data.get("data", {}).get("checkout_url") # Get the link where they pay
+                
+                # Save a pending purchase in the database
+                existing = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.author_id == a.id, Purchase.format_bought == "Ebook")).first()
+                if not existing:
+                    session.add(Purchase(customer_id=c.id, author_id=a.id, book_title=a.book_title, pdf_file=a.pdf_file, format_bought="Ebook"))
+                    session.commit()
+
+                # Redirect the customer to the Snippe payment page!
+                return RedirectResponse(url=payment_url, status_code=303)
+            else:
+                return HTMLResponse(content=f"<h1>Payment Failed</h1><p>Snippe Error: {response.text}</p>", status_code=400)
+        except Exception as e:
+            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)
 @app.get("/my-library", response_class=HTMLResponse)
 def my_library(request: Request):
     customer_email = request.cookies.get("customer_email")
