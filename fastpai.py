@@ -215,11 +215,11 @@ def process_payment(request: Request, author_id: int, format: str = "Ebook"):
         try:
             response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers)
             
-            if response.status_code in [200, 201]:
+                                 if response.status_code in [200, 201]:
                 data = response.json()
                 payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
                 
-                                if not payment_url:
+                if not payment_url:
                     # Snippe sends a USSD push to the phone, no URL needed!
                     return HTMLResponse(content=f"""
                     <html><body style="font-family:Arial; text-align:center; padding:50px;">
