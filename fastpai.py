@@ -205,7 +205,7 @@ def process_payment(request: Request, author_id: int, format: str = "Ebook"):
                 "currency": "TZS",
                 "description": f"Ebook: {a.book_title}"
             }
-        }}
+        }
         # 2. Talk to Snippe API
         try:
             response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers)
