@@ -188,8 +188,8 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
             "phone_number": clean_phone,
             "webhook_url": "https://www.gophigo.co.tz/snippe-webhook",
             "customer": {
-                "firstname": first_name,
-                "lastname": last_name,
+                "firstname": firstname,
+                "lastname": lastname,
                 "email": c.email
             },
             "business_name": "Gophigo Bookstore", 
