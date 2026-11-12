@@ -1,0 +1,4 @@
+body { font-family: Poppins, sans-serif; margin: 0; background-color: #f4f4f4; }
+.book-card { transition: 0.3s; }
+.book-card:hover { transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important; }
+.book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
