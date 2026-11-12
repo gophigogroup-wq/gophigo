@@ -89,7 +89,7 @@ def store(request: Request, search: str = None):
         if search: query = query.where((Author.book_title.contains(search)) | (Author.fullname.contains(search)))
         active_authors = session.exec(query).all()
 
-        html = """
+              html = """
         <html><head>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
         <style>
@@ -107,6 +107,7 @@ def store(request: Request, search: str = None):
                 <button type="submit" style="background:#3498db; color:white; padding:12px 25px; border:none; border-radius:5px; cursor:pointer;">Search</button>
             </form>
             <div class="book-grid">
+            """
         """
 
         if not active_authors: 
