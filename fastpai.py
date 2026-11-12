@@ -92,17 +92,9 @@ def store(request: Request, search: str = None):
         active_authors = session.exec(query).all()
                 # Plain string — NO f-string, so Python ignores all CSS braces and decimals
                  # Plain string for CSS (no 'f'), then concatenate with f-string for HTML
-        html = """
-        <html><head>
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-        <style>
-        body { font-family: Poppins, sans-serif; }
-        .book-card { transition: 0.3s; }
-        .book-card:hover { transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important; }
-        .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
-        </style>
-        </head><body style="margin:0; background-color:#f4f4f4;">
-        """ + get_navbar(request) + f"""
+        css = "<html><head><link href='https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap' rel='stylesheet'><style>body { font-family: Poppins, sans-serif; } .book-card { transition: 0.3s; } .book-card:hover { transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important; } .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }</style></head><body style='margin:0; background-color:#f4f4f4;'>"
+        
+        html = css + get_navbar(request) + f"""
         <div style="padding:40px; min-height:60vh;">
             <h1 style="text-align:center; color:#2c3e50;">Gophigo Bookstore</h1>
             <form action="/" method="GET" style="max-width:500px; margin:0 auto 40px; display:flex; gap:10px;">
@@ -110,7 +102,7 @@ def store(request: Request, search: str = None):
                 <button type="submit" style="background:#3498db; color:white; padding:12px 25px; border:none; border-radius:5px; cursor:pointer;">Search</button>
             </form>
             <div class="book-grid">
-        """   
+        """
         if not active_authors: html += "<p style='text-align:center; grid-column:1/-1;'>No books found.</p>"
         for a in active_authors:
             reviews = session.exec(select(Review).where(Review.author_id == a.id)).all()
