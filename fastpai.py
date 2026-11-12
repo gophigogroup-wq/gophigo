@@ -181,8 +181,8 @@ def confirm_paperback(request: Request, author_id: int, phone: str = Form(...), 
             session.commit()
             
     return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='text-align:center; padding:100px;'><h1 style='color:#2ecc71;'>Order Successful!</h1><p>Your paperback is being prepared for printing.</p><p>We will deliver it to: {address}, {region}.</p><a href='/my-library' style='background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;'>Go to My Library</a></div>{FOOTER}</body></html>"
-@app.get("/pay/{author_id}")
-def process_payment(request: Request, author_id: int, format: str = "Ebook"):
+@app.post("/pay/{author_id}")
+def process_payment(request: Request, author_id: int, phone: str = Form(...), format: str = "Ebook"):
     customer_email = request.cookies.get("customer_email")
     if not customer_email: return RedirectResponse(url="/customer-login", status_code=303)
     if format == "Paperback":
@@ -203,8 +203,13 @@ def process_payment(request: Request, author_id: int, format: str = "Ebook"):
         first_name = name_parts[0]
         last_name = name_parts[1] if len(name_parts) > 1 else "Customer"
 
+        # Clean the phone number (remove leading 0 and add 255 for Tanzania)
+        clean_phone = phone.strip()
+        if clean_phone.startswith("0"):
+            clean_phone = "255" + clean_phone[1:]
+
         payload = {
-            "phone_number": "255700000000",
+            "phone_number": clean_phone,
             "webhook_url": "https://www.gophigo.co.tz/snippe-webhook",
             "customer": {
                 "firstname": first_name,
@@ -226,17 +231,17 @@ def process_payment(request: Request, author_id: int, format: str = "Ebook"):
                 payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
                 
                 if not payment_url:
-                    # Snippe sends a USSD push to the phone, no URL needed!
                     return HTMLResponse(content=f"""
                     <html><body style="font-family:Arial; text-align:center; padding:50px;">
                         <h1 style="color:#2ecc71;">Payment Prompt Sent!</h1>
-                        <p>We have sent a payment request to your phone.</p>
+                        <p>We have sent a payment request to <strong>{phone}</strong>.</p>
                         <p>Please check your phone and enter your mobile money PIN to complete the purchase.</p>
                         <p style="color:#7f8c8d;">Reference: {data.get('data', {}).get('reference')}</p>
                         <br>
                         <a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">I have paid - Go to My Library</a>
                     </body></html>
                     """, status_code=200)
+
                 existing = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.author_id == a.id, Purchase.format_bought == "Ebook")).first()
                 if not existing:
                     session.add(Purchase(customer_id=c.id, author_id=a.id, book_title=a.book_title, pdf_file=a.pdf_file, format_bought="Ebook"))
@@ -246,8 +251,7 @@ def process_payment(request: Request, author_id: int, format: str = "Ebook"):
             else:
                 return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
         except Exception as e:
-            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)@app.get("/my-library", response_class=HTMLResponse)
-def my_library(request: Request):
+            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)def my_library(request: Request):
     customer_email = request.cookies.get("customer_email")
     if not customer_email: return RedirectResponse(url="/customer-login", status_code=303)
     with Session(engine) as session:
