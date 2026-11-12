@@ -312,6 +312,8 @@ def register_page(request: Request):
 def process_registration(request: Request, fullname: str = Form(...), email: str = Form(...), password: str = Form(...), book_title: str = Form(...), book_format: str = Form(...), ebook_price: float = Form(...), paperback_price: float = Form(...), cover: UploadFile = File(...), pdf_file: UploadFile = File(None)):
     cover_url = cloudinary.uploader.upload(cover.file, folder="gophigo_covers", resource_type="image").get("secure_url")
     pdf_url = None
+    if not agree_terms:
+        return HTMLResponse(content="<h1>Error</h1><p>You must agree to the Terms and Conditions to register.</p>", status_code=400)
     if pdf_file and pdf_file.filename: pdf_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw", access_mode="public").get("secure_url")
     new_author = Author(fullname=fullname, email=email, password=hashlib.sha256(password.encode()).hexdigest(), book_title=book_title, book_format=book_format, ebook_price=ebook_price, paperback_price=paperback_price, cover_image=cover_url, pdf_file=pdf_url)
     with Session(engine) as session: session.add(new_author); session.commit()
