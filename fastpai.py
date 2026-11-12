@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Form, Depends, HTTPException, status, Request, Response, UploadFile, File
+return f"""<html><body stylefrom fastapi import FastAPI, Form, Depends, HTTPException, status, Request, Response, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import SQLModel, Field, Session, create_engine, select
