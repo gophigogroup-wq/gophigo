@@ -252,18 +252,6 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
                 return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
         except Exception as e:
             return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)def my_library(request: Request):
-    customer_email = request.cookies.get("customer_email")
-    if not customer_email: return RedirectResponse(url="/customer-login", status_code=303)
-    with Session(engine) as session:
-        customer = session.exec(select(Customer).where(Customer.email == customer_email)).first()
-        purchases = session.exec(select(Purchase).where(Purchase.customer_id == customer.id)).all()
-        html = f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><h1 style="text-align:center;">📖 My Library</h1><p style="text-align:center;">Welcome, {customer.fullname}!</p><div style="max-width:700px; margin:auto;">"""
-        if not purchases: html += "<p style='text-align:center;'>You haven't bought any books yet. <a href='/'>Visit the store</a></p>"
-        for p in purchases:
-            action = f"<a href='/read/{p.id}' style='background:#2ecc71; color:white; padding:8px 15px; text-decoration:none; border-radius:4px;'>Read Now</a>" if p.format_bought == "Ebook" else "<span style='color:#f39c12; font-weight:bold;'>📦 Printing & Shipping</span>"
-            review_btn = f"<a href='/review/{p.id}' style='background:#f1c40f; color:black; padding:8px 15px; text-decoration:none; border-radius:4px; margin-left:10px;'>⭐ Leave Review</a>"
-            html += f"<div style='background:white; padding:20px; margin-bottom:15px; border-radius:8px; display:flex; justify-content:space-between;'><div><strong>{p.book_title}</strong><br><small>{p.format_bought}</small></div><div>{action} {review_btn}</div></div>"
-        return html + f"</div></div>{FOOTER}</body></html>"
 
 @app.get("/review/{purchase_id}", response_class=HTMLResponse)
 def review_page(request: Request, purchase_id: int):
