@@ -340,8 +340,23 @@ def author_dashboard(request: Request):
         author = session.exec(select(Author).where(Author.email == author_email)).first()
         sales = session.exec(select(Purchase).where(Purchase.author_id == author.id)).all()
         total = sum(author.ebook_price * 0.5 if s.format_bought == "Ebook" else author.paperback_price * 0.5 for s in sales)
-        pay_html = """<div style="background:#fff3cd; padding:20px; border-radius:8px;"><h3>Membership Payment Required</h3><a href="/pay-membership" style="background:#2ecc71; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Pay 20,000 TZS</a></div>""" if author.membership_status == "Pending" else f"""<div style="background:#d4edda; padding:20px; border-radius:8px;"><h3>✅ Active</h3><h4>Earnings: {total} TZS</h4></div><div style="background:#fff3cd; padding:20px; margin-top:10px;"><h4>Book: {author.book_status}</h4></div>"""
-        return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='padding:50px; text-align:center;'><h2>Welcome, {author.fullname}!</h2><div style='background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;'><img src='{author.cover_image}' style='width:150px; height:200px; object-fit:cover; border-radius:4px;'><h3>{author.book_title}</h3><p>{author.book_format} | {author.ebook_price} TZS</p>{pay_html}</div></div>{FOOTER}</body></html>"
+               if author.membership_status == "Pending":
+            pay_html = """
+            <div style="background:#fff3cd; padding:20px; border-radius:8px;">
+                <h3>Membership Payment Required</h3>
+                <a href="/pay-membership" style="background:#2ecc71; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Pay 20,000 TZS</a>
+            </div>
+            """
+        else:
+            pay_html = f"""
+            <div style="background:#d4edda; padding:20px; border-radius:8px;">
+                <h3>✅ Active</h3>
+                <h4>Earnings: {total} TZS</h4>
+            </div>
+            <div style="background:#fff3cd; padding:20px; margin-top:10px;">
+                <h4>Book: {author.book_status}</h4>
+            </div>
+            """        return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='padding:50px; text-align:center;'><h2>Welcome, {author.fullname}!</h2><div style='background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;'><img src='{author.cover_image}' style='width:150px; height:200px; object-fit:cover; border-radius:4px;'><h3>{author.book_title}</h3><p>{author.book_format} | {author.ebook_price} TZS</p>{pay_html}</div></div>{FOOTER}</body></html>"
 
 @app.get("/pay-membership")
 def pay_membership(request: Request):
