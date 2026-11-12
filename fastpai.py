@@ -92,7 +92,7 @@ def store(request: Request, search: str = None):
         for a in active_authors:
             reviews = session.exec(select(Review).where(Review.author_id == a.id)).all()
             avg = sum(r.rating for r in reviews)/len(reviews) if reviews else 0
-            stars = "⭐" * int(round(avg)) if reviews else "No reviews yet"
+            stars = "*" * int(round(avg)) if reviews else "No reviews yet"
             btns = ""
             if a.book_format in ["Ebook","Both"]: btns += f"<a href='/checkout/{a.id}?format=Ebook' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>Buy Ebook ({a.ebook_price} TZS)</a>"
             if a.book_format in ["Paperback","Both"]: btns += f"<a href='/checkout/{a.id}?format=Paperback' style='background:#f39c12; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; font-weight:bold;'>Buy Paperback ({a.paperback_price} TZS)</a>"
