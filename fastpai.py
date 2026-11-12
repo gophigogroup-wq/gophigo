@@ -106,9 +106,15 @@ def checkout(request: Request, author_id: int, format: str = "Ebook"):
     with Session(engine) as session:
         a = session.get(Author, author_id)
         price = a.ebook_price if format == "Ebook" else a.paperback_price
-        pay_btn = f'<a href="/pay/{a.id}?format=Ebook" style="background:#3498db; color:white; padding:15px; text-decoration:none; border-radius:5px; display:block; margin-top:20px;">Pay with Mobile Money</a>' if format == "Ebook" else f'<a href="/shipping-address/{a.id}" style="background:#f39c12; color:white; padding:15px; text-decoration:none; border-radius:5px; display:block; margin-top:20px;">Enter Shipping Address</a>'
-        return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:40px; border-radius:8px; max-width:400px; margin:auto; text-align:center;"><h2>Checkout - {format}</h2><img src="{a.cover_image}" style="width:180px; height:250px; object-fit:cover; margin:20px 0;"><h3>{a.book_title}</h3><h4 style="color:#2ecc71;">{price} TZS</h4>{pay_btn}</div></div>{FOOTER}</body></html>"""
-
+        pay_btn = f'''
+        <form action="/pay/{a.id}?format={format}" method="POST">
+            <div style="margin-bottom: 15px;">
+                <label style="font-weight: bold;">Enter Mobile Money Number:</label><br>
+                <input type="text" name="phone" placeholder="e.g. 0754123456" required style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; font-size: 16px;">
+            </div>
+            <button type="submit" style="background:#3498db; color:white; padding:15px; border:none; border-radius:5px; display:block; width:100%; font-size:16px; font-weight:bold; cursor:pointer;">Pay {price} TZS</button>
+        </form>
+        ''' if format == "Ebook" else f'<a href="/shipping-address/{a.id}" style="background:#f39c12; color:white; padding:15px; text-decoration:none; border-radius:5px; display:block; margin-top:20px;">Enter Shipping Address</a>'
 @app.get("/shipping-address/{author_id}", response_class=HTMLResponse)
 def shipping_address_form(request: Request, author_id: int):
     return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2>Shipping Details</h2><p>Where should we deliver your paperback?</p><form action="/calculate-shipping/{author_id}" method="POST"><label>Phone Number:</label><br><input type="text" name="phone" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Region / City:</label><br><input type="text" name="region" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Delivery Address:</label><br><textarea name="address" required style="width:100%; padding:10px; margin:10px 0;"></textarea><br><button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Complete Order</button></form></div></div>{FOOTER}</body></html>"""
