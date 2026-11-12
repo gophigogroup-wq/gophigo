@@ -91,25 +91,29 @@ def store(request: Request, search: str = None):
         if search: query = query.where((Author.book_title.contains(search)) | (Author.fullname.contains(search)))
         active_authors = session.exec(query).all()
              active_authors = session.exec(query).all()
-        
-        html = f"""<html><head>
+                # Plain string — NO f-string, so Python ignores all CSS braces and decimals
+        html = """
+        <html><head>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
         <style>
-            body {{ font-family: Poppins, sans-serif; }}
-            .book-card {{ transition: 0.3s; }}
-            .book-card:hover {{ transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important; }}
-            .book-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }}
+            body { font-family: Poppins, sans-serif; }
+            .book-card { transition: 0.3s; }
+            .book-card:hover { transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important; }
+            .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
         </style>
         </head><body style="margin:0; background-color:#f4f4f4;">
-        {get_navbar(request)}
+        [NAVBAR_PLACEHOLDER]
         <div style="padding:40px; min-height:60vh;">
             <h1 style="text-align:center; color:#2c3e50;">Gophigo Bookstore</h1>
             <form action="/" method="GET" style="max-width:500px; margin:0 auto 40px; display:flex; gap:10px;">
-                <input type="text" name="search" placeholder="Search..." value="{search or ''}" style="flex:1; padding:12px; border:1px solid #ccc; border-radius:5px;">
+                <input type="text" name="search" placeholder="Search..." value="[SEARCH_PLACEHOLDER]" style="flex:1; padding:12px; border:1px solid #ccc; border-radius:5px;">
                 <button type="submit" style="background:#3498db; color:white; padding:12px 25px; border:none; border-radius:5px; cursor:pointer;">Search</button>
             </form>
             <div class="book-grid">
         """
+        # Now we safely swap in the dynamic variables
+        html = html.replace("[NAVBAR_PLACEHOLDER]", get_navbar(request))
+        html = html.replace("[SEARCH_PLACEHOLDER]", search or "")
         
         if not active_authors: html += "<p style='text-align:center; grid-column:1/-1;'>No books found.</p>"
         for a in active_authors:
