@@ -20,10 +20,6 @@ if database_url:
 else:
     sqlite_url = "sqlite:///gophigo.db"
 engine = create_engine(sqlite_url)
-STORE_HTML_START = """<html><head><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"><style>body { font-family: Poppins, sans-serif; } .book-card { transition: 0.3s; } .book-card:hover { transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important; } .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }</style></head><body style="margin:0; background-color:#f4f4f4;">"""
-
-STORE_HTML_SEARCH = """<div style="padding:40px; min-height:60vh;"><h1 style="text-align:center; color:#2c3e50;">Gophigo Bookstore</h1><form action="/" method="GET" style="max-width:500px; margin:0 auto 40px; display:flex; gap:10px;"><input type="text" name="search" placeholder="Search..." value="VALUE_PLACEHOLDER" style="flex:1; padding:12px; border:1px solid #ccc; border-radius:5px;"><button type="submit" style="background:#3498db; color:white; padding:12px 25px; border:none; border-radius:5px; cursor:pointer;">Search</button></form><div class="book-grid">"""
-FOOTER = '<footer style="background-color: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px; font-family: Arial;"><p>&copy; 2026 Gophigo Publishing. All rights reserved.</p></footer>' 
 # -----------------------------
 class Author(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
