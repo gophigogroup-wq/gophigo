@@ -128,78 +128,35 @@ def checkout(request: Request, author_id: int, format: str = "Ebook"):
         price = a.ebook_price if format == "Ebook" else a.paperback_price
         
         if format == "Ebook":
-            pay_btn = f'''
-            <form action="/pay/{a.id}?format={format}" method="POST">
-                <div style="margin-bottom: 15px; text-align: left;">
-                    <label style="font-weight: bold;">Enter Mobile Money Number:</label><br>
-                    <input type="text" name="phone" placeholder="e.g. 0754123456" required style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; font-size: 16px;">
-                </div>
-                <button type="submit" style="background:#3498db; color:white; padding:15px; border:none; border-radius:5px; display:block; width:100%; font-size:16px; font-weight:bold; cursor:pointer;">Pay {price} TZS</button>
-            </form>
-            '''
+            pay_btn = f'<form action="/pay/{a.id}?format={format}" method="POST"><div style="margin-bottom: 15px; text-align: left;"><label style="font-weight: bold;">Enter Mobile Money Number:</label><br><input type="text" name="phone" placeholder="e.g. 0754123456" required style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; font-size: 16px;"></div><button type="submit" style="background:#3498db; color:white; padding:15px; border:none; border-radius:5px; display:block; width:100%; font-size:16px; font-weight:bold; cursor:pointer;">Pay {price} TZS</button></form>'
         else:
             pay_btn = f'<a href="/shipping-address/{a.id}" style="background:#f39c12; color:white; padding:15px; text-decoration:none; border-radius:5px; display:block; margin-top:20px;">Enter Shipping Address</a>'
             
-        return f"""
-        <html><body style="font-family:Arial; background:#f4f4f4;">
-            {get_navbar(request)}
-            <div style="padding:50px;">
-                <div style="background:white; padding:40px; border-radius:8px; max-width:400px; margin:auto; text-align:center;">
-                    <h2>Checkout - {format}</h2>
-                    <img src="{a.cover_image}" style="width:180px; height:250px; object-fit:cover; margin:20px 0;">
-                    <h3>{a.book_title}</h3>
-                    <h4 style="color:#2ecc71;">{price} TZS</h4>
-                    {pay_btn}
-                </div>
-            </div>
-            {FOOTER}
-        </body></html>
-        """       
+        html = f'<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:40px; border-radius:8px; max-width:400px; margin:auto; text-align:center;"><h2>Checkout - {format}</h2><img src="{a.cover_image}" style="width:180px; height:250px; object-fit:cover; margin:20px 0;"><h3>{a.book_title}</h3><h4 style="color:#2ecc71;">{price} TZS</h4>{pay_btn}</div></div>{FOOTER}</body></html>'
+        
+        return html
 @app.get("/shipping-address/{author_id}", response_class=HTMLResponse)
 def shipping_address_form(request: Request, author_id: int):
     return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2>Shipping Details</h2><p>Where should we deliver your paperback?</p><form action="/calculate-shipping/{author_id}" method="POST"><label>Phone Number:</label><br><input type="text" name="phone" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Region / City:</label><br><input type="text" name="region" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Delivery Address:</label><br><textarea name="address" required style="width:100%; padding:10px; margin:10px 0;"></textarea><br><button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Complete Order</button></form></div></div>{FOOTER}</body></html>"""
 
-@app.post("/calculate-shipping/{author_id}", response_class=HTMLResponse)
-def calculate_shipping(request: Request, author_id: int, phone: str = Form(...), region: str = Form(...), address: str = Form(...)):  
+@app.get("/checkout/{author_id}", response_class=HTMLResponse)
+def checkout(request: Request, author_id: int, format: str = "Ebook"):
+    customer_email = request.cookies.get("customer_email")
+    if not customer_email: 
+        return RedirectResponse(url=f"/customer-gateway?next=/checkout/{author_id}?format={format}", status_code=303)
+    
     with Session(engine) as session:
         a = session.get(Author, author_id)
-        book_price = a.paperback_price
-        shipping_fee = 15000.0  # Flat rate for Tanzania
-        total_price = book_price + shipping_fee
+        price = a.ebook_price if format == "Ebook" else a.paperback_price
         
-        return f"""
-        <html><body style="font-family:Arial; background:#f4f4f4;">
-            {get_navbar(request)}
-            <div style="padding:50px;">
-                <div style="background:white; padding:40px; border-radius:8px; max-width:400px; margin:auto;">
-                    <h2 style="text-align:center; color:#2c3e50;">Order Summary</h2>
-                    <img src="{a.cover_image}" style="width:100px; height:150px; object-fit:cover; display:block; margin:0 auto 20px;">
-                    
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <span>Book Price:</span>
-                        <strong>{book_price} TZS</strong>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <span>Delivery Fee:</span>
-                        <strong>{shipping_fee} TZS</strong>
-                    </div>
-                    <hr>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:20px; font-size:20px; color:#2ecc71;">
-                        <span>Total:</span>
-                        <strong>{total_price} TZS</strong>
-                    </div>
-
-                    <form action="/confirm-paperback/{author_id}" method="POST">
-                        <input type="hidden" name="phone" value="{phone}">
-                        <input type="hidden" name="region" value="{region}">
-                        <input type="hidden" name="address" value="{address}">
-                        <button type="submit" style="background:#3498db; color:white; padding:15px; border:none; width:100%; border-radius:5px; font-size:16px; font-weight:bold; cursor:pointer;">Confirm & Pay {total_price} TZS</button>
-                    </form>
-                </div>
-            </div>
-            {FOOTER}
-        </body></html>
-        """
+        if format == "Ebook":
+            pay_btn = f'<form action="/pay/{a.id}?format={format}" method="POST"><div style="margin-bottom: 15px; text-align: left;"><label style="font-weight: bold;">Enter Mobile Money Number:</label><br><input type="text" name="phone" placeholder="e.g. 0754123456" required style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; font-size: 16px;"></div><button type="submit" style="background:#3498db; color:white; padding:15px; border:none; border-radius:5px; display:block; width:100%; font-size:16px; font-weight:bold; cursor:pointer;">Pay {price} TZS</button></form>'
+        else:
+            pay_btn = f'<a href="/shipping-address/{a.id}" style="background:#f39c12; color:white; padding:15px; text-decoration:none; border-radius:5px; display:block; margin-top:20px;">Enter Shipping Address</a>'
+            
+        html = f'<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:40px; border-radius:8px; max-width:400px; margin:auto; text-align:center;"><h2>Checkout - {format}</h2><img src="{a.cover_image}" style="width:180px; height:250px; object-fit:cover; margin:20px 0;"><h3>{a.book_title}</h3><h4 style="color:#2ecc71;">{price} TZS</h4>{pay_btn}</div></div>{FOOTER}</body></html>'
+        
+        return html
 
 @app.post("/confirm-paperback/{author_id}", response_class=HTMLResponse)
 def confirm_paperback(request: Request, author_id: int, phone: str = Form(...), region: str = Form(...), address: str = Form(...)):
