@@ -88,15 +88,13 @@ def store(request: Request, search: str = None):
         query = select(Author).where(Author.membership_status == "Active", Author.book_status == "Approved")
         if search: query = query.where((Author.book_title.contains(search)) | (Author.fullname.contains(search)))
         active_authors = session.exec(query).all()
-        html = STORE_HEAD + get_navbar(request) + f"""
-        <div style="padding:40px; min-height:60vh;">
+               html = STORE_HEAD + get_navbar(request) + f"""<div style="padding:40px; min-height:60vh;">
             <h1 style="text-align:center; color:#2c3e50;">Gophigo Bookstore</h1>
             <form action="/" method="GET" style="max-width:500px; margin:0 auto 40px; display:flex; gap:10px;">
                 <input type="text" name="search" placeholder="Search..." value="{search or ''}" style="flex:1; padding:12px; border:1px solid #ccc; border-radius:5px;">
                 <button type="submit" style="background:#3498db; color:white; padding:12px 25px; border:none; border-radius:5px; cursor:pointer;">Search</button>
             </form>
-            <div class="book-grid">
-        """
+            <div class="book-grid">"""
         if not active_authors: html += "<p style='text-align:center; grid-column:1/-1;'>No books found.</p>"
         for a in active_authors:
             reviews = session.exec(select(Review).where(Review.author_id == a.id)).all()
