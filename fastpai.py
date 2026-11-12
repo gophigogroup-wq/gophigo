@@ -316,7 +316,7 @@ def process_registration(request: Request, fullname: str = Form(...), email: str
     if pdf_file and pdf_file.filename: pdf_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw", access_mode="public").get("secure_url")
     new_author = Author(fullname=fullname, email=email, password=hashlib.sha256(password.encode()).hexdigest(), book_title=book_title, book_format=book_format, ebook_price=ebook_price, paperback_price=paperback_price, cover_image=cover_url, pdf_file=pdf_url)
     with Session(engine) as session: session.add(new_author); session.commit()
-    return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='text-align:center; padding:100px;'><h1 style='color:#2ecc71;'>Registration Successful!</h1><a href='/login'>Go to Login</a></div>{FOOTER}</body></html>"
+        return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='text-align:center; padding:100px;'><h1 style='color:#2ecc71;'>Registration Successful!</h1><a href='/login'>Go to Login</a></div>{FOOTER}</body></html>"
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
