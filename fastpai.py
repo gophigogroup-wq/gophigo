@@ -21,26 +21,7 @@ else:
     sqlite_url = "sqlite:///gophigo.db"
 engine = create_engine(sqlite_url)
 
-FOOTER = '<footer style="background-color: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px; font-family: Arial;"><p>&copy; 2026 Gophigo Publishing. All rights reserved.</p></footer>'
-
-        html = f"""<html><head>
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-        <style>
-            body {{ font-family: Poppins, sans-serif; }}
-            .book-card {{ transition: 0.3s; }}
-            .book-card:hover {{ transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important; }}
-            .book-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }}
-        </style>
-        </head><body style="margin:0; background-color:#f4f4f4;">
-        {get_navbar(request)}
-        <div style="padding:40px; min-height:60vh;">
-            <h1 style="text-align:center; color:#2c3e50;">Gophigo Bookstore</h1>
-            <form action="/" method="GET" style="max-width:500px; margin:0 auto 40px; display:flex; gap:10px;">
-                <input type="text" name="search" placeholder="Search..." value="{search or ''}" style="flex:1; padding:12px; border:1px solid #ccc; border-radius:5px;">
-                <button type="submit" style="background:#3498db; color:white; padding:12px 25px; border:none; border-radius:5px; cursor:pointer;">Search</button>
-            </form>
-            <div class="book-grid">
-        """
+FOOTER = '<footer style="background-color: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px; font-family: Arial;"><p>&copy; 2026 Gophigo Publishing. All rights reserved.</p></footer>' 
 # -----------------------------
 class Author(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -109,13 +90,27 @@ def store(request: Request, search: str = None):
         query = select(Author).where(Author.membership_status == "Active", Author.book_status == "Approved")
         if search: query = query.where((Author.book_title.contains(search)) | (Author.fullname.contains(search)))
         active_authors = session.exec(query).all()
-               html = STORE_HEAD + get_navbar(request) + f"""<div style="padding:40px; min-height:60vh;">
+             active_authors = session.exec(query).all()
+        
+        html = f"""<html><head>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+        <style>
+            body {{ font-family: Poppins, sans-serif; }}
+            .book-card {{ transition: 0.3s; }}
+            .book-card:hover {{ transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important; }}
+            .book-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }}
+        </style>
+        </head><body style="margin:0; background-color:#f4f4f4;">
+        {get_navbar(request)}
+        <div style="padding:40px; min-height:60vh;">
             <h1 style="text-align:center; color:#2c3e50;">Gophigo Bookstore</h1>
             <form action="/" method="GET" style="max-width:500px; margin:0 auto 40px; display:flex; gap:10px;">
                 <input type="text" name="search" placeholder="Search..." value="{search or ''}" style="flex:1; padding:12px; border:1px solid #ccc; border-radius:5px;">
                 <button type="submit" style="background:#3498db; color:white; padding:12px 25px; border:none; border-radius:5px; cursor:pointer;">Search</button>
             </form>
-            <div class="book-grid">"""
+            <div class="book-grid">
+        """
+        
         if not active_authors: html += "<p style='text-align:center; grid-column:1/-1;'>No books found.</p>"
         for a in active_authors:
             reviews = session.exec(select(Review).where(Review.author_id == a.id)).all()
@@ -126,7 +121,6 @@ def store(request: Request, search: str = None):
             if a.book_format in ["Paperback","Both"]: btns += f"<a href='/checkout/{a.id}?format=Paperback' style='background:#f39c12; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; font-weight:bold;'>Buy Paperback ({a.paperback_price} TZS)</a>"
             html += f"""<div class="book-card" style="background:white; border-radius:8px; padding:15px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.1);"><img src="{a.cover_image}" style="width:100%; height:250px; object-fit:cover; border-radius:4px; margin-bottom:10px;"><h3 style="color:#2c3e50; margin:0 0 5px; font-size:18px;">{a.book_title}</h3><p style="color:#7f8c8d; margin:0 0 5px; font-size:13px;">By {a.fullname}</p><p style="color:#f1c40f; margin:0 0 10px; font-size:14px;">{stars} ({len(reviews)})</p><span style="background:#e0e0e0; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600;">{a.book_format}</span><br><br>{btns}</div>"""
         return html + f"</div></div>{FOOTER}</body></html>"
-FOOTER = '<footer style="...">...</footer>'
 @app.get("/checkout/{author_id}", response_class=HTMLResponse)
 def checkout(request: Request, author_id: int, format: str = "Ebook"):
     customer_email = request.cookies.get("customer_email")
