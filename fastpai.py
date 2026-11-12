@@ -706,4 +706,62 @@ def process_registration(
         {FOOTER}
     </body></html>
     """
-  
+@app.get("/my-library", response_class=HTMLResponse)
+def my_library(request: Request):
+    customer_email = request.cookies.get("customer_email")
+    if not customer_email:
+        return RedirectResponse(url="/customer-login?next=/my-library", status_code=303)
+
+    with Session(engine) as session:
+        c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
+        if not c:
+            return RedirectResponse(url="/customer-login?next=/my-library", status_code=303)
+
+        # Show only PAID purchases — pending/failed must not unlock the book
+        purchases = session.exec(
+            select(Purchase).where(
+                Purchase.customer_id == c.id,
+                Purchase.status == "paid",
+            )
+        ).all()
+
+        if not purchases:
+            body = """
+            <div style="text-align:center; padding:60px;">
+                <h2>Your library is empty</h2>
+                <p>Books you buy will appear here once payment is confirmed.</p>
+                <a href="/" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Browse the Store</a>
+            </div>
+            """
+        else:
+            body = '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:20px; padding:40px;">'
+            for p in purchases:
+                author = session.get(Author, p.author_id)
+                cover = author.cover_image if author else ""
+                if p.format_bought == "Ebook":
+                    action = (
+                        f"<a href='/read/{p.id}' style='background:#3498db; color:white; "
+                        f"padding:10px; border-radius:5px; text-decoration:none; "
+                        f"display:block; margin-bottom:5px; font-weight:bold;'>📖 Read</a>"
+                    )
+                else:
+                    action = "<span style='display:block; padding:10px; color:#7f8c8d;'>📦 Shipping</span>"
+                body += f"""
+                <div style="background:white; border-radius:8px; padding:15px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+                    <img src="{cover}" style="width:100%; height:220px; object-fit:cover; border-radius:4px; margin-bottom:10px;">
+                    <h3 style="margin:0 0 5px; font-size:16px;">{p.book_title}</h3>
+                    <p style="color:#7f8c8d; font-size:13px; margin:0 0 10px;">{p.format_bought}</p>
+                    {action}
+                    <a href="/review/{p.id}" style="color:#f39c12; text-decoration:none; font-size:13px;">Leave a review</a>
+                </div>
+                """
+            body += "</div>"
+
+        return f"""
+        <html><body style="font-family:Arial; background:#f4f4f4; margin:0;">
+            {get_navbar(request)}
+            <h1 style="text-align:center; color:#2c3e50; padding:20px;">My Library</h1>
+            {body}
+            {FOOTER}
+        </body></html>
+        """  
