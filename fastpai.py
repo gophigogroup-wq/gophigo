@@ -21,7 +21,6 @@ else:
     sqlite_url = "sqlite:///gophigo.db"
 engine = create_engine(sqlite_url)
 
-# --- PASTE THIS AT THE TOP ---
 FOOTER = '<footer style="background-color: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px; font-family: Arial;"><p>&copy; 2026 Gophigo Publishing. All rights reserved.</p></footer>'
 
         html = f"""<html><head>
