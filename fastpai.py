@@ -350,7 +350,7 @@ def author_dashboard(request: Request):
         else:
             pay_html = f"""
             <div style="background:#d4edda; padding:20px; border-radius:8px;">
-                <h3>✅ Active</h3>
+                <h3>Active</h3>
                 <h4>Earnings: {total} TZS</h4>
             </div>
             <div style="background:#fff3cd; padding:20px; margin-top:10px;">
