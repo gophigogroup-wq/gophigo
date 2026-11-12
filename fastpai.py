@@ -36,13 +36,16 @@ class Customer(SQLModel, table=True):
 
 class Purchase(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    customer_id: int; author_id: int; book_title: str
+    customer_id: int
+    author_id: int
+    book_title: str
     pdf_file: str | None = Field(default=None)
     format_bought: str = Field(default="Ebook")
     phone_number: str | None = Field(default=None)
     region: str | None = Field(default=None)
     shipping_address: str | None = Field(default=None)
-
+    reference: str | None = Field(default=None, index=True)   # NEW
+    status: str = Field(default="pending")                    # NEW: pending / paid / failed
 class Employee(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; role: str 
@@ -204,29 +207,36 @@ def confirm_paperback(request: Request, author_id: int, phone: str = Form(...), 
             session.commit()
             
     return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='text-align:center; padding:100px;'><h1 style='color:#2ecc71;'>Order Successful!</h1><p>Your paperback is being prepared for printing.</p><p>We will deliver it to: {address}, {region}.</p><a href='/my-library' style='background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;'>Go to My Library</a></div>{FOOTER}</body></html>"
+import uuid
+
 @app.post("/pay/{author_id}")
 def process_payment(request: Request, author_id: int, phone: str = Form(...), format: str = "Ebook"):
     customer_email = request.cookies.get("customer_email")
-    if not customer_email: return RedirectResponse(url="/customer-login", status_code=303)
+    if not customer_email:
+        return RedirectResponse(url="/customer-login", status_code=303)
     if format == "Paperback":
         return RedirectResponse(url=f"/shipping-address/{author_id}", status_code=303)
-        
+
     with Session(engine) as session:
         c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
         a = session.get(Author, author_id)
-        
+
+        purchase_ref = str(uuid.uuid4())
+        purchase = Purchase(
+            customer_id=c.id, author_id=a.id, book_title=a.book_title,
+            pdf_file=a.pdf_file, format_bought="Ebook",
+            reference=purchase_ref, status="pending",
+        )
+        session.add(purchase)
+        session.commit()
+
         api_key = os.environ.get("SNIPPE_API_KEY")
-        amount = a.ebook_price
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-        
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
         name_parts = c.fullname.split(" ", 1)
         first_name = name_parts[0]
         last_name = name_parts[1] if len(name_parts) > 1 else "Customer"
 
-        # Clean the phone number (remove leading 0 and add 255 for Tanzania)
         clean_phone = phone.strip()
         if clean_phone.startswith("0"):
             clean_phone = "255" + clean_phone[1:]
@@ -234,48 +244,47 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
         payload = {
             "phone_number": clean_phone,
             "webhook_url": "https://www.gophigo.co.tz/snippe-webhook",
-            "customer": {
-                "firstname": first_name,
-                "lastname": last_name,
-                "email": c.email
-            },
+            "customer": {"firstname": first_name, "lastname": last_name, "email": c.email},
             "details": {
-                "amount": int(amount),
+                "amount": int(a.ebook_price),
                 "currency": "TZS",
-                "description": f"Ebook: {a.book_title}"
-            }
+                "description": f"Ebook: {a.book_title}",
+            },
+            "metadata": {"purchase_reference": purchase_ref},
         }
 
         try:
             response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers)
-            
-            if response.status_code in [200, 201]:
+            if response.status_code in (200, 201):
                 data = response.json()
-                payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
-                
-                if not payment_url:
-                    return HTMLResponse(content=f"""
-                    <html><body style="font-family:Arial; text-align:center; padding:50px;">
-                        <h1 style="color:#2ecc71;">Payment Prompt Sent!</h1>
-                        <p>We have sent a payment request to <strong>{phone}</strong>.</p>
-                        <p>Please check your phone and enter your mobile money PIN to complete the purchase.</p>
-                        <p style="color:#7f8c8d;">Reference: {data.get('data', {}).get('reference')}</p>
-                        <br>
-                        <a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">I have paid - Go to My Library</a>
-                    </body></html>
-                    """, status_code=200)
+                payment_url = (
+                    data.get("data", {}).get("checkout_url")
+                    or data.get("data", {}).get("payment_url")
+                )
+                if payment_url:
+                    return RedirectResponse(url=payment_url, status_code=303)
 
-                existing = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.author_id == a.id, Purchase.format_bought == "Ebook")).first()
-                if not existing:
-                    session.add(Purchase(customer_id=c.id, author_id=a.id, book_title=a.book_title, pdf_file=a.pdf_file, format_bought="Ebook"))
-                    session.commit()
+                return HTMLResponse(content=f"""
+                <html><body style="font-family:Arial; text-align:center; padding:50px;">
+                    <h1 style="color:#2ecc71;">Payment Prompt Sent!</h1>
+                    <p>We have sent a payment request to <strong>{phone}</strong>.</p>
+                    <p>Please check your phone and enter your mobile money PIN to complete the purchase.</p>
+                    <p style="color:#7f8c8d;">Reference: {purchase_ref}</p>
+                    <br>
+                    <a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">I have paid - Go to My Library</a>
+                </body></html>
+                """, status_code=200)
 
-                return RedirectResponse(url=payment_url, status_code=303)
-            else:
-                return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
+            purchase.status = "failed"
+            session.add(purchase)
+            session.commit()
+            return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
+
         except Exception as e:
-            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)
-            
+            purchase.status = "failed"
+            session.add(purchase)
+            session.commit()
+            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)            
 
 @app.get("/review/{purchase_id}", response_class=HTMLResponse)
 def review_page(request: Request, purchase_id: int):
@@ -303,22 +312,42 @@ def author_portal(request: Request):
 
 @app.get("/register", response_class=HTMLResponse)
 def register_page(request: Request):
-    return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;"><h2 style="text-align:center;">Author Registration</h2><form action="/register" method="POST" enctype="multipart/form-data"><input type="text" name="fullname" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Name"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Book Title"><select name="book_format" style="width:100%; padding:10px; margin:10px 0;"><option value="Ebook">Ebook</option><option value="Paperback">Paperback</option><option value="Both">Both</option></select><input type="number" name="ebook_price" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Ebook Price"><input type="number" name="paperback_price" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Paperback Price"><input type="file" name="cover" accept="image/*" required style="width:100%; padding:10px; margin:10px 0;"><input type="file" name="pdf_file" accept=".pdf" style="width:100%; padding:10px; margin:10px 0;"><button type="submit"                    <div style="margin: 15px 0; display: flex; align-items: flex-start; gap: 10px;">
+    return f"""
+    <html><body style="font-family:Arial; background:#f4f4f4;">
+        {get_navbar(request)}
+        <div style="padding:50px;">
+            <div style="background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;">
+                <h2 style="text-align:center;">Author Registration</h2>
+                <form action="/register" method="POST" enctype="multipart/form-data">
+                    <input type="text" name="fullname" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Name">
+                    <input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email">
+                    <input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password">
+                    <input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Book Title">
+                    <select name="book_format" style="width:100%; padding:10px; margin:10px 0;">
+                        <option value="Ebook">Ebook</option>
+                        <option value="Paperback">Paperback</option>
+                        <option value="Both">Both</option>
+                    </select>
+                    <input type="number" name="ebook_price" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Ebook Price">
+                    <input type="number" name="paperback_price" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Paperback Price">
+                    <input type="file" name="cover" accept="image/*" required style="width:100%; padding:10px; margin:10px 0;">
+                    <input type="file" name="pdf_file" accept=".pdf" style="width:100%; padding:10px; margin:10px 0;">
+                    <div style="margin: 15px 0; display: flex; align-items: flex-start; gap: 10px;">
                         <input type="checkbox" name="agree_terms" value="yes" required style="margin-top: 5px; transform: scale(1.5);">
-                        <label style="font-size: 14px; color: #555;">I declare that I am the copyright owner of this book and I agree to the <a href="/terms" target="_blank" style="color: #3498db;">Gophigo Author Terms & Conditions</a>, including the indemnification clause.</label>
-<button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px; font-size:16px; font-weight:bold; cursor:pointer;">Submit Registration</button>
-@app.post("/register", response_class=HTMLResponse)
-def process_registration(request: Request, fullname: str = Form(...), email: str = Form(...), password: str = Form(...), book_title: str = Form(...), book_format: str = Form(...), ebook_price: float = Form(...), paperback_price: float = Form(...), cover: UploadFile = File(...), pdf_file: UploadFile = File(None)):
-    cover_url = cloudinary.uploader.upload(cover.file, folder="gophigo_covers", resource_type="image").get("secure_url")
-    pdf_url = None
-    if not agree_terms:
-        return HTMLResponse(content="<h1>Error</h1><p>You must agree to the Terms and Conditions to register.</p>", status_code=400)
-    if pdf_file and pdf_file.filename: pdf_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw", access_mode="public").get("secure_url")
-    new_author = Author(fullname=fullname, email=email, password=hashlib.sha256(password.encode()).hexdigest(), book_title=book_title, book_format=book_format, ebook_price=ebook_price, paperback_price=paperback_price, cover_image=cover_url, pdf_file=pdf_url)
-    with Session(engine) as session: session.add(new_author); session.commit()
-        return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='text-align:center; padding:100px;'><h1 style='color:#2ecc71;'>Registration Successful!</h1><a href='/login'>Go to Login</a></div>{FOOTER}</body></html>"
-
-@app.get("/login", response_class=HTMLResponse)
+                        <label style="font-size: 14px; color: #555;">
+                            I declare that I am the copyright owner of this book and I agree to the
+                            <a href="/terms" target="_blank" style="color: #3498db;">Gophigo Author Terms & Conditions</a>,
+                            including the indemnification clause.
+                        </label>
+                    </div>
+                    <button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px; font-size:16px; font-weight:bold; cursor:pointer;">Submit Registration</button>
+                </form>
+            </div>
+        </div>
+        {FOOTER}
+    </body></html>
+    """
+    @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return f"""<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center;">Author Login</h2><form action="/login" method="POST"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#3498db; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button></form><div style="text-align:center; margin-top:15px;"><a href="/forgot-password">Forgot Password?</a></div></div></div>{FOOTER}</body></html>"""
 
@@ -335,12 +364,19 @@ def process_login(response: Response, email: str = Form(...), password: str = Fo
 @app.get("/author-dashboard", response_class=HTMLResponse)
 def author_dashboard(request: Request):
     author_email = request.cookies.get("author_email")
-    if not author_email: return RedirectResponse(url="/login", status_code=303)
+    if not author_email:
+        return RedirectResponse(url="/login", status_code=303)
+
     with Session(engine) as session:
         author = session.exec(select(Author).where(Author.email == author_email)).first()
         sales = session.exec(select(Purchase).where(Purchase.author_id == author.id)).all()
-        total = sum(author.ebook_price * 0.5 if s.format_bought == "Ebook" else author.paperback_price * 0.5 for s in sales)
-               if author.membership_status == "Pending":
+        total = sum(
+            author.ebook_price * 0.5 if s.format_bought == "Ebook"
+            else author.paperback_price * 0.5
+            for s in sales
+        )
+
+        if author.membership_status == "Pending":
             pay_html = """
             <div style="background:#fff3cd; padding:20px; border-radius:8px;">
                 <h3>Membership Payment Required</h3>
@@ -356,9 +392,23 @@ def author_dashboard(request: Request):
             <div style="background:#fff3cd; padding:20px; margin-top:10px;">
                 <h4>Book: {author.book_status}</h4>
             </div>
-            """        return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='padding:50px; text-align:center;'><h2>Welcome, {author.fullname}!</h2><div style='background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;'><img src='{author.cover_image}' style='width:150px; height:200px; object-fit:cover; border-radius:4px;'><h3>{author.book_title}</h3><p>{author.book_format} | {author.ebook_price} TZS</p>{pay_html}</div></div>{FOOTER}</body></html>"
+            """
 
-@app.get("/pay-membership")
+        return f"""
+        <html><body style="font-family:Arial; background:#f4f4f4;">
+            {get_navbar(request)}
+            <div style="padding:50px; text-align:center;">
+                <h2>Welcome, {author.fullname}!</h2>
+                <div style="background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;">
+                    <img src="{author.cover_image}" style="width:150px; height:200px; object-fit:cover; border-radius:4px;">
+                    <h3>{author.book_title}</h3>
+                    <p>{author.book_format} | {author.ebook_price} TZS</p>
+                    {pay_html}
+                </div>
+            </div>
+            {FOOTER}
+        </body></html>
+        """@app.get("/pay-membership")
 def pay_membership(request: Request):
     author_email = request.cookies.get("author_email")
     with Session(engine) as session:
@@ -603,3 +653,57 @@ def terms_page(request: Request):
         {FOOTER}
     </body></html>
     """
+@app.post("/register", response_class=HTMLResponse)
+def process_registration(
+    request: Request,
+    fullname: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    book_title: str = Form(...),
+    book_format: str = Form(...),
+    ebook_price: float = Form(...),
+    paperback_price: float = Form(...),
+    agree_terms: str = Form(None),          # NEW
+    cover: UploadFile = File(...),
+    pdf_file: UploadFile = File(None),
+):
+    # 1. Terms check FIRST — before any Cloudinary upload
+    if not agree_terms:
+        return HTMLResponse(
+            content="<h1>Error</h1><p>You must agree to the Terms and Conditions to register.</p>",
+            status_code=400,
+        )
+
+    cover_url = cloudinary.uploader.upload(
+        cover.file, folder="gophigo_covers", resource_type="image"
+    ).get("secure_url")
+
+    pdf_url = None
+    if pdf_file and pdf_file.filename:
+        pdf_url = cloudinary.uploader.upload(
+            pdf_file.file, folder="gophigo_pdfs",
+            resource_type="raw", access_mode="public"
+        ).get("secure_url")
+
+    new_author = Author(
+        fullname=fullname, email=email,
+        password=hashlib.sha256(password.encode()).hexdigest(),
+        book_title=book_title, book_format=book_format,
+        ebook_price=ebook_price, paperback_price=paperback_price,
+        cover_image=cover_url, pdf_file=pdf_url,
+    )
+    with Session(engine) as session:
+        session.add(new_author)
+        session.commit()
+
+    return f"""
+    <html><body style="font-family:Arial; background:#f4f4f4;">
+        {get_navbar(request)}
+        <div style="text-align:center; padding:100px;">
+            <h1 style="color:#2ecc71;">Registration Successful!</h1>
+            <a href="/login">Go to Login</a>
+        </div>
+        {FOOTER}
+    </body></html>
+    """
+  
