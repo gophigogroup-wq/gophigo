@@ -181,18 +181,24 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
         first_name = name_parts[0]
         last_name = name_parts[1] if len(name_parts) > 1 else "Customer"
 
-        clean_phone = phone.strip()
+              clean_phone = phone.strip()
         if clean_phone.startswith("0"): clean_phone = "255" + clean_phone[1:]
 
-                payload = {
+        payload = {
             "phone_number": clean_phone,
             "webhook_url": "https://www.gophigo.co.tz/snippe-webhook",
             "customer": {
-                "firstname": firstname,
-                "lastname": lastname,
+                "firstname": first_name,
+                "lastname": last_name,
                 "email": c.email
             },
-            "business_name": "Gophigo Bookstore", 
+            "business_name": "Gophigo Bookstore",
+            "details": {
+                "amount": int(amount),
+                "currency": "TZS",
+                "description": f"Gophigo Book: {a.book_title}"
+            }
+        } 
             "details": {
                 "amount": int(amount),
                 "currency": "TZS",
