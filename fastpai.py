@@ -110,11 +110,7 @@ def store(request: Request, search: str = None):
                 <button type="submit" style="background:#3498db; color:white; padding:12px 25px; border:none; border-radius:5px; cursor:pointer;">Search</button>
             </form>
             <div class="book-grid">
-        """
-        # Now we safely swap in the dynamic variables
-        html = html.replace("[NAVBAR_PLACEHOLDER]", get_navbar(request))
-        html = html.replace("[SEARCH_PLACEHOLDER]", search or "")
-        
+        """ 
         if not active_authors: html += "<p style='text-align:center; grid-column:1/-1;'>No books found.</p>"
         for a in active_authors:
             reviews = session.exec(select(Review).where(Review.author_id == a.id)).all()
