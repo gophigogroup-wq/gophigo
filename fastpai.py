@@ -251,8 +251,8 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
             else:
                 return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
         except Exception as e:
-            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500
-            def my_library(request: Request):
+            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)
+            
 
 @app.get("/review/{purchase_id}", response_class=HTMLResponse)
 def review_page(request: Request, purchase_id: int):
