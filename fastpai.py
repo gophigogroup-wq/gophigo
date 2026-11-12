@@ -181,7 +181,7 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
         first_name = name_parts[0]
         last_name = name_parts[1] if len(name_parts) > 1 else "Customer"
 
-              clean_phone = phone.strip()
+        clean_phone = phone.strip()
         if clean_phone.startswith("0"): clean_phone = "255" + clean_phone[1:]
 
         payload = {
