@@ -198,12 +198,7 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
                 "currency": "TZS",
                 "description": f"Gophigo Book: {a.book_title}"
             }
-        } 
-        "details": {
-            "amount": int(amount),
-            "currency": "TZS",
-       "description": f"Gophigo Book: {a.book_title}"
-       }
+        }
     
         try:
             response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers)
