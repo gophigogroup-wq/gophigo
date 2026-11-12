@@ -116,7 +116,8 @@ FOOTER = '<footer style="background-color: #2c3e50; color: white; text-align: ce
             
             html += f"<div class='book-card' style='background:white; border-radius:8px; padding:15px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.1);'><img src='{a.cover_image}' style='width:100%; height:250px; object-fit:cover; border-radius:4px; margin-bottom:10px;'><h3 style='color:#2c3e50; margin:0 0 5px; font-size:18px;'>{a.book_title}</h3><p style='color:#7f8c8d; margin:0 0 5px; font-size:13px;'>By {a.fullname}</p><p style='color:#f1c40f; margin:0 0 10px; font-size:14px;'>{stars} ({len(reviews)})</p><span style='background:#e0e0e0; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600;'>{a.book_format}</span><br><br>{btns}</div>"
             
-        return html + f"</div></div>{FOOTER}</body></html>"@app.get("/checkout/{author_id}", response_class=HTMLResponse)
+        return html + f"</div></div>{FOOTER}</body></html>"
+@app.get("/checkout/{author_id}", response_class=HTMLResponse)
 def checkout(request: Request, author_id: int, format: str = "Ebook"):
     customer_email = request.cookies.get("customer_email")
     if not customer_email: 
