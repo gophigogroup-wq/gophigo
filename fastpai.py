@@ -377,7 +377,7 @@ def author_dashboard(request: Request):
                 total_earnings += author.paperback_price * 0.5
                 
                 if author.membership_status == "Pending":
-            pay_html = '<div style="background:#fff3cd; padding:20px; border-radius:8px; margin-bottom: 20px;"><h3>Membership Payment Required</h3><a href="/pay-membership" style="background:#2ecc71; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Pay 20,000 TZS</a></div>'
+                    pay_html = '<div style="background:#fff3cd; padding:20px; border-radius:8px; margin-bottom: 20px;"><h3>Membership Payment Required</h3><a href="/pay-membership" style="background:#2ecc71; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Pay 20,000 TZS</a></div>'
         else:
             pay_html = f'''
             <div style="background:#d4edda; padding:20px; margin-bottom: 20px; border-radius:8px;">
