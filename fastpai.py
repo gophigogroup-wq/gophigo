@@ -561,6 +561,7 @@ def admin_dashboard(request: Request):
         return RedirectResponse(url="/admin-login", status_code=303)
         
     with Session(engine) as session:
+        authors = session.exec(select(Author)).all()
         purchases = session.exec(select(Purchase).where(Purchase.status == "paid")).all()
         
         total_sales_count = len(purchases)
@@ -584,7 +585,7 @@ def admin_dashboard(request: Request):
                 </div>
                 
                 <!-- Financial Overview Cards -->
-                <div style="display: flex; gap: 20px; margin-bottom: 30px;">
+                <div style="display: flex; gap: 20px; margin-bottom: 30px; margin-top: 20px;">
                     <div style="background: #3498db; color: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;">
                         <h4 style="margin: 0;">Total Books Sold</h4>
                         <h2 style="margin: 10px 0 0 0;">{total_sales_count}</h2>
@@ -600,7 +601,7 @@ def admin_dashboard(request: Request):
                 </div>
 
                 <!-- Add Employee Form -->
-                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 30px;">
                     <h3 style="margin-top: 0; color: #2c3e50;">➕ Add New Employee</h3>
                     <form action="/admin-create-employee" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <input type="text" name="fullname" placeholder="Full Name" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
@@ -613,6 +614,31 @@ def admin_dashboard(request: Request):
                         <button type="submit" style="background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Create Employee</button>
                     </form>
                 </div>
+
+                <!-- Authors & Books Table -->
+                <h3>📚 All Books & Authors</h3>
+                <table border="1" style="width:100%; background:white; border-collapse:collapse; margin-bottom: 40px;">
+                    <tr style="background:#34495e; color:white;">
+                        <th>ID</th><th>Author Name</th><th>Book Title</th><th>Format</th><th>Status</th><th>Action</th>
+                    </tr>
+        """
+        
+        for a in authors:
+            if a.book_status == "Flagged & Removed":
+                btn = "<span style='color:red; font-weight:bold;'>🚫 Removed</span>"
+                status_display = "<span style='color:red;'>Flagged</span>"
+            elif a.is_hidden:
+                btn = f"<a href='/admin-delete-book/{a.id}?action=unhide' style='background:#3498db; color:white; padding:5px 10px; text-decoration:none; border-radius:3px; margin-right:5px;'>Unhide</a>"
+                status_display = "<span style='color:orange;'>Hidden</span>"
+            else:
+                btn = f"<a href='/admin-delete-book/{a.id}?action=hide' style='background:#f39c12; color:white; padding:5px 10px; text-decoration:none; border-radius:3px; margin-right:5px;'>Hide</a>"
+                btn += f"<a href='/admin-delete-book/{a.id}?action=delete' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Red Flag</a>"
+                status_display = f"<span style='color:green;'>{a.book_status}</span>"
+                
+            html += f"<tr><td>{a.id}</td><td>{a.fullname}</td><td>{a.book_title}</td><td>{a.book_format}</td><td>{status_display}</td><td>{btn}</td></tr>"
+            
+        html += f"""
+                </table>
             </div>
             {FOOTER}
         </body></html>
@@ -770,3 +796,22 @@ def author_reports(request: Request):
         </body></html>
         """
         return html
+@app.get("/admin-delete-book/{author_id}")
+def admin_delete_book(request: Request, author_id: int, action: str):
+    if request.cookies.get("admin_session") != "true": 
+        return RedirectResponse(url="/admin-login", status_code=303)
+        
+    with Session(engine) as session:
+        a = session.get(Author, author_id)
+        if a:
+            if action == "hide":
+                a.is_hidden = True
+            elif action == "unhide":
+                a.is_hidden = False
+            elif action == "delete":
+                a.book_status = "Flagged & Removed"
+                a.is_hidden = True
+            session.add(a)
+            session.commit()
+            
+    return RedirectResponse(url="/admin", status_code=303)
