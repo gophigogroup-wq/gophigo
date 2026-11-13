@@ -33,7 +33,7 @@ with engine.connect() as conn:
         conn.commit()
     except Exception:
         pass
-   try:
+    try:
         conn.execute(text("ALTER TABLE purchase ADD COLUMN created_at TIMESTAMP;"))
         conn.commit()
     except Exception:
