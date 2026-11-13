@@ -190,49 +190,54 @@ def confirm_paperback(request: Request, author_id: int, phone: str = Form(...), 
 
 @app.post("/pay/{author_id}")
 def process_payment(request: Request, author_id: int, phone: str = Form(...), format: str = "Ebook"):
-    customer_email = request.cookies.get("customer_email")
-    if not customer_email: return RedirectResponse(url="/customer-login", status_code=303)
-    if format == "Paperback":
-        return RedirectResponse(url=f"/shipping-address/{author_id}", status_code=303)
-        
-    with Session(engine) as session:
-        c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
-        a = session.get(Author, author_id)
-        
-        purchase_ref = str(uuid.uuid4())
-        purchase = Purchase(customer_id=c.id, author_id=a.id, book_title=a.book_title, pdf_file=a.pdf_file, format_bought="Ebook", reference=purchase_ref, status="pending")
-        session.add(purchase)
-        session.commit()
+    try:
+        customer_email = request.cookies.get("customer_email")
+        if not customer_email: return RedirectResponse(url="/customer-login", status_code=303)
+        if format == "Paperback":
+            return RedirectResponse(url=f"/shipping-address/{author_id}", status_code=303)
+            
+        with Session(engine) as session:
+            c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
+            if not c:
+                return HTMLResponse(content="<h1>Error: Customer not found in database. Please log out and log in again.</h1>", status_code=400)
+                
+            a = session.get(Author, author_id)
+            if not a:
+                return HTMLResponse(content="<h1>Error: Author/Book not found.</h1>", status_code=404)
+                
+            purchase_ref = str(uuid.uuid4())
+            purchase = Purchase(
+                customer_id=c.id, author_id=a.id, book_title=a.book_title,
+                pdf_file=a.pdf_file, format_bought="Ebook",
+                reference=purchase_ref, status="pending",
+            )
+            session.add(purchase)
+            session.commit()
 
-        api_key = os.environ.get("SNIPPE_API_KEY")
-        amount = a.ebook_price
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-        
-        name_parts = c.fullname.split(" ", 1)
-        first_name = name_parts[0]
-        last_name = name_parts[1] if len(name_parts) > 1 else "Customer"
+            api_key = os.environ.get("SNIPPE_API_KEY")
+            amount = a.ebook_price
+            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            
+            name_parts = c.fullname.split(" ", 1)
+            first_name = name_parts[0]
+            last_name = name_parts[1] if len(name_parts) > 1 else "Customer"
 
-        clean_phone = phone.strip()
-        if clean_phone.startswith("0"): clean_phone = "255" + clean_phone[1:]
+            clean_phone = phone.strip()
+            if clean_phone.startswith("0"):
+                clean_phone = "255" + clean_phone[1:]
 
-        payload = {
-            "phone_number": clean_phone,
-            "webhook_url": "https://www.gophigo.co.tz/snippe-webhook",
-            "customer": {
-                "firstname": first_name,
-                "lastname": last_name,
-                "email": c.email
-            },
-            "business_name": "Gophigo store",
-            "details": {
-                "amount": int(amount),
-                "currency": "TZS",
-                "description": f"Gophigo Book: {a.book_title}"
+            payload = {
+                "phone_number": clean_phone,
+                "webhook_url": "https://www.gophigo.co.tz/snippe-webhook",
+                "customer": {"firstname": first_name, "lastname": last_name, "email": c.email},
+                "business_name": "Gophigo Store",
+                "details": {"amount": int(amount), "currency": "TZS", "description": f"Gophigo Book: {a.book_title}"},
+                "metadata": {"purchase_reference": purchase_ref}
             }
-        }
-    
-        try:
-            response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers)
+
+            # Added a 15-second timeout so it doesn't hang forever
+            response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers, timeout=15)
+            
             if response.status_code in [200, 201]:
                 data = response.json()
                 payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
@@ -254,11 +259,12 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
                 purchase.status = "failed"
                 session.add(purchase); session.commit()
                 return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
-        except Exception as e:
-            purchase.status = "failed"
-            session.add(purchase); session.commit()
-            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)
-
+                
+    except Exception as e:
+        # THIS WILL PRINT THE EXACT ERROR ON THE SCREEN
+        import traceback
+        error_details = traceback.format_exc()
+        return HTMLResponse(content=f"<h1>Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)
 @app.post("/snippe-webhook")
 async def snippe_webhook(request: Request):
     body = await request.body()
