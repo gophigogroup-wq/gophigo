@@ -122,7 +122,7 @@ def store(request: Request, search: str = None):
         for a in active_authors:
             reviews = session.exec(select(Review).where(Review.author_id == a.id)).all()
             avg = sum(r.rating for r in reviews)/len(reviews) if reviews else 0
-            stars = "⭐" * int(round(avg)) if reviews else "No reviews yet"
+            stars = "*" * int(round(avg)) if reviews else "No reviews yet"
             btns = ""
             if a.book_format in ["Ebook","Both"]: 
                 btns += f"<a href='/checkout/{a.id}?format=Ebook' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>Buy Ebook ({a.ebook_price} TZS)</a>"
@@ -376,17 +376,17 @@ def author_dashboard(request: Request):
             else:
                 total_earnings += author.paperback_price * 0.5
                 
-        if author.membership_status == "Pending":
+                if author.membership_status == "Pending":
             pay_html = '<div style="background:#fff3cd; padding:20px; border-radius:8px; margin-bottom: 20px;"><h3>Membership Payment Required</h3><a href="/pay-membership" style="background:#2ecc71; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Pay 20,000 TZS</a></div>'
-              else:
+        else:
             pay_html = f'''
             <div style="background:#d4edda; padding:20px; margin-bottom: 20px; border-radius:8px;">
                 <h3>Account Status: Active</h3>
                 <h4 style="margin: 5px 0 0 0;">Book: {author.book_status}</h4>
             </div>
-            '''  
+            '''
+            
         price_form = f'<div style="background: #f8f9fa; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: left;"><h4 style="margin-top: 0; color: #2c3e50;">Manage Pricing</h4><form action="/update-price" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;"><div style="flex: 1;"><label style="font-size: 14px; font-weight: bold;">Ebook Price (TZS)</label><input type="number" name="ebook_price" value="{author.ebook_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;"></div><div style="flex: 1;"><label style="font-size: 14px; font-weight: bold;">Paperback Price (TZS)</label><input type="number" name="paperback_price" value="{author.paperback_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;"></div><div style="width: 100%; margin-top: 10px;"><button type="submit" style="background: #f39c12; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Update Prices</button></div></form></div>'
-
         return f"""
         <html><body style="font-family:Arial; background:#f4f4f4;">
             {get_navbar(request)}
