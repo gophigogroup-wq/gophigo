@@ -707,3 +707,18 @@ def admin_reports(request: Request, period: str = "all"):
         </body></html>
         """
         return html
+@app.post("/update-price")
+def update_price(request: Request, ebook_price: float = Form(...), paperback_price: float = Form(...)):
+    author_email = request.cookies.get("author_email")
+    if not author_email: 
+        return RedirectResponse(url="/login", status_code=303)
+        
+    with Session(engine) as session:
+        author = session.exec(select(Author).where(Author.email == author_email)).first()
+        if author:
+            author.ebook_price = ebook_price
+            author.paperback_price = paperback_price
+            session.add(author)
+            session.commit()
+            
+    return RedirectResponse(url="/author-dashboard", status_code=303)
