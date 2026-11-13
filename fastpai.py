@@ -357,8 +357,6 @@ def author_dashboard(request: Request):
     
     with Session(engine) as session:
         author = session.exec(select(Author).where(Author.email == author_email)).first()
-        
-        # Get all PAID purchases for this author
         sales = session.exec(select(Purchase).where(Purchase.author_id == author.id, Purchase.status == "paid")).all()
         
         total_sales_count = len(sales)
@@ -370,74 +368,44 @@ def author_dashboard(request: Request):
             else:
                 total_earnings += author.paperback_price * 0.5
                 
-             # 1. Set the Membership Status HTML
         if author.membership_status == "Pending":
-            pay_html = '<div style="background:#fff3cd; padding:20px; border-radius:8px;"><h3>Membership Payment Required</h3><a href="/pay-membership" style="background:#2ecc71; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Pay 20,000 TZS</a></div>'
+            pay_html = '<div style="background:#fff3cd; padding:20px; border-radius:8px; margin-bottom: 20px;"><h3>Membership Payment Required</h3><a href="/pay-membership" style="background:#2ecc71; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Pay 20,000 TZS</a></div>'
         else:
             pay_html = f'''
-            <div style="background:#d4edda; padding:20px; border-radius:8px;">
-                <h3>Active</h3>
-                <h4>Earnings: {total_earnings:,.2f} TZS</h4>
-            </div>
-            <div style="background:#fff3cd; padding:20px; margin-top:10px;">
-                <h4>Book: {author.book_status}</h4>
-            </div>
-            '''
-
-        # 2. Set the Price Form HTML (This is outside the if/else, so it always loads)
-        price_form = f"""
-        <div style="background: #f8f9fa; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: left;">
-            <h4 style="margin-top: 0; color: #2c3e50;">💰 Manage Pricing</h4>
-            <form action="/update-price" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <div style="flex: 1;">
-                    <label style="font-size: 14px; font-weight: bold;">Ebook Price (TZS)</label>
-                    <input type="number" name="ebook_price" value="{author.ebook_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;">
+            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                <div style="background: #e8f8f5; border: 1px solid #2ecc71; padding: 20px; border-radius: 8px; flex: 1;">
+                    <h4 style="margin: 0; color: #2c3e50;">Books Sold</h4>
+                    <h1 style="margin: 10px 0 0 0; color: #2ecc71;">{total_sales_count}</h1>
                 </div>
-                <div style="flex: 1;">
-                    <label style="font-size: 14px; font-weight: bold;">Paperback Price (TZS)</label>
-                    <input type="number" name="paperback_price" value="{author.paperback_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;">
+                <div style="background: #e8f8f5; border: 1px solid #2ecc71; padding: 20px; border-radius: 8px; flex: 1;">
+                    <h4 style="margin: 0; color: #2c3e50;">Royalties Earned</h4>
+                    <h1 style="margin: 10px 0 0 0; color: #2ecc71;">{total_earnings:,.2f} TZS</h1>
                 </div>
-                <div style="width: 100%; margin-top: 10px;">
-                    <button type="submit" style="background: #f39c12; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Update Prices</button>
-                </div>
-            </form>
-        </div>
-        """"""
-if author.membership_status == "Pending":
-            pay_html = '<div style="background:#fff3cd; padding:20px; border-radius:8px;"><h3>Membership Payment Required</h3><a href="/pay-membership" style="background:#2ecc71; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Pay 20,000 TZS</a></div>'
-        else:
-            pay_html = f'''
-            <div style="background:#d4edda; padding:20px; border-radius:8px;">
-                <h3>Active</h3>
-                <h4>Earnings: {total} TZS</h4>
             </div>
-            <div style="background:#fff3cd; padding:20px; margin-top:10px;">
-                <h4>Book: {author.book_status}</h4>
+            <div style="background:#fff3cd; padding:20px; margin-bottom: 20px; border-radius:8px;">
+                <h4 style="margin: 0;">Book Status: {author.book_status}</h4>
             </div>
             '''
             
-               price_form = f'<div style="background: #f8f9fa; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: left;"><h4 style="margin-top: 0; color: #2c3e50;">Manage Pricing</h4><form action="/update-price" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;"><div style="flex: 1;"><label style="font-size: 14px; font-weight: bold;">Ebook Price (TZS)</label><input type="number" name="ebook_price" value="{author.ebook_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;"></div><div style="flex: 1;"><label style="font-size: 14px; font-weight: bold;">Paperback Price (TZS)</label><input type="number" name="paperback_price" value="{author.paperback_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;"></div><div style="width: 100%; margin-top: 10px;"><button type="submit" style="background: #f39c12; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Update Prices</button></div></form></div>'        """
+        price_form = f'<div style="background: #f8f9fa; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: left;"><h4 style="margin-top: 0; color: #2c3e50;">Manage Pricing</h4><form action="/update-price" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;"><div style="flex: 1;"><label style="font-size: 14px; font-weight: bold;">Ebook Price (TZS)</label><input type="number" name="ebook_price" value="{author.ebook_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;"></div><div style="flex: 1;"><label style="font-size: 14px; font-weight: bold;">Paperback Price (TZS)</label><input type="number" name="paperback_price" value="{author.paperback_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;"></div><div style="width: 100%; margin-top: 10px;"><button type="submit" style="background: #f39c12; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Update Prices</button></div></form></div>'
+
         return f"""
-        <html><body style='font-family:Arial; background:#f4f4f4;'>
+        <html><body style="font-family:Arial; background:#f4f4f4;">
             {get_navbar(request)}
-            <div style='padding:50px; text-align:center;'>
+            <div style="padding:50px; text-align:center;">
                 <h2>Welcome, {author.fullname}!</h2>
-                              <div style='background:white; padding:30px; border-radius:8px; max-width:600px; margin:auto;'>
-                    <img src='{author.cover_image}' style='width:150px; height:200px; object-fit:cover; border-radius:4px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'>
+                <div style="background:white; padding:30px; border-radius:8px; max-width:600px; margin:auto;">
+                    <img src="{author.cover_image}" style="width:150px; height:200px; object-fit:cover; border-radius:4px; margin-bottom: 15px;">
                     <h3>{author.book_title}</h3>
-                    <p style="color: #7f8c8d;">{author.book_format} | {author.ebook_price} TZS</p>
+                    <p style="color: #7f8c8d;">{author.book_format}</p>
                     
-                    <!-- Membership Status -->
                     {pay_html}
-                    
-                    <!-- Price Management Form -->
                     {price_form}
                 </div>
-                </div>
+            </div>
             {FOOTER}
         </body></html>
-
-    """
+        """
 @app.get("/pay-membership")
 def pay_membership(request: Request):
     author_email = request.cookies.get("author_email")
