@@ -580,8 +580,8 @@ def admin_dashboard(request: Request):
                 gophigo_revenue += price * 0.5
                 author_payouts += price * 0.5
 
-                # 3. Build the Clean Admin HTML
-                html = f"""
+                     # 3. Build the Clean Admin HTML
+        html = f"""
         <html><body style="font-family:Arial; background:#f4f4f4;">
             {get_navbar(request)}
             <div style="padding:50px;">
