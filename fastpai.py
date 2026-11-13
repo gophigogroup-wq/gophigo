@@ -419,7 +419,7 @@ if author.membership_status == "Pending":
         # Add the Price Management Form here (outside the if/else)
         price_form = f"""
         <div style="background: #f8f9fa; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: left;">
-            <h4 style="margin-top: 0; color: #2c3e50;">💰 Manage Pricing</h4>
+            <h4 style="margin-top: 0; color: #2c3e50;">* Manage Pricing</h4>
             <form action="/update-price" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;">
                 <div style="flex: 1;">
                     <label style="font-size: 14px; font-weight: bold;">Ebook Price (TZS)</label>
