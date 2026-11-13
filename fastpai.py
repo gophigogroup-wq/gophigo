@@ -398,7 +398,7 @@ def author_dashboard(request: Request):
                     <img src="{author.cover_image}" style="width:150px; height:200px; object-fit:cover; border-radius:4px; margin-bottom: 15px;">
                     <h3>{author.book_title}</h3>
                     <p style="color: #7f8c8d;">{author.book_format}</p>
-                    
+                                        <a href="/author-reports" style="display: inline-block; background: #9b59b6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-bottom: 15px;">📊 View Full Earnings Report</a>
                     {pay_html}
                     {price_form}
                 </div>
