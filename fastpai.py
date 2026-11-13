@@ -724,3 +724,59 @@ def update_price(request: Request, ebook_price: float = Form(...), paperback_pri
             session.commit()
             
     return RedirectResponse(url="/author-dashboard", status_code=303)
+@app.get("/author-reports", response_class=HTMLResponse)
+def author_reports(request: Request):
+    author_email = request.cookies.get("author_email")
+    if not author_email: 
+        return RedirectResponse(url="/login", status_code=303)
+        
+    with Session(engine) as session:
+        author = session.exec(select(Author).where(Author.email == author_email)).first()
+        
+        # Get ONLY this author's paid purchases
+        purchases = session.exec(select(Purchase).where(Purchase.author_id == author.id, Purchase.status == "paid").order_by(Purchase.created_at.desc())).all()
+        
+        total_sales = len(purchases)
+        total_earnings = 0.0
+        
+        for p in purchases:
+            if p.format_bought == "Ebook":
+                total_earnings += author.ebook_price * 0.5
+            else:
+                total_earnings += author.paperback_price * 0.5
+                
+        html = f"""
+        <html><body style="font-family:Arial; background:#f4f4f4;">
+            {get_navbar(request)}
+            <div style="padding:50px; max-width: 1000px; margin: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h1 style="color:#2c3e50;">📊 My Earnings Report</h1>
+                    <a href="/author-dashboard" style="background: #34495e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">← Back to Dashboard</a>
+                </div>
+
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px;">
+                    <h3 style="margin: 0; color: #2c3e50;">Summary</h3>
+                    <p style="font-size: 18px;"><strong>Total Books Sold:</strong> {total_sales}</p>
+                    <p style="font-size: 18px;"><strong>Total Royalties (50%):</strong> {total_earnings:,.2f} TZS</p>
+                </div>
+
+                <table border="1" style="width:100%; background:white; border-collapse:collapse;">
+                    <tr style="background:#34495e; color:white;">
+                        <th>Date</th><th>Book</th><th>Format</th><th>Your Royalty</th><th>Status</th>
+                    </tr>
+        """
+        
+        for p in purchases:
+            date_str = p.created_at.strftime("%Y-%m-%d %H:%M") if p.created_at else "Unknown"
+            price = author.ebook_price if p.format_bought == "Ebook" else author.paperback_price
+            royalty = price * 0.5
+            
+            html += f"<tr><td>{date_str}</td><td>{p.book_title}</td><td>{p.format_bought}</td><td style='color:#2ecc71; font-weight:bold;'>{royalty:,.2f} TZS</td><td style='color:green;'>{p.status.upper()}</td></tr>"
+            
+        html += f"""
+                </table>
+            </div>
+            {FOOTER}
+        </body></html>
+        """
+        return html
