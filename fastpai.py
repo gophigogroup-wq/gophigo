@@ -5,7 +5,7 @@ from sqlmodel import SQLModel, Field, Session, create_engine, select
 import hashlib, secrets, os, uuid, cloudinary, cloudinary.uploader, requests
 from datetime import datetime
 import json
-
+from datetime import datetime
 app = FastAPI()
 
 cloudinary.config(
@@ -33,6 +33,11 @@ with engine.connect() as conn:
         conn.commit()
     except Exception:
         pass
+   try:
+        conn.execute(text("ALTER TABLE purchase ADD COLUMN created_at TIMESTAMP;"))
+        conn.commit()
+    except Exception:
+        pass
 class Author(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; book_title: str
@@ -57,6 +62,7 @@ class Purchase(SQLModel, table=True):
     shipping_address: str | None = Field(default=None)
     reference: str | None = Field(default=None, index=True)
     status: str = Field(default="pending")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Employee(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
