@@ -191,14 +191,16 @@ def confirm_paperback(request: Request, author_id: int, phone: str = Form(...), 
 def process_payment(request: Request, author_id: int, phone: str = Form(...), format: str = "Ebook"):
     try:
         customer_email = request.cookies.get("customer_email")
-        if not customer_email: return RedirectResponse(url="/customer-login", status_code=303)
+        if not customer_email: 
+            return RedirectResponse(url="/customer-login", status_code=303)
+            
         if format == "Paperback":
             return RedirectResponse(url=f"/shipping-address/{author_id}", status_code=303)
             
         with Session(engine) as session:
             c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
             if not c:
-                return HTMLResponse(content="<h1>Error: Customer not found in database. Please log out and log in again.</h1>", status_code=400)
+                return HTMLResponse(content="<h1>Error: Customer not found. Please log out and log in again.</h1>", status_code=400)
                 
             a = session.get(Author, author_id)
             if not a:
@@ -234,7 +236,6 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
                 "metadata": {"purchase_reference": purchase_ref}
             }
 
-            # Added a 15-second timeout so it doesn't hang forever
             response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers, timeout=15)
             
             if response.status_code in [200, 201]:
@@ -256,34 +257,12 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
                 return RedirectResponse(url=payment_url, status_code=303)
             else:
                 purchase.status = "failed"
-                session.add(purchase); session.commit()
-                return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
-                
-            except Exception as e:
-                purchase.status = "failed"
-                session.add(purchase); session.commit()
-                return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)@app.post("/snippe-webhook")
-async def snippe_webhook(request: Request):
-    body = await request.body()
-    try:
-        event = json.loads(body)
-    except:
-        return {"status": "error", "message": "invalid json"}
-
-    # Simple payload extraction (Add signature verification here later if needed)
-    metadata = event.get("data", {}).get("metadata", {})
-    purchase_ref = metadata.get("purchase_reference")
-    
-    if purchase_ref:
-        with Session(engine) as session:
-            purchase = session.exec(select(Purchase).where(Purchase.reference == purchase_ref)).first()
-            if purchase and purchase.status != "paid":
-                purchase.status = "paid"
                 session.add(purchase)
                 session.commit()
+                return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
                 
-    return {"status": "success"}
-
+    except Exception as e:
+        return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)
 @app.get("/my-library", response_class=HTMLResponse)
 def my_library(request: Request):
     customer_email = request.cookies.get("customer_email")
