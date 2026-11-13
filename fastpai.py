@@ -633,3 +633,77 @@ def admin_logout():
 @app.get("/terms", response_class=HTMLResponse)
 def terms_page(request: Request):
     return '<html><body style="font-family:Arial; background:#f4f4f4; margin:0;">' + get_navbar(request) + f'<div style="padding: 50px; max-width: 800px; margin: auto; background: white; border-radius: 8px; margin-top: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"><h1 style="color: #2c3e50; text-align: center;">Gophigo Author Terms & Conditions</h1><hr style="border: 1px solid #eee; margin: 20px 0;"><h3 style="color: #e74c3c;">1. Platform Role</h3><p>Gophigo store operates as a digital marketplace and distribution platform. Gophigo is not the publisher, creator, or owner of the books uploaded by authors.</p><h3 style="color: #e74c3c;">2. Author Responsibility</h3><p>By uploading a manuscript, the Author declares that they are the sole creator and copyright owner of the work, or have obtained all necessary legal rights and permissions to distribute the work.</p><h3 style="color: #e74c3c;">3. Prohibited Content</h3><p>Authors are strictly prohibited from uploading any material that is illegal, defamatory, infringing on copyright, plagiarized, or pornographic.</p><h3 style="color: #e74c3c;">4. Indemnification (Liability)</h3><p>The Author agrees to fully indemnify and hold harmless Gophigo store, its founders, and employees from any and all legal claims, damages, or expenses (including legal fees) arising from the Author\'s uploaded content. <strong>Gophigo will not be held responsible for any copyright disputes, legal actions, or damages resulting from the Author\'s actions.</strong> If a copyright claim is made against Gophigo due to an Author\'s book, Gophigo reserves the right to immediately remove the book and deduct any legal costs from the Author\'s pending royalties.</p><h3 style="color: #e74c3c;">5. Royalties and Fees</h3><p>Gophigo will retain a 50% commission on all net sales. The remaining 50% will be credited to the Author\'s dashboard. Gophigo reserves the right to adjust this fee structure with 30 days\' notice to the Author.</p><h3 style="color: #e74c3c;">6. Account Termination</h3><p>Gophigo reserves the right to suspend or permanently ban any Author and delete their books if they violate these terms, without refunding the annual membership fee.</p><h3 style="color: #e74c3c;">7. Governing Law</h3><p>These terms are governed by the laws of the United Republic of Tanzania.</p><br><p style="text-align: center; color: #7f8c8d; font-size: 14px;">Last updated: November 2026</p><div style="text-align: center; margin-top: 20px;"><a href="/register" style="background: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Back to Registration</a></div></div>' + FOOTER + '</body></html>'
+@app.get("/admin-reports", response_class=HTMLResponse)
+def admin_reports(request: Request, period: str = "all"):
+    if request.cookies.get("admin_session") != "true": 
+        return RedirectResponse(url="/admin-login", status_code=303)
+        
+    with Session(engine) as session:
+        query = select(Purchase).where(Purchase.status == "paid")
+        now = datetime.utcnow()
+        
+        if period == "today":
+            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            query = query.where(Purchase.created_at >= start_date)
+        elif period == "week":
+            start_date = now - timedelta(days=7)
+            query = query.where(Purchase.created_at >= start_date)
+        elif period == "month":
+            start_date = now - timedelta(days=30)
+            query = query.where(Purchase.created_at >= start_date)
+        elif period == "year":
+            start_date = now - timedelta(days=365)
+            query = query.where(Purchase.created_at >= start_date)
+            
+        purchases = session.exec(query.order_by(Purchase.created_at.desc())).all()
+        
+        total_sales = len(purchases)
+        total_revenue = 0.0
+        
+        for p in purchases:
+            author = session.get(Author, p.author_id)
+            if author:
+                price = author.ebook_price if p.format_bought == "Ebook" else author.paperback_price
+                total_revenue += price * 0.5
+                
+        html = f"""
+        <html><body style="font-family:Arial; background:#f4f4f4;">
+            {get_navbar(request)}
+            <div style="padding:50px; max-width: 1000px; margin: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h1 style="color:#2c3e50;">📊 Sales Reports</h1>
+                    <a href="/admin" style="background: #34495e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">← Back to Dashboard</a>
+                </div>
+
+                <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+                    <a href="/admin-reports?period=today" style="background: {'#3498db' if period == 'today' else '#ccc'}; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">Today</a>
+                    <a href="/admin-reports?period=week" style="background: {'#3498db' if period == 'week' else '#ccc'}; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">This Week</a>
+                    <a href="/admin-reports?period=month" style="background: {'#3498db' if period == 'month' else '#ccc'}; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">This Month</a>
+                    <a href="/admin-reports?period=year" style="background: {'#3498db' if period == 'year' else '#ccc'}; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">This Year</a>
+                    <a href="/admin-reports?period=all" style="background: {'#3498db' if period == 'all' else '#ccc'}; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">All Time</a>
+                </div>
+
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px;">
+                    <h3 style="margin: 0; color: #2c3e50;">Summary</h3>
+                    <p style="font-size: 18px;"><strong>Books Sold:</strong> {total_sales}</p>
+                    <p style="font-size: 18px;"><strong>Gophigo Revenue (50%):</strong> {total_revenue:,.2f} TZS</p>
+                </div>
+
+                <table border="1" style="width:100%; background:white; border-collapse:collapse;">
+                    <tr style="background:#34495e; color:white;">
+                        <th>Date</th><th>Reference</th><th>Book</th><th>Format</th><th>Phone</th><th>Status</th>
+                    </tr>
+        """
+        
+        for p in purchases:
+            phone = p.phone_number if p.phone_number else "N/A"
+            date_str = p.created_at.strftime("%Y-%m-%d %H:%M") if p.created_at else "Unknown"
+            html += f"<tr><td>{date_str}</td><td>{p.reference[:8]}...</td><td>{p.book_title}</td><td>{p.format_bought}</td><td>{phone}</td><td style='color:green; font-weight:bold;'>{p.status.upper()}</td></tr>"
+            
+        html += f"""
+                </table>
+            </div>
+            {FOOTER}
+        </body></html>
+        """
+        return html
