@@ -371,30 +371,25 @@ def author_dashboard(request: Request):
                 total_earnings += author.paperback_price * 0.5
                 
         if author.membership_status == "Pending":
-            pay_html = '<div style="background:#fff3cd; padding:20px; border-radius:8px;"><h3>Membership Payment Required</h3><a href="/pay-membership" style="background:#2ecc71; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Pay 20,000 TZS</a></div>'
-            
-                            <div style="width: 100%; margin-top: 10px;">
-                                <button type="submit" style="background: #f39c12; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Update Prices</button>
-                            </div>
-                        </form>
-                    </div>
-        else:
-            pay_html = f'''
-            <div style="display: flex; gap: 20px; margin-top: 20px; justify-content: center;">
-                <div style="background: #e8f8f5; border: 1px solid #2ecc71; padding: 20px; border-radius: 8px; flex: 1;">
-                    <h4 style="margin: 0; color: #2c3e50;">Books Sold</h4>
-                    <h1 style="margin: 10px 0 0 0; color: #2ecc71;">{total_sales_count}</h1>
-                </div>
-                <div style="background: #e8f8f5; border: 1px solid #2ecc71; padding: 20px; border-radius: 8px; flex: 1;">
-                    <h4 style="margin: 0; color: #2c3e50;">Royalties Earned</h4>
-                    <h1 style="margin: 10px 0 0 0; color: #2ecc71;">{total_earnings:,.2f} TZS</h1>
-                </div>
-            </div>
-            <div style="background:#fff3cd; padding:20px; margin-top:20px; border-radius:8px;">
-                <h4 style="margin: 0;">Book Status: {author.book_status}</h4>
-            </div>
-            '''
-            if author.membership_status == "Pending":
+        price_form = f"""
+<div style="background: #f8f9fa; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: left;">
+    <h4 style="margin-top: 0; color: #2c3e50;">💰 Manage Pricing</h4>
+    <form action="/update-price" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <div style="flex: 1;">
+            <label style="font-size: 14px; font-weight: bold;">Ebook Price (TZS)</label>
+            <input type="number" name="ebook_price" value="{author.ebook_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;">
+        </div>
+        <div style="flex: 1;">
+            <label style="font-size: 14px; font-weight: bold;">Paperback Price (TZS)</label>
+            <input type="number" name="paperback_price" value="{author.paperback_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;">
+        </div>
+        <div style="width: 100%; margin-top: 10px;">
+            <button type="submit" style="background: #f39c12; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Update Prices</button>
+        </div>
+    </form>
+</div>
+"""
+if author.membership_status == "Pending":
             pay_html = '<div style="background:#fff3cd; padding:20px; border-radius:8px;"><h3>Membership Payment Required</h3><a href="/pay-membership" style="background:#2ecc71; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Pay 20,000 TZS</a></div>'
         else:
             pay_html = f'''
