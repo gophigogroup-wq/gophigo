@@ -579,7 +579,26 @@ def admin_dashboard(request: Request):
         <html><body style="font-family:Arial; background:#f4f4f4;">
             {get_navbar(request)}
             <div style="padding:50px;">
-                <h1 style="color:#2c3e50;">Admin Dashboard</h1>
+                <h1 style="color:#2c3e50;">Admin Dashboard</h1>        <div style="padding:50px;">
+            <h1 style="color:#2c3e50;">Admin Dashboard</h1>
+
+            <!-- Add Employee Form -->
+            <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 30px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                <h3 style="margin-top: 0; color: #2c3e50;">➕ Add New Employee</h3>
+                <form action="/admin-create-employee" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <input type="text" name="fullname" placeholder="Full Name" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                    <input type="email" name="email" placeholder="Email Address" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                    <select name="role" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                        <option value="Reviewer">Reviewer</option>
+                        <option value="Supervisor">Supervisor</option>
+                        <option value="Approver">Approver</option>
+                    </select>
+                    <button type="submit" style="background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Create Employee</button>
+                </form>
+            </div>
+
+            <!-- Financial Overview Cards -->
+            <div style="display: flex; gap: 20px; margin-bottom: 30px;">
                 
                 <!-- Financial Overview Cards -->
                 <div style="display: flex; gap: 20px; margin-bottom: 30px;">
@@ -641,6 +660,49 @@ def admin_confirm_delete(author_id: int):
     with Session(engine) as session:
         a = session.get(Author, author_id); session.delete(a); session.commit()
     return RedirectResponse(url="/admin", status_code=303)
+@app.post("/admin-create-employee")
+def admin_create_employee(request: Request, fullname: str = Form(...), email: str = Form(...), role: str = Form(...)):
+    # 1. Security Check
+    if request.cookies.get("admin_session") != "true": 
+        return RedirectResponse(url="/admin-login", status_code=303)
+        
+    # 2. Generate a random temporary password (e.g., Gop-3f8d2a!)
+    import secrets
+    temp_password = f"Gop-{secrets.token_hex(3)}!"
+    
+    with Session(engine) as session:
+        # 3. Check if email already exists
+        existing = session.exec(select(Employee).where(Employee.email == email)).first()
+        if existing:
+            return HTMLResponse(content=f"<h1>Error</h1><p>An employee with the email {email} already exists.</p><a href='/admin'>Go Back</a>", status_code=400)
+            
+        # 4. Hash the password and save
+        hashed_pw = hashlib.sha256(temp_password.encode()).hexdigest()
+        new_emp = Employee(
+            fullname=fullname, 
+            email=email, 
+            password=hashed_pw, 
+            role=role, 
+            must_change_password=True
+        )
+        session.add(new_emp)
+        session.commit()
+        
+    # 5. Show the Admin the temp password to copy
+    return HTMLResponse(content=f"""
+    <html><body style="font-family:Arial; padding:50px; text-align:center; background:#f4f4f4;">
+        <div style="background:white; padding:40px; border-radius:8px; max-width:500px; margin:auto;">
+            <h2 style="color:#2ecc71;">Employee Created Successfully!</h2>
+            <p>Send these login details to <strong>{fullname}</strong>:</p>
+            <div style="background:#eee; padding:15px; border-radius:5px; margin:20px 0; text-align:left;">
+                <p><strong>Email:</strong> {email}</p>
+                <p><strong>Temporary Password:</strong> <span style="font-size:20px; color:#e74c3c; font-weight:bold;">{temp_password}</span></p>
+            </div>
+            <p style="color:#7f8c8d; font-size:14px;">They will be forced to change this password when they log in.</p>
+            <a href="/admin" style="background:#3498db; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Back to Admin Dashboard</a>
+        </div>
+    </body></html>
+    """, status_code=200)
 
 @app.get("/admin-logout")
 def admin_logout():
