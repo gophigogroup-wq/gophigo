@@ -25,12 +25,13 @@ engine = create_engine(sqlite_url)
 class Author(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; book_title: str
+    slug: str | None = Field(default=None, index=True) # NEW: For /book/the-book-title links
     ebook_price: float = Field(default=0.0); paperback_price: float = Field(default=0.0)
     book_format: str = Field(default="Ebook"); membership_status: str = "Pending" 
     book_status: str = Field(default="Pending Review"); reset_token: str | None = Field(default=None)
     cover_image: str | None = Field(default=None); pdf_file: str | None = Field(default=None) 
     is_read: bool = Field(default=False)
-
+    is_hidden: bool = Field(default=False) # NEW: For soft delete
 class Customer(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; reset_token: str | None = Field(default=None)
