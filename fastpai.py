@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import SQLModel, Field, Session, create_engine, select
 import hashlib, secrets, os, uuid, cloudinary, cloudinary.uploader, requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 app = FastAPI()
 
@@ -67,8 +67,7 @@ class Purchase(SQLModel, table=True):
     shipping_address: str | None = Field(default=None)
     reference: str | None = Field(default=None, index=True)
     status: str = Field(default="pending")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 class Employee(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; role: str 
@@ -260,12 +259,10 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
                 session.add(purchase); session.commit()
                 return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
                 
-    except Exception as e:
-        # THIS WILL PRINT THE EXACT ERROR ON THE SCREEN
-        import traceback
-        error_details = traceback.format_exc()
-        return HTMLResponse(content=f"<h1>Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)
-@app.post("/snippe-webhook")
+            except Exception as e:
+                purchase.status = "failed"
+                session.add(purchase); session.commit()
+                return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)@app.post("/snippe-webhook")
 async def snippe_webhook(request: Request):
     body = await request.body()
     try:
@@ -672,7 +669,7 @@ def admin_reports(request: Request, period: str = "all"):
         
     with Session(engine) as session:
         query = select(Purchase).where(Purchase.status == "paid")
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         if period == "today":
             start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
