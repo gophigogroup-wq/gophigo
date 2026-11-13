@@ -554,24 +554,88 @@ def admin_login(response: Response, username: str = Form(...), password: str = F
 
 @app.get("/admin", response_class=HTMLResponse)
 def admin_dashboard(request: Request):
-    if request.cookies.get("admin_session") != "true": return RedirectResponse(url="/admin-login", status_code=303)
-    with Session(engine) as session:
-        authors = session.exec(select(Author)).all(); purchases = session.exec(select(Purchase)).all()
-        rev = sum((session.get(Author, p.author_id).ebook_price if p.format_bought == "Ebook" else session.get(Author, p.author_id).paperback_price) * 0.5 for p in purchases)
+    # 1. Strict Security Check
+    if request.cookies.get("admin_session") != "true": 
+        return RedirectResponse(url="/admin-login", status_code=303)
         
-        html = f'<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><h1>Admin Dashboard</h1><div style="background:#2c3e50; color:white; padding:20px; border-radius:8px;"><h3>Sales: {len(purchases)} | Revenue (50%): {rev} TZS</h3></div><table border="1" style="width:100%; background:white; margin-top:20px;"><tr style="background:#34495e; color:white;"><th>ID</th><th>Name</th><th>Book</th><th>Format</th><th>Status</th><th>Action</th></tr>'
+    with Session(engine) as session:
+        authors = session.exec(select(Author)).all()
+        purchases = session.exec(select(Purchase).where(Purchase.status == "paid")).all()
+        
+        total_sales_count = len(purchases)
+        gophigo_revenue = 0.0
+        author_payouts = 0.0
+        
+        # 2. Calculate Revenue
+        for p in purchases:
+            author = session.get(Author, p.author_id)
+            if author:
+                price = author.ebook_price if p.format_bought == "Ebook" else author.paperback_price
+                gophigo_revenue += price * 0.5
+                author_payouts += price * 0.5
+
+        # 3. Build the Admin HTML
+        html = f"""
+        <html><body style="font-family:Arial; background:#f4f4f4;">
+            {get_navbar(request)}
+            <div style="padding:50px;">
+                <h1 style="color:#2c3e50;">Admin Dashboard</h1>
+                
+                <!-- Financial Overview Cards -->
+                <div style="display: flex; gap: 20px; margin-bottom: 30px;">
+                    <div style="background: #3498db; color: white; padding: 20px; border-radius: 8px; flex: 1;">
+                        <h4 style="margin: 0;">Total Books Sold</h4>
+                        <h2 style="margin: 10px 0 0 0;">{total_sales_count}</h2>
+                    </div>
+                    <div style="background: #2c3e50; color: white; padding: 20px; border-radius: 8px; flex: 1;">
+                        <h4 style="margin: 0;">Gophigo Revenue (50%)</h4>
+                        <h2 style="margin: 10px 0 0 0;">{gophigo_revenue:,.2f} TZS</h2>
+                    </div>
+                    <div style="background: #2ecc71; color: white; padding: 20px; border-radius: 8px; flex: 1;">
+                        <h4 style="margin: 0;">Author Payouts (50%)</h4>
+                        <h2 style="margin: 10px 0 0 0;">{author_payouts:,.2f} TZS</h2>
+                    </div>
+                </div>
+
+                <!-- Authors & Books Table -->
+                <h3>📚 All Books & Authors</h3>
+                <table border="1" style="width:100%; background:white; border-collapse:collapse; margin-bottom: 40px;">
+                    <tr style="background:#34495e; color:white;">
+                        <th>ID</th><th>Author Name</th><th>Book Title</th><th>Format</th><th>Status</th><th>Action</th>
+                    </tr>
+        """
         
         for a in authors:
-            btn = f"<a href='/admin-confirm-delete/{a.id}' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Confirm Delete</a>" if a.book_status == "Pending Deletion" else ""
+            # We will add the Delete button logic here in the next step!
+            btn = ""
+            if a.book_status == "Pending Deletion": 
+                btn = f"<a href='/admin-confirm-delete/{a.id}' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Confirm Delete</a>"
+            
             html += f"<tr><td>{a.id}</td><td>{a.fullname}</td><td>{a.book_title}</td><td>{a.book_format}</td><td>{a.book_status}</td><td>{btn}</td></tr>"
             
-        html += f"</table><h3 style='margin-top:40px;'>📦 Paperback Shipping Orders</h3><table border='1' style='width:100%; background:white;'><tr style='background:#f39c12; color:white;'><th>Book</th><th>Phone</th><th>Region</th><th>Address</th></tr>"
-        for p in purchases:
-            if p.format_bought == "Paperback":
-                html += f"<tr><td>{p.book_title}</td><td>{p.phone_number}</td><td>{p.region}</td><td>{p.shipping_address}</td></tr>"
-                
-        return html + f"</table></div>{FOOTER}</body></html>"
+        html += f"""
+                </table>
 
+                <!-- Recent Transactions Table -->
+                <h3>💳 Recent Paid Transactions</h3>
+                <table border="1" style="width:100%; background:white; border-collapse:collapse;">
+                    <tr style="background:#f39c12; color:white;">
+                        <th>Reference</th><th>Book</th><th>Format</th><th>Phone</th><th>Status</th>
+                    </tr>
+        """
+        
+        for p in reversed(purchases): # Reversed so newest is at the top
+            phone = p.phone_number if p.phone_number else "N/A"
+            html += f"<tr><td>{p.reference[:8]}...</td><td>{p.book_title}</td><td>{p.format_bought}</td><td>{phone}</td><td style='color:green; font-weight:bold;'>{p.status.upper()}</td></tr>"
+            
+        html += f"""
+                </table>
+            </div>
+            {FOOTER}
+        </body></html>
+        """
+        
+        return html
 @app.get("/admin-confirm-delete/{author_id}")
 def admin_confirm_delete(author_id: int):
     with Session(engine) as session:
