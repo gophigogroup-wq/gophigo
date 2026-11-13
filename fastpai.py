@@ -615,14 +615,47 @@ def admin_dashboard(request: Request):
                         <h2 style="margin: 10px 0 0 0;">{author_payouts:,.2f} TZS</h2>
                     </div>
                 </div>
-
-                <!-- Authors & Books Table -->
-                <h3>📚 All Books & Authors</h3>
-                <table border="1" style="width:100%; background:white; border-collapse:collapse; margin-bottom: 40px;">
-                    <tr style="background:#34495e; color:white;">
-                        <th>ID</th><th>Author Name</th><th>Book Title</th><th>Format</th><th>Status</th><th>Action</th>
-                    </tr>
+                <div style="clear: both; width: 100%;">
+                                <div style="clear: both; width: 100%;">                   
+                    <!-- Authors & Books Table -->
+                    <h3>📚 All Books & Authors</h3>
+                    <table border="1" style="width:100%; background:white; border-collapse:collapse; margin-bottom: 40px;">
+                        <tr style="background:#34495e; color:white;">
+                            <th>ID</th><th>Author Name</th><th>Book Title</th><th>Format</th><th>Status</th><th>Action</th>
+                        </tr>
         """
+        
+        for a in authors:
+            btn = ""
+            if a.book_status == "Pending Deletion": 
+                btn = f"<a href='/admin-confirm-delete/{a.id}' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Confirm Delete</a>"
+            
+            html += f"<tr><td>{a.id}</td><td>{a.fullname}</td><td>{a.book_title}</td><td>{a.book_format}</td><td>{a.book_status}</td><td>{btn}</td></tr>"
+            
+        html += f"""
+                    </table>
+
+                    <!-- Recent Transactions Table -->
+                    <h3>💳 Recent Paid Transactions</h3>
+                    <table border="1" style="width:100%; background:white; border-collapse:collapse;">
+                        <tr style="background:#f39c12; color:white;">
+                            <th>Reference</th><th>Book</th><th>Format</th><th>Phone</th><th>Status</th>
+                        </tr>
+        """
+        
+        for p in reversed(purchases):
+            phone = p.phone_number if p.phone_number else "N/A"
+            html += f"<tr><td>{p.reference[:8]}...</td><td>{p.book_title}</td><td>{p.format_bought}</td><td>{phone}</td><td style='color:green; font-weight:bold;'>{p.status.upper()}</td></tr>"
+            
+        html += f"""
+                    </table>
+                </div>
+            </div>
+            {FOOTER}
+        </body></html>
+        """
+        
+        return html        
         
         for a in authors:
             # We will add the Delete button logic here in the next step!
