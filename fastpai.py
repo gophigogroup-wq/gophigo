@@ -21,7 +21,18 @@ if database_url:
 else:
     sqlite_url = "sqlite:///gophigo.db"
 engine = create_engine(sqlite_url)
-
+from sqlalchemy import text
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE author ADD COLUMN slug VARCHAR;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE author ADD COLUMN is_hidden BOOLEAN DEFAULT FALSE;"))
+        conn.commit()
+    except Exception:
+        pass
 class Author(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; book_title: str
