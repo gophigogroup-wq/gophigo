@@ -580,14 +580,58 @@ def admin_dashboard(request: Request):
                 gophigo_revenue += price * 0.5
                 author_payouts += price * 0.5
 
-        # 3. Build the Admin HTML
-        html = f"""
+                # 3. Build the Clean Admin HTML
+                   html = f"""
         <html><body style="font-family:Arial; background:#f4f4f4;">
             {get_navbar(request)}
             <div style="padding:50px;">
-                <h1 style="color:#2c3e50;">Admin Dashboard</h1>        <div style="padding:50px;">
-            <h1 style="color:#2c3e50;">Admin Dashboard</h1>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1 style="color:#2c3e50; margin: 0;">Admin Dashboard</h1>
+                    <a href="/admin-reports" style="background: #9b59b6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">📊 View Reports & Export</a>
+                </div>
+                
+                <!-- Add Employee Form -->
+                <div style="background: white; padding: 20px; border-radius: 8px; margin-top: 30px; margin-bottom: 30px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                    <h3 style="margin-top: 0; color: #2c3e50;">➕ Add New Employee</h3>
+                    <form action="/admin-create-employee" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <input type="text" name="fullname" placeholder="Full Name" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                        <input type="email" name="email" placeholder="Email Address" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                        <select name="role" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                            <option value="Reviewer">Reviewer</option>
+                            <option value="Supervisor">Supervisor</option>
+                            <option value="Approver">Approver</option>
+                        </select>
+                        <button type="submit" style="background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Create Employee</button>
+                    </form>
+                </div>
 
+                <!-- Financial Overview Cards -->
+                <div style="display: flex; gap: 20px; margin-bottom: 30px;">
+                    <div style="background: #3498db; color: white; padding: 20px; border-radius: 8px; flex: 1;">
+                        <h4 style="margin: 0;">Total Books Sold</h4>
+                        <h2 style="margin: 10px 0 0 0;">{total_sales_count}</h2>
+                    </div>
+                    <div style="background: #2c3e50; color: white; padding: 20px; border-radius: 8px; flex: 1;">
+                        <h4 style="margin: 0;">Gophigo Revenue (50%)</h4>
+                        <h2 style="margin: 10px 0 0 0;">{gophigo_revenue:,.2f} TZS</h2>
+                    </div>
+                    <div style="background: #2ecc71; color: white; padding: 20px; border-radius: 8px; flex: 1;">
+                        <h4 style="margin: 0;">Author Payouts (50%)</h4>
+                        <h2 style="margin: 10px 0 0 0;">{author_payouts:,.2f} TZS</h2>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                    <h3 style="margin-top: 0; color: #2c3e50;">⚡ Quick Actions</h3>
+                    <p>Use the <strong>View Reports</strong> button at the top right to see a detailed breakdown of all sales and download CSV files.</p>
+                </div>
+            </div>
+            {FOOTER}
+        </body></html>
+        """
+        
+        return html
             <!-- Add Employee Form -->
             <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 30px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                 <h3 style="margin-top: 0; color: #2c3e50;">➕ Add New Employee</h3>
