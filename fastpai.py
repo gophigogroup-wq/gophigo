@@ -5,7 +5,6 @@ from sqlmodel import SQLModel, Field, Session, create_engine, select
 import hashlib, secrets, os, uuid, cloudinary, cloudinary.uploader, requests
 from datetime import datetime
 import json
-from datetime import datetime
 app = FastAPI()
 
 cloudinary.config(
@@ -33,6 +32,12 @@ with engine.connect() as conn:
         conn.commit()
     except Exception:
         pass
+    try:
+        conn.execute(text("ALTER TABLE purchase ADD COLUMN created_at TIMESTAMP;"))
+        conn.commit()
+    except Exception:
+        pass
+with engine.connect() as conn:
     try:
         conn.execute(text("ALTER TABLE purchase ADD COLUMN created_at TIMESTAMP;"))
         conn.commit()
