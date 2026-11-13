@@ -565,19 +565,16 @@ def admin_login(response: Response, username: str = Form(...), password: str = F
 
 @app.get("/admin", response_class=HTMLResponse)
 def admin_dashboard(request: Request):
-    # 1. Strict Security Check
     if request.cookies.get("admin_session") != "true": 
         return RedirectResponse(url="/admin-login", status_code=303)
         
     with Session(engine) as session:
-        authors = session.exec(select(Author)).all()
         purchases = session.exec(select(Purchase).where(Purchase.status == "paid")).all()
         
         total_sales_count = len(purchases)
         gophigo_revenue = 0.0
         author_payouts = 0.0
         
-        # 2. Calculate Revenue
         for p in purchases:
             author = session.get(Author, p.author_id)
             if author:
@@ -585,18 +582,33 @@ def admin_dashboard(request: Request):
                 gophigo_revenue += price * 0.5
                 author_payouts += price * 0.5
 
-                     # 3. Build the Clean Admin HTML
         html = f"""
         <html><body style="font-family:Arial; background:#f4f4f4;">
             {get_navbar(request)}
-            <div style="padding:50px;">
+            <div style="padding:50px; max-width: 1000px; margin: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h1 style="color:#2c3e50; margin: 0;">Admin Dashboard</h1>
-                    <a href="/admin-reports" style="background: #9b59b6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">📊 View Reports & Export</a>
+                    <h1 style="color:#2c3e50;">Admin Dashboard</h1>
+                    <a href="/admin-reports" style="background: #9b59b6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">📊 View Full Reports</a>
                 </div>
                 
+                <!-- Financial Overview Cards -->
+                <div style="display: flex; gap: 20px; margin-bottom: 30px;">
+                    <div style="background: #3498db; color: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;">
+                        <h4 style="margin: 0;">Total Books Sold</h4>
+                        <h2 style="margin: 10px 0 0 0;">{total_sales_count}</h2>
+                    </div>
+                    <div style="background: #2c3e50; color: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;">
+                        <h4 style="margin: 0;">Gophigo Revenue (50%)</h4>
+                        <h2 style="margin: 10px 0 0 0;">{gophigo_revenue:,.2f} TZS</h2>
+                    </div>
+                    <div style="background: #2ecc71; color: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;">
+                        <h4 style="margin: 0;">Author Payouts (50%)</h4>
+                        <h2 style="margin: 10px 0 0 0;">{author_payouts:,.2f} TZS</h2>
+                    </div>
+                </div>
+
                 <!-- Add Employee Form -->
-                <div style="background: white; padding: 20px; border-radius: 8px; margin-top: 30px; margin-bottom: 30px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                     <h3 style="margin-top: 0; color: #2c3e50;">➕ Add New Employee</h3>
                     <form action="/admin-create-employee" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <input type="text" name="fullname" placeholder="Full Name" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
@@ -609,141 +621,11 @@ def admin_dashboard(request: Request):
                         <button type="submit" style="background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Create Employee</button>
                     </form>
                 </div>
-
-                <!-- Financial Overview Cards -->
-                <div style="display: flex; gap: 20px; margin-bottom: 30px;">
-                    <div style="background: #3498db; color: white; padding: 20px; border-radius: 8px; flex: 1;">
-                        <h4 style="margin: 0;">Total Books Sold</h4>
-                        <h2 style="margin: 10px 0 0 0;">{total_sales_count}</h2>
-                    </div>
-                    <div style="background: #2c3e50; color: white; padding: 20px; border-radius: 8px; flex: 1;">
-                        <h4 style="margin: 0;">Gophigo Revenue (50%)</h4>
-                        <h2 style="margin: 10px 0 0 0;">{gophigo_revenue:,.2f} TZS</h2>
-                    </div>
-                    <div style="background: #2ecc71; color: white; padding: 20px; border-radius: 8px; flex: 1;">
-                        <h4 style="margin: 0;">Author Payouts (50%)</h4>
-                        <h2 style="margin: 10px 0 0 0;">{author_payouts:,.2f} TZS</h2>
-                    </div>
-                </div>
-
-                <!-- Quick Actions -->
-                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-                    <h3 style="margin-top: 0; color: #2c3e50;">⚡ Quick Actions</h3>
-                    <p>Use the <strong>View Reports</strong> button at the top right to see a detailed breakdown of all sales and download CSV files.</p>
-                </div>
             </div>
             {FOOTER}
         </body></html>
         """
-        
-        return html
-            <!-- Add Employee Form -->
-            <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 30px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-                <h3 style="margin-top: 0; color: #2c3e50;">➕ Add New Employee</h3>
-                <form action="/admin-create-employee" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <input type="text" name="fullname" placeholder="Full Name" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
-                    <input type="email" name="email" placeholder="Email Address" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
-                    <select name="role" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
-                        <option value="Reviewer">Reviewer</option>
-                        <option value="Supervisor">Supervisor</option>
-                        <option value="Approver">Approver</option>
-                    </select>
-                    <button type="submit" style="background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Create Employee</button>
-                </form>
-            </div>
-
-            <!-- Financial Overview Cards -->
-            <div style="display: flex; gap: 20px; margin-bottom: 30px;">
-                
-                <!-- Financial Overview Cards -->
-                <div style="display: flex; gap: 20px; margin-bottom: 30px;">
-                    <div style="background: #3498db; color: white; padding: 20px; border-radius: 8px; flex: 1;">
-                        <h4 style="margin: 0;">Total Books Sold</h4>
-                        <h2 style="margin: 10px 0 0 0;">{total_sales_count}</h2>
-                    </div>
-                    <div style="background: #2c3e50; color: white; padding: 20px; border-radius: 8px; flex: 1;">
-                        <h4 style="margin: 0;">Gophigo Revenue (50%)</h4>
-                        <h2 style="margin: 10px 0 0 0;">{gophigo_revenue:,.2f} TZS</h2>
-                    </div>
-                    <div style="background: #2ecc71; color: white; padding: 20px; border-radius: 8px; flex: 1;">
-                        <h4 style="margin: 0;">Author Payouts (50%)</h4>
-                        <h2 style="margin: 10px 0 0 0;">{author_payouts:,.2f} TZS</h2>
-                    </div>
-                </div>
-                <div style="clear: both; width: 100%;">
-                                <div style="clear: both; width: 100%;">                   
-                    <!-- Authors & Books Table -->
-                    <h3>📚 All Books & Authors</h3>
-                    <table border="1" style="width:100%; background:white; border-collapse:collapse; margin-bottom: 40px;">
-                        <tr style="background:#34495e; color:white;">
-                            <th>ID</th><th>Author Name</th><th>Book Title</th><th>Format</th><th>Status</th><th>Action</th>
-                        </tr>
-        """
-        
-        for a in authors:
-            btn = ""
-            if a.book_status == "Pending Deletion": 
-                btn = f"<a href='/admin-confirm-delete/{a.id}' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Confirm Delete</a>"
-            
-            html += f"<tr><td>{a.id}</td><td>{a.fullname}</td><td>{a.book_title}</td><td>{a.book_format}</td><td>{a.book_status}</td><td>{btn}</td></tr>"
-            
-        html += f"""
-                    </table>
-
-                    <!-- Recent Transactions Table -->
-                    <h3>💳 Recent Paid Transactions</h3>
-                    <table border="1" style="width:100%; background:white; border-collapse:collapse;">
-                        <tr style="background:#f39c12; color:white;">
-                            <th>Reference</th><th>Book</th><th>Format</th><th>Phone</th><th>Status</th>
-                        </tr>
-        """
-        
-        for p in reversed(purchases):
-            phone = p.phone_number if p.phone_number else "N/A"
-            html += f"<tr><td>{p.reference[:8]}...</td><td>{p.book_title}</td><td>{p.format_bought}</td><td>{phone}</td><td style='color:green; font-weight:bold;'>{p.status.upper()}</td></tr>"
-            
-        html += f"""
-                    </table>
-                </div>
-            </div>
-            {FOOTER}
-        </body></html>
-        """
-        
-        return html        
-        
-        for a in authors:
-            # We will add the Delete button logic here in the next step!
-            btn = ""
-            if a.book_status == "Pending Deletion": 
-                btn = f"<a href='/admin-confirm-delete/{a.id}' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Confirm Delete</a>"
-            
-            html += f"<tr><td>{a.id}</td><td>{a.fullname}</td><td>{a.book_title}</td><td>{a.book_format}</td><td>{a.book_status}</td><td>{btn}</td></tr>"
-            
-        html += f"""
-                </table>
-
-                <!-- Recent Transactions Table -->
-                <h3>💳 Recent Paid Transactions</h3>
-                <table border="1" style="width:100%; background:white; border-collapse:collapse;">
-                    <tr style="background:#f39c12; color:white;">
-                        <th>Reference</th><th>Book</th><th>Format</th><th>Phone</th><th>Status</th>
-                    </tr>
-        """
-        
-        for p in reversed(purchases): # Reversed so newest is at the top
-            phone = p.phone_number if p.phone_number else "N/A"
-            html += f"<tr><td>{p.reference[:8]}...</td><td>{p.book_title}</td><td>{p.format_bought}</td><td>{phone}</td><td style='color:green; font-weight:bold;'>{p.status.upper()}</td></tr>"
-            
-        html += f"""
-                </table>
-            </div>
-            {FOOTER}
-        </body></html>
-        """
-        
-        return html
-@app.get("/admin-confirm-delete/{author_id}")
+        return html@app.get("/admin-confirm-delete/{author_id}")
 def admin_confirm_delete(author_id: int):
     with Session(engine) as session:
         a = session.get(Author, author_id); session.delete(a); session.commit()
