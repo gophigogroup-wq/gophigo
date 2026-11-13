@@ -436,7 +436,8 @@ if author.membership_status == "Pending":
                 </div>
             {FOOTER}
         </body></html>
-        """
+
+    """
 @app.get("/pay-membership")
 def pay_membership(request: Request):
     author_email = request.cookies.get("author_email")
