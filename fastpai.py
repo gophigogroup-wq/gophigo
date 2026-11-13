@@ -372,6 +372,23 @@ def author_dashboard(request: Request):
                 
         if author.membership_status == "Pending":
             pay_html = '<div style="background:#fff3cd; padding:20px; border-radius:8px;"><h3>Membership Payment Required</h3><a href="/pay-membership" style="background:#2ecc71; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Pay 20,000 TZS</a></div>'
+                       <!-- Price Management Form -->
+                    <div style="background: #f8f9fa; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: left;">
+                        <h4 style="margin-top: 0; color: #2c3e50;">💰 Manage Pricing</h4>
+                        <form action="/update-price" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 14px; font-weight: bold;">Ebook Price (TZS)</label>
+                                <input type="number" name="ebook_price" value="{author.ebook_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 14px; font-weight: bold;">Paperback Price (TZS)</label>
+                                <input type="number" name="paperback_price" value="{author.paperback_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;">
+                            </div>
+                            <div style="width: 100%; margin-top: 10px;">
+                                <button type="submit" style="background: #f39c12; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Update Prices</button>
+                            </div>
+                        </form>
+                    </div>
         else:
             pay_html = f'''
             <div style="display: flex; gap: 20px; margin-top: 20px; justify-content: center;">
