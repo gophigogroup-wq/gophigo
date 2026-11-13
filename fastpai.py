@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import SQLModel, Field, Session, create_engine, select
 import hashlib, secrets, os, uuid, cloudinary, cloudinary.uploader, requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 app = FastAPI()
 
@@ -625,55 +625,7 @@ def admin_dashboard(request: Request):
             {FOOTER}
         </body></html>
         """
-        return html@app.get("/admin-confirm-delete/{author_id}")
-def admin_confirm_delete(author_id: int):
-    with Session(engine) as session:
-        a = session.get(Author, author_id); session.delete(a); session.commit()
-    return RedirectResponse(url="/admin", status_code=303)
-@app.post("/admin-create-employee")
-def admin_create_employee(request: Request, fullname: str = Form(...), email: str = Form(...), role: str = Form(...)):
-    # 1. Security Check
-    if request.cookies.get("admin_session") != "true": 
-        return RedirectResponse(url="/admin-login", status_code=303)
-        
-    # 2. Generate a random temporary password (e.g., Gop-3f8d2a!)
-    import secrets
-    temp_password = f"Gop-{secrets.token_hex(3)}!"
-    
-    with Session(engine) as session:
-        # 3. Check if email already exists
-        existing = session.exec(select(Employee).where(Employee.email == email)).first()
-        if existing:
-            return HTMLResponse(content=f"<h1>Error</h1><p>An employee with the email {email} already exists.</p><a href='/admin'>Go Back</a>", status_code=400)
-            
-        # 4. Hash the password and save
-        hashed_pw = hashlib.sha256(temp_password.encode()).hexdigest()
-        new_emp = Employee(
-            fullname=fullname, 
-            email=email, 
-            password=hashed_pw, 
-            role=role, 
-            must_change_password=True
-        )
-        session.add(new_emp)
-        session.commit()
-        
-    # 5. Show the Admin the temp password to copy
-    return HTMLResponse(content=f"""
-    <html><body style="font-family:Arial; padding:50px; text-align:center; background:#f4f4f4;">
-        <div style="background:white; padding:40px; border-radius:8px; max-width:500px; margin:auto;">
-            <h2 style="color:#2ecc71;">Employee Created Successfully!</h2>
-            <p>Send these login details to <strong>{fullname}</strong>:</p>
-            <div style="background:#eee; padding:15px; border-radius:5px; margin:20px 0; text-align:left;">
-                <p><strong>Email:</strong> {email}</p>
-                <p><strong>Temporary Password:</strong> <span style="font-size:20px; color:#e74c3c; font-weight:bold;">{temp_password}</span></p>
-            </div>
-            <p style="color:#7f8c8d; font-size:14px;">They will be forced to change this password when they log in.</p>
-            <a href="/admin" style="background:#3498db; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Back to Admin Dashboard</a>
-        </div>
-    </body></html>
-    """, status_code=200)
-
+        return html
 @app.get("/admin-logout")
 def admin_logout():
     res = RedirectResponse(url="/admin-login", status_code=303); res.delete_cookie("admin_session"); return res
