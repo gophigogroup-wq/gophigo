@@ -267,11 +267,12 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
                         <a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Go to My Library Now</a>
                     </body></html>
                     """, status_code=200)
-                else:
-                    purchase.status = "failed"
-                    session.add(purchase)
-                    session.commit()
-                    return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)        
+                    else:
+                         purchase.status = "failed"
+                         session.add(purchase)
+                         session.commit()
+                         return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)  
+                         
 @app.get("/my-library", response_class=HTMLResponse)
 def my_library(request: Request):
     customer_email = request.cookies.get("customer_email")
