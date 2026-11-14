@@ -872,12 +872,3 @@ def admin_delete_book(request: Request, author_id: int, action: str):
             return HTMLResponse(content=f'<html><body style="font-family:Arial; text-align:center; padding:50px;"><h1 style="color:#2ecc71;">Payment Prompt Sent!</h1><p>We have sent a payment request to <strong>{phone}</strong>.</p><p>Please check your phone and enter your mobile money PIN to complete the purchase.</p><p style="color:#7f8c8d;">Reference: {purchase_ref}</p><br><p style="color:#e74c3c; font-weight:bold;">Redirecting to your library in 5 seconds...</p><meta http-equiv="refresh" content="5;url=/my-library" /><a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Go to My Library Now</a></body></html>', status_code=200)
 from fastapi.responses import JSONResponse
 
-@app.get("/run-migration")
-def run_migration():
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE author ADD COLUMN book_id VARCHAR;"))
-            conn.commit()
-        return JSONResponse({"status": "success", "message": "Successfully added book_id column!"})
-    except Exception as e:
-        return JSONResponse({"status": "error", "message": str(e)})
