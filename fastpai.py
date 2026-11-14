@@ -174,7 +174,6 @@ def calculate_shipping(request: Request, author_id: int, phone: str = Form(...),
         
         html = f'<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:40px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center; color:#2c3e50;">Order Summary</h2><img src="{a.cover_image}" style="width:100px; height:150px; object-fit:cover; display:block; margin:0 auto 20px;"><div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>Book Price:</span><strong>{book_price} TZS</strong></div><div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>Delivery Fee:</span><strong>{shipping_fee} TZS</strong></div><hr><div style="display:flex; justify-content:space-between; margin-bottom:20px; font-size:20px; color:#2ecc71;"><span>Total:</span><strong>{total_price} TZS</strong></div><form action="/confirm-paperback/{author_id}" method="POST"><input type="hidden" name="phone" value="{phone}"><input type="hidden" name="region" value="{region}"><input type="hidden" name="address" value="{address}"><button type="submit" style="background:#3498db; color:white; padding:15px; border:none; width:100%; border-radius:5px; font-size:16px; font-weight:bold; cursor:pointer;">Confirm & Pay {total_price} TZS</button></form></div></div>{FOOTER}</body></html>'
         return html
-
 @app.post("/confirm-paperback/{author_id}", response_class=HTMLResponse)
 def confirm_paperback(request: Request, author_id: int, phone: str = Form(...), region: str = Form(...), address: str = Form(...)):
     customer_email = request.cookies.get("customer_email")
@@ -195,7 +194,7 @@ def confirm_paperback(request: Request, author_id: int, phone: str = Form(...), 
             ))
             session.commit()
             
-       return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='text-align:center; padding:100px;'><h1 style='color:#2ecc71;'>Order Successful!</h1><p>Your paperback is being prepared for printing.</p><p>We will deliver it to: {address}, {region}.</p><a href='/' style='background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;'>Continue Shopping</a></div>{FOOTER}</body></html>"
+    return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='text-align:center; padding:100px;'><h1 style='color:#2ecc71;'>Order Successful!</h1><p>Your paperback is being prepared for printing.</p><p>We will deliver it to: {address}, {region}.</p><a href='/' style='background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;'>Continue Shopping</a></div>{FOOTER}</body></html>"
 @app.post("/pay/{author_id}")
 def process_payment(request: Request, author_id: int, phone: str = Form(...), format: str = "Ebook"):
     try:
@@ -208,11 +207,11 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
             
         with Session(engine) as session:
             c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
-            if not c:
+        if not c:
                 return HTMLResponse(content="<h1>Error: Customer not found. Please log out and log in again.</h1>", status_code=400)
                 
             a = session.get(Author, author_id)
-            if not a:
+        if not a:
                 return HTMLResponse(content="<h1>Error: Author/Book not found.</h1>", status_code=404)
                 
             purchase_ref = str(uuid.uuid4())
