@@ -195,8 +195,7 @@ def confirm_paperback(request: Request, author_id: int, phone: str = Form(...), 
             ))
             session.commit()
             
-    return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='text-align:center; padding:100px;'><h1 style='color:#2ecc71;'>Order Successful!</h1><p>Your paperback is being prepared for printing.</p><p>We will deliver it to: {address}, {region}.</p><a href='/my-library' style='background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;'>Go to My Library</a></div>{FOOTER}</body></html>"
-
+       return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='text-align:center; padding:100px;'><h1 style='color:#2ecc71;'>Order Successful!</h1><p>Your paperback is being prepared for printing.</p><p>We will deliver it to: {address}, {region}.</p><a href='/' style='background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;'>Continue Shopping</a></div>{FOOTER}</body></html>"
 @app.post("/pay/{author_id}")
 def process_payment(request: Request, author_id: int, phone: str = Form(...), format: str = "Ebook"):
     try:
