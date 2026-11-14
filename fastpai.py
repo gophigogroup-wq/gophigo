@@ -444,7 +444,7 @@ def author_dashboard(request: Request):
         import traceback
         error_details = traceback.format_exc()
         return HTMLResponse(content=f"<h1>Dashboard Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)        
-        @app.get("/pay-membership")
+@app.get("/pay-membership")
 def pay_membership(request: Request):
     author_email = request.cookies.get("author_email")
     with Session(engine) as session:
