@@ -271,6 +271,8 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
                          session.add(purchase)
                          session.commit()
                          return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)  
+    except Exception as e:
+        return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)
                          
 @app.get("/my-library", response_class=HTMLResponse)
 def my_library(request: Request):
