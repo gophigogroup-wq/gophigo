@@ -252,18 +252,7 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
                 data = response.json()
                 payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
                 
-                if not payment_url:
-                    return HTMLResponse(content=f"""
-                    <html><body style="font-family:Arial; text-align:center; padding:50px;">
-                        <h1 style="color:#2ecc71;">Payment Prompt Sent!</h1>
-                        <p>We have sent a payment request to <strong>{phone}</strong>.</p>
-                        <p>Please check your phone and enter your mobile money PIN to complete the purchase.</p>
-                        <p style="color:#7f8c8d;">Reference: {purchase_ref}</p>
-                        <br>
-                        <a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">I have paid - Go to My Library</a>
-                    </body></html>
-                    """, status_code=200)
-
+                    return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='text-align:center; padding:100px;'><h1 style='color:#2ecc71;'>Order Successful!</h1><p>Your paperback is being prepared for printing.</p><p>We will deliver it to: {address}, {region}.</p><a href='/' style='background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;'>Continue Shopping</a></div>{FOOTER}</body></html>"
                 return RedirectResponse(url=payment_url, status_code=303)
             else:
                 purchase.status = "failed"
