@@ -404,7 +404,7 @@ def author_dashboard(request: Request):
             '''
             
         price_form = f'<div style="background: #f8f9fa; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: left;"><h4 style="margin-top: 0; color: #2c3e50;">Manage Pricing</h4><form action="/update-price" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;"><div style="flex: 1;"><label style="font-size: 14px; font-weight: bold;">Ebook Price (TZS)</label><input type="number" name="ebook_price" value="{author.ebook_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;"></div><div style="flex: 1;"><label style="font-size: 14px; font-weight: bold;">Paperback Price (TZS)</label><input type="number" name="paperback_price" value="{author.paperback_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;"></div><div style="width: 100%; margin-top: 10px;"><button type="submit" style="background: #f39c12; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Update Prices</button></div></form></div>'
-         share_link_form = f"""
+        share_link_form = f"""
         <div style="background: #e8f8f5; border: 1px solid #2ecc71; padding: 15px; border-radius: 8px; margin-top: 15px; text-align: center;">
             <h4 style="margin: 0; color: #2c3e50;">🔗 Your Book Link</h4>
             <p style="word-break: break-all; color: #3498db; font-weight: bold; margin: 10px 0;">www.gophigo.co.tz/book/{author.book_id}</p>
