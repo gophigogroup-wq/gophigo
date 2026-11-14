@@ -208,11 +208,11 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
         with Session(engine) as session:
             c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
         if not c:
-                return HTMLResponse(content="<h1>Error: Customer not found. Please log out and log in again.</h1>", status_code=400)
+    return HTMLResponse(content="<h1>Error: Customer not found. Please log out and log in again.</h1>", status_code=400)
                 
-            a = session.get(Author, author_id)
+             a = session.get(Author, author_id)
         if not a:
-                return HTMLResponse(content="<h1>Error: Author/Book not found.</h1>", status_code=404)
+    return HTMLResponse(content="<h1>Error: Author/Book not found.</h1>", status_code=404)
                 
             purchase_ref = str(uuid.uuid4())
             purchase = Purchase(
