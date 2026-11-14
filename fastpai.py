@@ -247,7 +247,7 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
 
             response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers, timeout=15)
             
-                if response.status_code in [200, 201]:
+            if response.status_code in [200, 201]:
                     data = response.json()
                     payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
                     
