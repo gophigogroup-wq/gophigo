@@ -267,7 +267,7 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
                         <a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Go to My Library Now</a>
                     </body></html>
                     """, status_code=200)
-                    else:
+                else:
                          purchase.status = "failed"
                          session.add(purchase)
                          session.commit()
