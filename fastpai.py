@@ -195,6 +195,7 @@ def confirm_paperback(request: Request, author_id: int, phone: str = Form(...), 
             session.commit()
             
     return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='text-align:center; padding:100px;'><h1 style='color:#2ecc71;'>Order Successful!</h1><p>Your paperback is being prepared for printing.</p><p>We will deliver it to: {address}, {region}.</p><a href='/' style='background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;'>Continue Shopping</a></div>{FOOTER}</body></html>"
+
 @app.post("/pay/{author_id}")
 def process_payment(request: Request, author_id: int, phone: str = Form(...), format: str = "Ebook"):
     try:
@@ -205,14 +206,14 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
         if format == "Paperback":
             return RedirectResponse(url=f"/shipping-address/{author_id}", status_code=303)
             
-        with Session(engine) as session:
-            c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
-        if not c:
-    return HTMLResponse(content="<h1>Error: Customer not found. Please log out and log in again.</h1>", status_code=400)
-                
-             a = session.get(Author, author_id)
-        if not a:
-    return HTMLResponse(content="<h1>Error: Author/Book not found.</h1>", status_code=404)
+            with Session(engine) as session:
+                c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
+                if not c:
+                    return HTMLResponse(content="<h1>Error: Customer not found. Please log out and log in again.</h1>", status_code=400)
+                    
+                a = session.get(Author, author_id)
+                if not a:
+                    return HTMLResponse(content="<h1>Error: Author/Book not found.</h1>", status_code=404)
                 
             purchase_ref = str(uuid.uuid4())
             purchase = Purchase(
