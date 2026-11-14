@@ -630,7 +630,7 @@ def admin_dashboard(request: Request):
             <div style="padding:50px; max-width: 1000px; margin: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h1 style="color:#2c3e50;">Admin Dashboard</h1>
-                    <a href="/admin-reports" style="background: #9b59b6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">📊 View Full Reports</a>
+                    <a href="/admin-reports" style="background: #9b59b6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;"> View Full Reports</a>
                 </div>
                 
                 <!-- Financial Overview Cards -->
