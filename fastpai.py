@@ -851,3 +851,9 @@ def admin_delete_book(request: Request, author_id: int, action: str):
             session.commit()
             
     return RedirectResponse(url="/admin", status_code=303)
+                    <p>Please check your phone and enter your mobile money PIN to complete the purchase.</p>
+                    <p style="color:#7f8c8d;">Reference: {purchase_ref}</p>
+                    <br>
+                    <p style="color:#e74c3c; font-weight:bold;">Redirecting to your library in 5 seconds...</p>
+                    <meta http-equiv="refresh" content="5;url=/my-library" />
+                    <a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Go to My Library Now</a>
