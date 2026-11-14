@@ -380,57 +380,70 @@ def process_login(response: Response, email: str = Form(...), password: str = Fo
 
 @app.get("/author-dashboard", response_class=HTMLResponse)
 def author_dashboard(request: Request):
-    author_email = request.cookies.get("author_email")
-    if not author_email: return RedirectResponse(url="/login", status_code=303)
-    
-    with Session(engine) as session:
-        author = session.exec(select(Author).where(Author.email == author_email)).first()
-        sales = session.exec(select(Purchase).where(Purchase.author_id == author.id, Purchase.status == "paid")).all()
+    try:
+        author_email = request.cookies.get("author_email")
+        if not author_email: return RedirectResponse(url="/login", status_code=303)
         
-        total_sales_count = len(sales)
-        total_earnings = 0.0
-        
-        for s in sales:
-            if s.format_bought == "Ebook":
-                total_earnings += author.ebook_price * 0.5
-            else:
-                total_earnings += author.paperback_price * 0.5
+        with Session(engine) as session:
+            author = session.exec(select(Author).where(Author.email == author_email)).first()
+            if not author:
+                return HTMLResponse(content="<h1>Error: Author not found in database. Try logging out and in again.</h1>", status_code=400)
                 
-                if author.membership_status == "Pending":
-                    pay_html = '<div style="background:#fff3cd; padding:20px; border-radius:8px; margin-bottom: 20px;"><h3>Membership Payment Required</h3><a href="/pay-membership" style="background:#2ecc71; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Pay 20,000 TZS</a></div>'
-        else:
-            pay_html = f'''
-            <div style="background:#d4edda; padding:20px; margin-bottom: 20px; border-radius:8px;">
-                <h3>Account Status: Active</h3>
-                <h4 style="margin: 5px 0 0 0;">Book: {author.book_status}</h4>
-            </div>
-            '''
+            sales = session.exec(select(Purchase).where(Purchase.author_id == author.id, Purchase.status == "paid")).all()
             
-        price_form = f'<div style="background: #f8f9fa; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: left;"><h4 style="margin-top: 0; color: #2c3e50;">Manage Pricing</h4><form action="/update-price" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;"><div style="flex: 1;"><label style="font-size: 14px; font-weight: bold;">Ebook Price (TZS)</label><input type="number" name="ebook_price" value="{author.ebook_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;"></div><div style="flex: 1;"><label style="font-size: 14px; font-weight: bold;">Paperback Price (TZS)</label><input type="number" name="paperback_price" value="{author.paperback_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;"></div><div style="width: 100%; margin-top: 10px;"><button type="submit" style="background: #f39c12; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Update Prices</button></div></form></div>'
-        share_link_form = f"""
-        <div style="background: #e8f8f5; border: 1px solid #2ecc71; padding: 15px; border-radius: 8px; margin-top: 15px; text-align: center;">
-            <h4 style="margin: 0; color: #2c3e50;">🔗 Your Book Link</h4>
-            <p style="word-break: break-all; color: #3498db; font-weight: bold; margin: 10px 0;">www.gophigo.co.tz/book/{author.book_id}</p>
-            <button onclick="navigator.clipboard.writeText('www.gophigo.co.tz/book/{author.book_id}'); alert('Link copied to clipboard!');" style="background: #2ecc71; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Copy Link</button>
-        </div>
-        """
-        return f"""
-        <html><body style="font-family:Arial; background:#f4f4f4;">
-            {get_navbar(request)}
-            <div style="padding:50px; text-align:center;">
-                <h2>Welcome, {author.fullname}!</h2>
-                <div style="background:white; padding:30px; border-radius:8px; max-width:600px; margin:auto;">
-                    <img src="{author.cover_image}" style="width:150px; height:200px; object-fit:cover; border-radius:4px; margin-bottom: 15px;">
-                    <h3>{author.book_title}</h3>
-                    <p style="color: #7f8c8d;">{author.book_format}</p>
-                                        <a href="/author-reports" style="display: inline-block; background: #9b59b6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-bottom: 15px;">📊 View Full Earnings Report</a>
-                    {pay_html}
-                    {price_form}
-                    {share_link_form}
+            total_sales_count = len(sales)
+            total_earnings = 0.0
+            
+            for s in sales:
+                if s.format_bought == "Ebook":
+                    total_earnings += author.ebook_price * 0.5
+                else:
+                    total_earnings += author.paperback_price * 0.5
+                    
+            if author.membership_status == "Pending":
+                pay_html = '<div style="background:#fff3cd; padding:20px; border-radius:8px; margin-bottom: 20px;"><h3>Membership Payment Required</h3><a href="/pay-membership" style="background:#2ecc71; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Pay 20,000 TZS</a></div>'
+            else:
+                pay_html = f'''
+                <div style="background:#d4edda; padding:20px; margin-bottom: 20px; border-radius:8px;">
+                    <h3>Account Status: Active</h3>
+                    <h4 style="margin: 5px 0 0 0;">Book: {author.book_status}</h4>
                 </div>
+                '''
+                
+            price_form = f'<div style="background: #f8f9fa; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: left;"><h4 style="margin-top: 0; color: #2c3e50;">Manage Pricing</h4><form action="/update-price" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;"><div style="flex: 1;"><label style="font-size: 14px; font-weight: bold;">Ebook Price (TZS)</label><input type="number" name="ebook_price" value="{author.ebook_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;"></div><div style="flex: 1;"><label style="font-size: 14px; font-weight: bold;">Paperback Price (TZS)</label><input type="number" name="paperback_price" value="{author.paperback_price}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;"></div><div style="width: 100%; margin-top: 10px;"><button type="submit" style="background: #f39c12; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Update Prices</button></div></form></div>'
+
+            share_link_form = f"""
+            <div style="background: #e8f8f5; border: 1px solid #2ecc71; padding: 15px; border-radius: 8px; margin-top: 15px; text-align: center;">
+                <h4 style="margin: 0; color: #2c3e50;">🔗 Your Book Link</h4>
+                <p style="word-break: break-all; color: #3498db; font-weight: bold; margin: 10px 0;">www.gophigo.co.tz/book/{author.book_id}</p>
+                <button onclick="navigator.clipboard.writeText('www.gophigo.co.tz/book/{author.book_id}'); alert('Link copied to clipboard!');" style="background: #2ecc71; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Copy Link</button>
             </div>
-            {FOOTER}
-        </body></html>
+            """
+
+            return f"""
+            <html><body style="font-family:Arial; background:#f4f4f4;">
+                {get_navbar(request)}
+                <div style="padding:50px; text-align:center;">
+                    <h2>Welcome, {author.fullname}!</h2>
+                    <div style="background:white; padding:30px; border-radius:8px; max-width:600px; margin:auto;">
+                        <img src="{author.cover_image}" style="width:150px; height:200px; object-fit:cover; border-radius:4px; margin-bottom: 15px;">
+                        <h3>{author.book_title}</h3>
+                        <a href="/author-reports" style="display: inline-block; background: #9b59b6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-bottom: 15px;">📊 View Full Earnings Report</a>
+                        
+                        <p style="color: #7f8c8d;">{author.book_format}</p>
+                        
+                        {pay_html}
+                        {price_form}
+                        {share_link_form}
+                    </div>
+                </div>
+                {FOOTER}
+            </body></html>
+            """
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        return HTMLResponse(content=f"<h1>Dashboard Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)
         """
 @app.get("/pay-membership")
 def pay_membership(request: Request):
