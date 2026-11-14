@@ -247,20 +247,31 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
 
             response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers, timeout=15)
             
-            if response.status_code in [200, 201]:
-                data = response.json()
-                payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
-                
-                    return f"<html><body style='font-family:Arial; background:#f4f4f4;'>{get_navbar(request)}<div style='text-align:center; padding:100px;'><h1 style='color:#2ecc71;'>Order Successful!</h1><p>Your paperback is being prepared for printing.</p><p>We will deliver it to: {address}, {region}.</p><a href='/' style='background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;'>Continue Shopping</a></div>{FOOTER}</body></html>"
-                return RedirectResponse(url=payment_url, status_code=303)
-            else:
-                purchase.status = "failed"
-                session.add(purchase)
-                session.commit()
-                return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
-                
-    except Exception as e:
-        return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)
+                if response.status_code in [200, 201]:
+                    data = response.json()
+                    payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
+                    
+                    if payment_url:
+                        return RedirectResponse(url=payment_url, status_code=303)
+                        
+                    return HTMLResponse(content=f"""
+                    <html><body style="font-family:Arial; text-align:center; padding:50px;">
+                        <h1 style="color:#2ecc71;">Payment Prompt Sent!</h1>
+                        <p>We have sent a payment request to <strong>{phone}</strong>.</p>
+                        <p>Please check your phone and enter your mobile money PIN to complete the purchase.</p>
+                        <p style="color:#7f8c8d;">Reference: {purchase_ref}</p>
+                        <br>
+                        <p style="color:#e74c3c; font-weight:bold;">Redirecting to your library in 5 seconds...</p>
+                        <meta http-equiv="refresh" content="5;url=/my-library" />
+                        <br>
+                        <a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Go to My Library Now</a>
+                    </body></html>
+                    """, status_code=200)
+                else:
+                    purchase.status = "failed"
+                    session.add(purchase)
+                    session.commit()
+                    return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)        
 @app.get("/my-library", response_class=HTMLResponse)
 def my_library(request: Request):
     customer_email = request.cookies.get("customer_email")
