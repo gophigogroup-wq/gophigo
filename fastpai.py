@@ -899,18 +899,3 @@ def direct_book_link(request: Request, book_id: str):
             return HTMLResponse(content="<h1>Book not found</h1><p>The link you clicked is invalid or the book has been removed.</p>", status_code=404)
             
         return RedirectResponse(url=f"/checkout/{author.id}?format=Ebook", status_code=303)
-@app.get("/fix-first-book")
-def fix_first_book():
-    with Session(engine) as session:
-        # Find the first author
-        author = session.exec(select(Author).order_by(Author.id)).first()
-        if author and not author.book_id:
-            current_year = datetime.now().year
-            total_books = len(session.exec(select(Author)).all())
-            author.book_id = f"GOP-{current_year}-{total_books + 1:04d}"
-            session.add(author)
-            session.commit()
-            return {"message": f"Success! The Untouchable Life now has ID: {author.book_id}"}
-        elif author and author.book_id:
-            return {"message": f"Book already has ID: {author.book_id}"}
-        return {"message": "No authors found."}
