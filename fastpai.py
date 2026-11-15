@@ -911,3 +911,24 @@ def direct_book_link(request: Request, book_id: str):
             return HTMLResponse(content="<h1>Book not found</h1><p>The link you clicked is invalid or the book has been removed.</p>", status_code=404)
             
         return RedirectResponse(url=f"/checkout/{author.id}?format=Ebook", status_code=303)
+@app.post("/snippe-webhook")
+async def snippe_webhook(request: Request):
+    body = await request.body()
+    try:
+        event = json.loads(body)
+    except:
+        return {"status": "error", "message": "invalid json"}
+
+    # Extract the reference
+    metadata = event.get("data", {}).get("metadata", {})
+    purchase_ref = metadata.get("purchase_reference")
+    
+    if purchase_ref:
+        with Session(engine) as session:
+            purchase = session.exec(select(Purchase).where(Purchase.reference == purchase_ref)).first()
+            if purchase and purchase.status != "paid":
+                purchase.status = "paid"
+                session.add(purchase)
+                session.commit()
+                
+    return {"status": "success"}
