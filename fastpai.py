@@ -234,14 +234,14 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
         if format == "Paperback":
             return RedirectResponse(url=f"/shipping-address/{author_id}", status_code=303)
             
-            with Session(engine) as session:
-                c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
-                if not c:
-                    return HTMLResponse(content="<h1>Error: Customer not found. Please log out and log in again.</h1>", status_code=400)
-                    
-                a = session.get(Author, author_id)
-                if not a:
-                    return HTMLResponse(content="<h1>Error: Author/Book not found.</h1>", status_code=404)
+        with Session(engine) as session:
+            c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
+            if not c:
+                return HTMLResponse(content="<h1>Error: Customer not found. Please log out and log in again.</h1>", status_code=400)
+                
+            a = session.get(Author, author_id)
+            if not a:
+                return HTMLResponse(content="<h1>Error: Book not found.</h1>", status_code=404)
                 
             purchase_ref = str(uuid.uuid4())
             purchase = Purchase(
@@ -273,8 +273,9 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
                 "metadata": {"purchase_reference": purchase_ref}
             }
 
-            response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers, timeout=15)            
-                if response.status_code in [200, 201]:
+            response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers, timeout=15)
+            
+            if response.status_code in [200, 201]:
                 data = response.json()
                 payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
                 
@@ -300,7 +301,9 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
                 session.add(purchase)
                 session.commit()
                 return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
-                         
+                
+    except Exception as e:
+        return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)                         
 @app.get("/my-library", response_class=HTMLResponse)
 def my_library(request: Request):
     customer_email = request.cookies.get("customer_email")
