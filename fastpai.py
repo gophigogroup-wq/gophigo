@@ -277,7 +277,7 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
             if response.status_code in [200, 201]:
                  data = response.json()
                  payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
-                
+                 
                 if payment_url:
                   return RedirectResponse(url=payment_url, status_code=303)          
                 return HTMLResponse(content=f"""
