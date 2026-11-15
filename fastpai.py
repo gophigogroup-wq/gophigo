@@ -275,8 +275,9 @@ def process_payment(request: Request, author_id: int, phone: str = Form(...), fo
 
             response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers, timeout=15)            
             if response.status_code in [200, 201]:
+               return HTMLResponse(content=f"<h3>Debug Data from Snippe:</h3><pre>{data}</pre>")
                     data = response.json()
-                    payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
+               payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
                     
                     if payment_url:
                         return RedirectResponse(url=payment_url, status_code=303)
