@@ -151,19 +151,16 @@ def checkout(request: Request, author_id: int, format: str = "Ebook"):
     with Session(engine) as session:
         a = session.get(Author, author_id)
         
-        # This prevents the "null" error if the book ID doesn't exist!
         if not a:
-            return HTMLResponse(content="<h1 style='text-align:center; padding:50px;'>Book not found. The author may have removed it.</h1><a href='/' style='display:block; text-align:center;'>Go back to Store</a>", status_code=404)
+            return HTMLResponse(content="<h1 style='text-align:center; padding:50px;'>Book not found.</h1><a href='/' style='display:block; text-align:center;'>Go back to Store</a>", status_code=404)
             
         price = a.ebook_price if format == "Ebook" else a.paperback_price
-        if price is None:
-            price = 0
-            
+        if price is None: price = 0
         cover = a.cover_image if a.cover_image else "https://via.placeholder.com/180x250?text=No+Cover"
         title = a.book_title if a.book_title else "Untitled Book"
         
         if format == "Ebook":
-            pay_btn = f'''
+            pay_btn = f"""
             <form action="/pay/{a.id}?format={format}" method="POST">
                 <div style="margin-bottom: 15px; text-align: left;">
                     <label style="font-weight: bold;">Enter Mobile Money Number:</label><br>
@@ -171,13 +168,26 @@ def checkout(request: Request, author_id: int, format: str = "Ebook"):
                 </div>
                 <button type="submit" style="background:#3498db; color:white; padding:15px; border:none; border-radius:5px; display:block; width:100%; font-size:16px; font-weight:bold; cursor:pointer;">Pay {price} TZS</button>
             </form>
-            '''
+            """
         else:
             pay_btn = f'<a href="/shipping-address/{a.id}" style="background:#f39c12; color:white; padding:15px; text-decoration:none; border-radius:5px; display:block; margin-top:20px; font-weight:bold;">Enter Shipping Address</a>'
             
-        html = f'<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:40px; border-radius:8px; max-width:400px; margin:auto; text-align:center;"><h2>Checkout - {format}</h2><img src="{cover}" style="width:180px; height:250px; object-fit:cover; margin:20px 0; border-radius: 5px;"><h3>{title}</h3><h4 style="color:#2ecc71;">{price} TZS</h4>{pay_btn}</div></div>{FOOTER}</body></html>'
+        return f"""
+        <html><body style="font-family:Arial; background:#f4f4f4;">
+            {get_navbar(request)}
+            <div style="padding:50px;">
+                <div style="background:white; padding:40px; border-radius:8px; max-width:400px; margin:auto; text-align:center;">
+                    <h2>Checkout - {format}</h2>
+                    <img src="{cover}" style="width:180px; height:250px; object-fit:cover; margin:20px 0; border-radius: 5px;">
+                    <h3>{title}</h3>
+                    <h4 style="color:#2ecc71;">{price} TZS</h4>
+                    {pay_btn}
+                </div>
+            </div>
+            {FOOTER}
+        </body></html>
+        """
         
-        return html        
 @app.get("/shipping-address/{author_id}", response_class=HTMLResponse)
 def shipping_address_form(request: Request, author_id: int):
     return '<html><body style="font-family:Arial; background:#f4f4f4;">' + get_navbar(request) + f'<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2>Shipping Details</h2><p>Where should we deliver your paperback?</p><form action="/calculate-shipping/{author_id}" method="POST"><label>Phone Number:</label><br><input type="text" name="phone" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Region / City:</label><br><input type="text" name="region" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Delivery Address:</label><br><textarea name="address" required style="width:100%; padding:10px; margin:10px 0;"></textarea><br><button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Complete Order</button></form></div></div>' + FOOTER + '</body></html>'
