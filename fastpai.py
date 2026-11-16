@@ -980,14 +980,3 @@ async def snippe_webhook(request: Request):
                 session.commit()
                 
     return {"status": "success"}
-@app.get("/fix-book-id")
-def fix_book_id():
-    with Session(engine) as session:
-        # Find the first author (ID 1)
-        author = session.exec(select(Author).where(Author.id == 1)).first()
-        if author:
-            author.book_id = "GOP-2026-0001"
-            session.add(author)
-            session.commit()
-            return {"message": f"Success! Book ID for '{author.book_title}' is now {author.book_id}"}
-        return {"message": "Author not found in database"}
