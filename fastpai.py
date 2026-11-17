@@ -827,31 +827,22 @@ def admin_dashboard(request: Request):
                 </div>
 
                 <!-- Products Table -->
-                <h3>📚 All Products</h3>
+<h3>📚 All Products</h3>
                 <table border="1" style="width:100%; background:white; border-collapse:collapse; margin-bottom: 40px;">
                     <tr style="background:#34495e; color:white;">
                         <th>ID</th><th>Title</th><th>Category</th><th>Price</th><th>Status</th><th>Action</th>
                     </tr>
         """
         
-        products = session.exec(select(Product)).all()
-        
         for p in products:
             if p.status == "Flagged & Removed" or p.is_hidden:
                 btn = f"<a href='/admin-toggle-product/{p.id}?action=unhide' style='background:#3498db; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Unhide</a>"
                 status_display = "<span style='color:red;'>Hidden</span>"
-        html += f"""
-                </table>                
             else:
                 btn = f"<a href='/admin-toggle-product/{p.id}?action=hide' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Hide / Delete</a>"
                 status_display = "<span style='color:green;'>Active</span>"
                 
-        html += f"<tr><td>{p.id}</td><td>{p.title}</td><td>{p.category}</td><td>{p.price} TZS</td><td>{status_display}</td><td>{btn}</td></tr>"            else:
-                btn = f"<a href='/admin-delete-book/{a.id}?action=hide' style='background:#f39c12; color:white; padding:5px 10px; text-decoration:none; border-radius:3px; margin-right:5px;'>Hide</a>"
-                btn += f"<a href='/admin-delete-book/{a.id}?action=delete' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Red Flag</a>"
-                status_display = f"<span style='color:green;'>{a.book_status}</span>"
-                
-        html += f"<tr><td>{p.id}</td><td>{p.title}</td><td>{p.category}</td><td>{p.price} TZS</td><td>{status_display}</td><td>{btn}</td></tr>"
+            html += f"<tr><td>{p.id}</td><td>{p.title}</td><td>{p.category}</td><td>{p.price} TZS</td><td>{status_display}</td><td>{btn}</td></tr>"
             
         html += f"""
                 </table>
