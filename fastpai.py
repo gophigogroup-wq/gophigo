@@ -152,12 +152,22 @@ class Review(SQLModel, table=True):
 SQLModel.metadata.create_all(engine)
 
 with Session(engine) as session:
-    if not session.exec(select(Employee)).first():
-        session.add(Employee(fullname="Reviewer John", email="reviewer@gophigo.com", password=hashlib.sha256("pass123".encode()).hexdigest(), role="Reviewer"))
-        session.add(Employee(fullname="Supervisor Mary", email="supervisor@gophigo.com", password=hashlib.sha256("pass123".encode()).hexdigest(), role="Supervisor"))
-        session.add(Employee(fullname="Approver Boss", email="approver@gophigo.com", password=hashlib.sha256("pass123".encode()).hexdigest(), role="Approver"))
+    # Check if this is the first time we are migrating
+    if not session.exec(select(Product)).first():
+        authors = session.exec(select(Author)).all()
+        for a in authors:
+            new_product = Product(
+                author_id=a.id,
+                title=a.book_title,
+                category="Book",
+                price=a.ebook_price,
+                cover_image=a.cover_image,
+                file_url=a.pdf_file,
+                product_code=a.book_id or f"GOP-2026-{a.id:04d}",
+                status="Approved"
+            )
+            session.add(new_product)
         session.commit()
-
 FOOTER = '<footer style="background-color: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px; font-family: Arial;"><p>&copy; 2026 Gophigo store. All rights reserved.</p></footer>'
 
 with Session(engine) as session:
@@ -175,7 +185,6 @@ with Session(engine) as session:
                 file_url=a.pdf_file,
                 product_code=a.book_id or f"GOP-2026-{a.id:04d}",
                 status=a.book_status
-                description=f"Venue: {event_venue} | Date: {event_date}
             )
             session.add(new_product)
         session.commit()
