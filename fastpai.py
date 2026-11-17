@@ -1169,3 +1169,31 @@ def process_upload_product(request: Request, title: str = Form(...), category: s
             <a href="/author-dashboard" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Go to Dashboard</a>
         </body></html>
         """
+@app.get("/run-migration-v2")
+def run_migration_v2():
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE product ADD COLUMN religion VARCHAR;"))
+            conn.commit()
+    except Exception:
+        pass
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE product ADD COLUMN sub_category VARCHAR;"))
+            conn.commit()
+    except Exception:
+        pass
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE product ADD COLUMN year_of_study VARCHAR;"))
+            conn.commit()
+    except Exception:
+        pass
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE product ADD COLUMN language VARCHAR;"))
+            conn.commit()
+    except Exception:
+        pass
+        
+    return {"status": "success", "message": "Product table updated with religion, sub_category, year_of_study, and language!"}
