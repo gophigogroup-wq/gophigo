@@ -80,7 +80,7 @@ class Product(SQLModel, table=True):
     product_code: str | None = Field(default=None, index=True, unique=True) # e.g., GOP-2026-0001
     status: str = Field(default="Approved") # Approved, Pending, Flagged
     is_hidden: bool = Field(default=False)
-        religion: str | None = Field(default=None) 
+    religion: str | None = Field(default=None) 
     sub_category: str | None = Field(default=None)
     year_of_study: str | None = Field(default=None) # First Year, Second Year, etc.
     language: str | None = Field(default=None)
