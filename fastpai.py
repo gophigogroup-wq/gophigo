@@ -1042,12 +1042,14 @@ from fastapi.responses import JSONResponse
 @app.get("/book/{book_id}")
 def direct_book_link(request: Request, book_id: str):
     with Session(engine) as session:
-        author = session.exec(select(Author).where(Author.book_id == book_id)).first()
-        if not author:
-            return HTMLResponse(content="<h1>Book not found</h1><p>The link you clicked is invalid or the book has been removed.</p>", status_code=404)
+        # Look in the NEW Product table for the code
+        product = session.exec(select(Product).where(Product.product_code == book_id)).first()
+        
+        if not product:
+            return HTMLResponse(content="<h1>Book not found</h1><p>The link you clicked is invalid or the product has been removed.</p>", status_code=404)
             
-        return RedirectResponse(url=f"/checkout/{author.id}?format=Ebook", status_code=303)
-@app.post("/snippe-webhook")
+        # Redirect to the new checkout-product route
+        return RedirectResponse(url=f"/checkout-product/{product.id}", status_code=303)@app.post("/snippe-webhook")
 async def snippe_webhook(request: Request):
     body = await request.body()
     try:
