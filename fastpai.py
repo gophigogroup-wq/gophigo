@@ -840,6 +840,8 @@ def admin_dashboard(request: Request):
             if p.status == "Flagged & Removed" or p.is_hidden:
                 btn = f"<a href='/admin-toggle-product/{p.id}?action=unhide' style='background:#3498db; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Unhide</a>"
                 status_display = "<span style='color:red;'>Hidden</span>"
+        html += f"""
+                </table>                
             else:
                 btn = f"<a href='/admin-toggle-product/{p.id}?action=hide' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Hide / Delete</a>"
                 status_display = "<span style='color:green;'>Active</span>"
@@ -1150,3 +1152,19 @@ def process_customer_login(response: Response, email: str = Form(...), password:
             res.set_cookie(key="customer_email", value=c.email, httponly=True)
             return res
     return HTMLResponse(content=f"<h1>Login Failed. <a href='/customer-login?next={next}'>Try again</a></h1>{FOOTER}", status_code=401)
+@app.get("/admin-toggle-product/{product_id}")
+def admin_toggle_product(request: Request, product_id: int, action: str):
+    if request.cookies.get("admin_session") != "true": 
+        return RedirectResponse(url="/admin-login", status_code=303)
+        
+    with Session(engine) as session:
+        p = session.get(Product, product_id)
+        if p:
+            if action == "hide":
+                p.is_hidden = True
+            elif action == "unhide":
+                p.is_hidden = False
+            session.add(p)
+            session.commit()
+            
+    return RedirectResponse(url="/admin", status_code=303)
