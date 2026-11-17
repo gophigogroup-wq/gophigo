@@ -249,13 +249,14 @@ def store(request: Request, search: str = None, category: str = "Book"):
             .btn-buy { display: block; width: 100%; padding: 10px; border-radius: 5px; text-decoration: none; font-weight: bold; color: white; margin-top: 5px; font-size: 14px; box-sizing: border-box; }
         </style>
         </head><body>
-                <div class="category-tabs">
+             <div class="category-tabs">
             <a href="/?category=Book" class="cat-btn {'active' if category == 'Book' else 'inactive'}">📚 Books</a>
             <a href="/?category=Manual" class="cat-btn {'active' if category == 'Manual' else 'inactive'}">🏫 University Manuals</a>
             <a href="/?category=Professional" class="cat-btn {'active' if category == 'Professional' else 'inactive'}">💼 Professional</a>
             <a href="/?category=Religious" class="cat-btn {'active' if category == 'Religious' else 'inactive'}">🙏 Religious</a>
             <a href="/?category=Newspaper" class="cat-btn {'active' if category == 'Newspaper' else 'inactive'}">📰 Newspapers</a>
         </div>
+        
         """ + get_navbar(request) + f"""
         <div class="store-header">
             <h1 style="color: #2c3e50; margin: 0; font-size: 24px;">Gophigo Store</h1>
