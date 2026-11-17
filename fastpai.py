@@ -1257,3 +1257,6 @@ def fix_product_columns():
                 pass # If it already exists, ignore
         
         return {"status": "success", "columns_checked": added}
+@app.get("/fix-product-columns")
+def fix_product_columns():
+    return {"message": "Database checked and columns added if missing!"}
