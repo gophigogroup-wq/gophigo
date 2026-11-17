@@ -110,6 +110,25 @@ with Session(engine) as session:
 
 FOOTER = '<footer style="background-color: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px; font-family: Arial;"><p>&copy; 2026 Gophigo store. All rights reserved.</p></footer>'
 
+with Session(engine) as session:
+    # Check if this is the first time we are migrating
+    if not session.exec(select(Product)).first():
+        authors = session.exec(select(Author)).all()
+        for a in authors:
+            # Migrate the old book into the new Product table
+            new_product = Product(
+                author_id=a.id,
+                title=a.book_title,
+                category="Book",
+                price=a.ebook_price,
+                cover_image=a.cover_image,
+                file_url=a.pdf_file,
+                product_code=a.book_id or f"GOP-2026-{a.id:04d}",
+                status=a.book_status
+            )
+            session.add(new_product)
+        session.commit()
+        
 def get_navbar(request: Request):
     a = request.cookies.get("author_email")
     c = request.cookies.get("customer_email")
