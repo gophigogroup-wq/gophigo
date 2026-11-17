@@ -175,6 +175,7 @@ with Session(engine) as session:
                 file_url=a.pdf_file,
                 product_code=a.book_id or f"GOP-2026-{a.id:04d}",
                 status=a.book_status
+                description=f"Venue: {event_venue} | Date: {event_date}
             )
             session.add(new_product)
         session.commit()
@@ -249,14 +250,14 @@ def store(request: Request, search: str = None, category: str = "Book"):
             .btn-buy { display: block; width: 100%; padding: 10px; border-radius: 5px; text-decoration: none; font-weight: bold; color: white; margin-top: 5px; font-size: 14px; box-sizing: border-box; }
         </style>
         </head><body>
-             <div class="category-tabs">
+        <div class="category-tabs">
             <a href="/?category=Book" class="cat-btn {'active' if category == 'Book' else 'inactive'}">📚 Books</a>
             <a href="/?category=Manual" class="cat-btn {'active' if category == 'Manual' else 'inactive'}">🏫 University Manuals</a>
-            <a href="/?category=Professional" class="cat-btn {'active' if category == 'Professional' else 'inactive'}">💼 Professional</a>
-            <a href="/?category=Religious" class="cat-btn {'active' if category == 'Religious' else 'inactive'}">🙏 Religious</a>
+            <a href="/?category=Ticket" class="cat-btn {'active' if category == 'Ticket' else 'inactive'}">🎟️ Tickets</a>
+            <a href="/?category=Media" class="cat-btn {'active' if category == 'Media' else 'inactive'}">🎬 Movies & Music</a>
             <a href="/?category=Newspaper" class="cat-btn {'active' if category == 'Newspaper' else 'inactive'}">📰 Newspapers</a>
-        </div>
-        
+            <a href="/?category=Religious" class="cat-btn {'active' if category == 'Religious' else 'inactive'}">🙏 Religious</a>
+        </div>        
         """ + get_navbar(request) + f"""
         <div class="store-header">
             <h1 style="color: #2c3e50; margin: 0; font-size: 24px;">Gophigo Store</h1>
@@ -1176,6 +1177,8 @@ def process_registration(
     institution: str = Form(None), 
     course_code: str = Form(None), 
     price: float = Form(...), 
+    event_venue: str = Form(None),
+    event_date: str = Form(None),
     cover: UploadFile = File(...), 
     pdf_file: UploadFile = File(None), 
     agree_terms: str = Form(None)
