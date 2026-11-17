@@ -1160,39 +1160,3 @@ def admin_toggle_product(request: Request, product_id: int, action: str):
             session.commit()
             
     return RedirectResponse(url="/admin", status_code=303)
-@app.get("/clean-mimi")
-def clean_mimi():
-    with Session(engine) as session:
-        # Find all products with "mimi" in the title (case-insensitive)
-        products = session.exec(select(Product).where(Product.title.ilike("%mimi%"))).all()
-        count = 0
-        for p in products:
-            session.delete(p) # Permanently delete it from the Product table
-            count += 1
-        session.commit()
-        return {"message": f"Successfully deleted {count} 'mimi' products from the store!"}
-@app.get("/nuclear-clean")
-def nuclear_clean():
-    with Session(engine) as session:
-        # 1. Delete ALL products
-        all_products = session.exec(select(Product)).all()
-        for p in all_products:
-            session.delete(p)
-        session.commit()
-        
-        # 2. Re-create "The Untouchable Life" from scratch
-        new_product = Product(
-            author_id=1,
-            title="The Untouchable Life",
-            category="Book",
-            price=10000.0,
-            cover_image="https://res.cloudinary.com/demo/image/upload/v1/gophigo_covers/untouchable", # We will fix this if it's empty
-            file_url="https://res.cloudinary.com/demo/image/upload/v1/gophigo_pdfs/untouchable.pdf",
-            product_code="GOP-2026-0003",
-            status="Approved"
-        )
-        session.add(new_product)
-        session.commit()
-        
-        return {"message": "Cleaned database. Only The Untouchable Life should remain."}
-    
