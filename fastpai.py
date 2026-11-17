@@ -772,6 +772,7 @@ def admin_dashboard(request: Request):
         
     with Session(engine) as session:
         authors = session.exec(select(Author)).all()
+        products = session.exec(select(Product)).all()
         purchases = session.exec(select(Purchase).where(Purchase.status == "paid")).all()
         
         total_sales_count = len(purchases)
@@ -825,22 +826,25 @@ def admin_dashboard(request: Request):
                     </form>
                 </div>
 
-                <!-- Authors & Books Table -->
-                <h3>📚 All Books & Authors</h3>
+                <!-- Products Table -->
+                <h3>📚 All Products</h3>
                 <table border="1" style="width:100%; background:white; border-collapse:collapse; margin-bottom: 40px;">
                     <tr style="background:#34495e; color:white;">
-                        <th>ID</th><th>Author Name</th><th>Book Title</th><th>Format</th><th>Status</th><th>Action</th>
+                        <th>ID</th><th>Title</th><th>Category</th><th>Price</th><th>Status</th><th>Action</th>
                     </tr>
         """
         
-        for a in authors:
-            if a.book_status == "Flagged & Removed":
-                btn = "<span style='color:red; font-weight:bold;'>🚫 Removed</span>"
-                status_display = "<span style='color:red;'>Flagged</span>"
-            elif a.is_hidden:
-                btn = f"<a href='/admin-delete-book/{a.id}?action=unhide' style='background:#3498db; color:white; padding:5px 10px; text-decoration:none; border-radius:3px; margin-right:5px;'>Unhide</a>"
-                status_display = "<span style='color:orange;'>Hidden</span>"
+        products = session.exec(select(Product)).all()
+        
+        for p in products:
+            if p.status == "Flagged & Removed" or p.is_hidden:
+                btn = f"<a href='/admin-toggle-product/{p.id}?action=unhide' style='background:#3498db; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Unhide</a>"
+                status_display = "<span style='color:red;'>Hidden</span>"
             else:
+                btn = f"<a href='/admin-toggle-product/{p.id}?action=hide' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Hide / Delete</a>"
+                status_display = "<span style='color:green;'>Active</span>"
+                
+            html += f"<tr><td>{p.id}</td><td>{p.title}</td><td>{p.category}</td><td>{p.price} TZS</td><td>{status_display}</td><td>{btn}</td></tr>"            else:
                 btn = f"<a href='/admin-delete-book/{a.id}?action=hide' style='background:#f39c12; color:white; padding:5px 10px; text-decoration:none; border-radius:3px; margin-right:5px;'>Hide</a>"
                 btn += f"<a href='/admin-delete-book/{a.id}?action=delete' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Red Flag</a>"
                 status_display = f"<span style='color:green;'>{a.book_status}</span>"
