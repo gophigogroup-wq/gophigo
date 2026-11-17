@@ -385,6 +385,7 @@ def process_payment_product(request: Request, product_id: int, phone: str = Form
                 if payment_url:
                     return RedirectResponse(url=payment_url, status_code=303)
                     
+                # If no URL, show the prompt page
                 return HTMLResponse(content=f"""
                 <html><body style="font-family:Arial; text-align:center; padding:50px;">
                     <h1 style="color:#2ecc71;">Payment Prompt Sent!</h1>
@@ -392,42 +393,18 @@ def process_payment_product(request: Request, product_id: int, phone: str = Form
                     <p>Please check your phone and enter your mobile money PIN to complete the purchase.</p>
                     <p style="color:#7f8c8d;">Reference: {purchase_ref}</p>
                     <br>
-                    <p style="color:#e74c3c; font-weight:bold;">Redirecting to your library in 5 seconds...</p>
-                    <meta http-equiv="refresh" content="5;url=/my-library" />
-                    <br>
-                    <a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Go to My Library Now</a>
+                    <a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">I have paid - Go to My Library</a>
                 </body></html>
                 """, status_code=200)
             else:
+                # THIS WILL SHOW THE EXACT SNIPPE ERROR ON THE SCREEN
                 purchase.status = "failed"
                 session.add(purchase)
                 session.commit()
-                return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
+                return HTMLResponse(content=f"<h1>Snippe Error</h1><p>Status Code: {response.status_code}</p><pre>{response.text}</pre>", status_code=400)
                 
         except Exception as e:
-            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)@app.get("/my-library", response_class=HTMLResponse)
-def my_library(request: Request):
-    customer_email = request.cookies.get("customer_email")
-    if not customer_email:
-        return RedirectResponse(url="/customer-login?next=/my-library", status_code=303)
-
-    with Session(engine) as session:
-        c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
-        purchases = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.status == "paid")).all()
-
-        if not purchases:
-            body = '<div style="text-align:center; padding:60px;"><h2>Your library is empty</h2><p>Books you buy will appear here.</p><a href="/" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Browse the Store</a></div>'
-        else:
-            body = '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:20px; padding:40px;">'
-            for p in purchases:
-                author = session.get(Author, p.author_id)
-                cover = author.cover_image if author else ""
-                action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>📖 Read</a>" if p.format_bought == "Ebook" else "<span style='display:block; padding:10px; color:#7f8c8d;'>📦 Shipping</span>"
-                body += f'<div style="background:white; border-radius:8px; padding:15px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.1);"><img src="{cover}" style="width:100%; height:220px; object-fit:cover; border-radius:4px; margin-bottom:10px;"><h3 style="margin:0 0 5px; font-size:16px;">{p.book_title}</h3><p style="color:#7f8c8d; font-size:13px; margin:0 0 10px;">{p.format_bought}</p>{action}<a href="/review/{p.id}" style="color:#f39c12; text-decoration:none; font-size:13px;">Leave a review</a></div>'
-            body += "</div>"
-
-        return f'<html><body style="font-family:Arial; background:#f4f4f4; margin:0;">{get_navbar(request)}<h1 style="text-align:center; color:#2c3e50; padding:20px;">My Library</h1>{body}{FOOTER}</body></html>'
-
+            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)
 @app.get("/review/{purchase_id}", response_class=HTMLResponse)
 def review_page(request: Request, purchase_id: int):
     with Session(engine) as session:
