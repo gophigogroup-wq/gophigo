@@ -48,6 +48,12 @@ with engine.connect() as conn:
         conn.commit()
     except Exception:
         pass   
+
+    try:
+        conn.execute(text("ALTER TABLE product ADD COLUMN year_of_study VARCHAR;"))
+        conn.commit()
+    except Exception:
+        pass
 class Author(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; book_title: str
@@ -74,7 +80,10 @@ class Product(SQLModel, table=True):
     product_code: str | None = Field(default=None, index=True, unique=True) # e.g., GOP-2026-0001
     status: str = Field(default="Approved") # Approved, Pending, Flagged
     is_hidden: bool = Field(default=False)
-    
+        religion: str | None = Field(default=None) 
+    sub_category: str | None = Field(default=None)
+    year_of_study: str | None = Field(default=None) # First Year, Second Year, etc.
+    language: str | None = Field(default=None)
 class Customer(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; reset_token: str | None = Field(default=None)
@@ -1010,3 +1019,146 @@ async def snippe_webhook(request: Request):
                 session.commit()
                 
     return {"status": "success"}
+@app.get("/upload-product", response_class=HTMLResponse)
+def upload_product_page(request: Request):
+    author_email = request.cookies.get("author_email")
+    if not author_email: return RedirectResponse(url="/login", status_code=303)
+    
+    return f"""
+    <html><body style="font-family:Arial; background:#f4f4f4;">
+        {get_navbar(request)}
+        <div style="padding:50px;">
+            <div style="background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;">
+                <h2 style="text-align:center;">Upload New Product</h2>
+                <form action="/upload-product" method="POST" enctype="multipart/form-data">
+                    
+                    <input type="text" name="title" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Product Title (e.g., Business Statistics or Kiswahili Bible)">
+                    
+                    <select name="category" id="categorySelect" required style="width:100%; padding:10px; margin:10px 0;" onchange="toggleFields()">
+                        <option value="Book">Book</option>
+                        <option value="Manual">University Manual</option>
+                        <option value="Professional">Professional Studies (CPA, Law, etc.)</option>
+                        <option value="Religious">Religious Material</option>
+                        <option value="Newspaper">Newspaper / Magazine</option>
+                    </select>
+
+                    <!-- University Fields -->
+                    <div id="uniFields" style="display:none; background:#f9f9f9; padding:10px; border-radius:5px; margin-bottom:10px;">
+                        <input type="text" name="institution" style="width:100%; padding:10px; margin:5px 0;" placeholder="University / Institution (e.g., CBE)">
+                        <select name="level_of_study" style="width:100%; padding:10px; margin:5px 0;">
+                            <option value="">-- Select Level --</option>
+                            <option value="Certificate">Certificate</option>
+                            <option value="Degree">Degree</option>
+                            <option value="Post Graduate">Post Graduate</option>
+                            <option value="PhD">PhD</option>
+                        </select>
+                        <select name="year_of_study" style="width:100%; padding:10px; margin:5px 0;">
+                            <option value="">-- Select Year --</option>
+                            <option value="First Year">First Year</option>
+                            <option value="Second Year">Second Year</option>
+                            <option value="Third Year">Third Year</option>
+                            <option value="Fourth Year">Fourth Year</option>
+                            <option value="Fifth Year">Fifth Year</option>
+                            <option value="Sixth Year">Sixth Year</option>
+                        </select>
+                        <input type="text" name="course_code" style="width:100%; padding:10px; margin:5px 0;" placeholder="Course Code (e.g., BUS 101)">
+                    </div>
+
+                    <!-- Religious Fields -->
+                    <div id="relFields" style="display:none; background:#f9f9f9; padding:10px; border-radius:5px; margin-bottom:10px;">
+                        <select name="religion" style="width:100%; padding:10px; margin:5px 0;">
+                            <option value="">-- Select Religion --</option>
+                            <option value="Christianity">Christianity</option>
+                            <option value="Islam">Islam</option>
+                            <option value="Judaism">Judaism</option>
+                            <option value="Traditional">Traditional</option>
+                        </select>
+                        <input type="text" name="sub_category" style="width:100%; padding:10px; margin:5px 0;" placeholder="Type (e.g., Bible, Quran, Hymn Book, Lesoni)">
+                        <select name="language" style="width:100%; padding:10px; margin:5px 0;">
+                            <option value="">-- Language --</option>
+                            <option value="Swahili">Swahili</option>
+                            <option value="English">English</option>
+                            <option value="Arabic">Arabic</option>
+                        </select>
+                    </div>
+                    
+                    <input type="number" name="price" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Price in TZS (e.g., 5000)">
+                    
+                    <label style="font-size:14px; font-weight:bold;">Cover Image:</label>
+                    <input type="file" name="cover" accept="image/*" required style="width:100%; padding:10px; margin:10px 0;">
+                    
+                    <label style="font-size:14px; font-weight:bold;">PDF / Document:</label>
+                    <input type="file" name="file" accept=".pdf" required style="width:100%; padding:10px; margin:10px 0;">
+                    
+                    <button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px; font-size:16px; font-weight:bold; cursor:pointer;">Upload & Publish</button>
+                </form>
+            </div>
+        </div>
+        {FOOTER}
+        
+        <script>
+            function toggleFields() {{
+                var cat = document.getElementById("categorySelect").value;
+                var uni = document.getElementById("uniFields");
+                var rel = document.getElementById("relFields");
+                
+                if (cat === "Manual" || cat === "Professional") {{
+                    uni.style.display = "block";
+                }} else {{
+                    uni.style.display = "none";
+                }}
+                
+                if (cat === "Religious") {{
+                    rel.style.display = "block";
+                }} else {{
+                    rel.style.display = "none";
+                }}
+            }}
+            toggleFields();
+        </script>
+    </body></html>
+    """
+@app.post("/upload-product")
+def process_upload_product(request: Request, title: str = Form(...), category: str = Form(...), institution: str = Form(None), level_of_study: str = Form(None), year_of_study: str = Form(None), course_code: str = Form(None), religion: str = Form(None), sub_category: str = Form(None), language: str = Form(None), price: float = Form(...), cover: UploadFile = File(...), file: UploadFile = File(...)):
+    author_email = request.cookies.get("author_email")
+    if not author_email: return RedirectResponse(url="/login", status_code=303)
+    
+    with Session(engine) as session:
+        author = session.exec(select(Author).where(Author.email == author_email)).first()
+        if not author: return RedirectResponse(url="/login", status_code=303)
+
+        cover_url = cloudinary.uploader.upload(cover.file, folder="gophigo_covers", resource_type="image").get("secure_url")
+        file_url = cloudinary.uploader.upload(file.file, folder="gophigo_docs", resource_type="raw", access_mode="public").get("secure_url")
+
+        current_year = datetime.now().year
+        total_products = len(session.exec(select(Product)).all())
+        product_code = f"GOP-{current_year}-{total_products + 1:04d}"
+
+        new_product = Product(
+            author_id=author.id,
+            title=title,
+            category=category,
+            institution=institution if institution else None,
+            level_of_study=level_of_study if level_of_study else None,
+            year_of_study=year_of_study if year_of_study else None,
+            course_code=course_code if course_code else None,
+            religion=religion if religion else None,
+            sub_category=sub_category if sub_category else None,
+            language=language if language else None,
+            price=price,
+            cover_image=cover_url,
+            file_url=file_url,
+            product_code=product_code,
+            status="Approved"
+        )
+        
+        session.add(new_product)
+        session.commit()
+        
+        return f"""
+        <html><body style="font-family:Arial; text-align:center; padding:100px; background:#f4f4f4;">
+            <h1 style="color:#2ecc71;">Product Uploaded Successfully!</h1>
+            <p>Your product <strong>{title}</strong> is now live.</p>
+            <a href="/author-dashboard" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Go to Dashboard</a>
+        </body></html>
+        """
