@@ -509,7 +509,13 @@ def register_page(request: Request):
                         <option value="Religious">Religious Book</option>
                         <option value="Professional">Professional / Business</option>
                     </select>
-
+                    <select name="category" required style="width:100%; padding:10px; margin:10px 0;">
+                        <option value="Book">General Book</option>
+                        <option value="Manual">University Manual / Lecture Notes</option>
+                        <option value="Newspaper">Newspaper / Magazine</option>
+                        <option value="Ticket">Event Ticket / Football Match</option>
+                        <option value="Media">Audio / Video / Movie</option>
+                    </select>
                     <!-- These fields only show if they select 'Manual' -->
                     <input type="text" name="institution" style="width:100%; padding:10px; margin:10px 0;" placeholder="University Name (e.g., CBE, UDSM) - Leave blank if not a Manual">
                     <input type="text" name="course_code" style="width:100%; padding:10px; margin:10px 0;" placeholder="Course Code (e.g., BUS 101) - Leave blank if not a Manual">
