@@ -1287,7 +1287,7 @@ def my_library(request: Request):
                 body += "</div>"
     except Exception as e:
         return HTMLResponse(content=f"<h1>Error</h1><p>{str(e)}</p>", status_code=500)
-            return f'<html><body style="font-family:Arial; background:#f4f4f4; margin:0;">{get_navbar(request)}<h1 style="text-align:center; color:#2c3e50; padding:20px;">My Library</h1>{body}{FOOTER}</body></html>'
+        return f'<html><body style="font-family:Arial; background:#f4f4f4; margin:0;">{get_navbar(request)}<h1 style="text-align:center; color:#2c3e50; padding:20px;">My Library</h1>{body}{FOOTER}</body></html>'
 @app.get("/check-purchases")
 def check_purchases():
         with Session(engine) as session:
