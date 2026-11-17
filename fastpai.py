@@ -1159,3 +1159,80 @@ def admin_toggle_product(request: Request, product_id: int, action: str):
             session.commit()
             
     return RedirectResponse(url="/admin", status_code=303)
+@app.post("/register", response_class=HTMLResponse)
+def process_registration(
+    request: Request, 
+    fullname: str = Form(...), 
+    email: str = Form(...), 
+    password: str = Form(...), 
+    book_title: str = Form(...), 
+    category: str = Form(...), 
+    institution: str = Form(None), 
+    course_code: str = Form(None), 
+    price: float = Form(...), 
+    cover: UploadFile = File(...), 
+    pdf_file: UploadFile = File(None), 
+    agree_terms: str = Form(None)
+):
+    if not agree_terms:
+        return HTMLResponse(content="<h1>Error</h1><p>You must agree to the Terms and Conditions to register.</p>", status_code=400)
+        
+    # 1. Upload files to Cloudinary
+    cover_url = cloudinary.uploader.upload(cover.file, folder="gophigo_covers", resource_type="image").get("secure_url")
+    pdf_url = None
+    if pdf_file and pdf_file.filename: 
+        pdf_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw", access_mode="public").get("secure_url")
+
+    # 2. Generate the Predictable Book ID
+    current_year = datetime.now().year
+    with Session(engine) as session:
+        total_products = len(session.exec(select(Product)).all())
+    new_book_id = f"GOP-{current_year}-{total_products + 1:04d}"
+
+    # 3. Save the Author first
+    with Session(engine) as session:
+        new_author = Author(
+            fullname=fullname, 
+            email=email, 
+            password=hashlib.sha256(password.encode()).hexdigest(), 
+            book_title=book_title, 
+            book_format=category, 
+            ebook_price=price, 
+            cover_image=cover_url, 
+            pdf_file=pdf_url,
+            book_id=new_book_id,
+            membership_status="Active" # Automatically active for now
+        )
+        session.add(new_author)
+        session.commit()
+        session.refresh(new_author)
+        
+        # 4. Save the Product!
+        new_product = Product(
+            author_id=new_author.id,
+            title=book_title,
+            category=category,
+            institution=institution,
+            course_code=course_code,
+            price=price,
+            cover_image=cover_url,
+            file_url=pdf_url,
+            product_code=new_book_id,
+            status="Approved"
+        )
+        session.add(new_product)
+        session.commit()
+
+    return f"""
+    <html><body style="font-family:Arial; background:#f4f4f4;">
+        {get_navbar(request)}
+        <div style="text-align:center; padding:100px;">
+            <h1 style="color:#2ecc71;">Registration Successful!</h1>
+            <p>Your unique product ID is: <strong style="font-size:24px; color:#2c3e50;">{new_book_id}</strong></p>
+            <p>Your share link is: <br> <code>www.gophigo.co.tz/book/{new_book_id}</code></p>
+            <br>
+            <a href="/login" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Go to Login</a>
+        </div>
+        {FOOTER}
+    </body></html>
+    """
