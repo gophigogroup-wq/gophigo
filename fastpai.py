@@ -1160,3 +1160,14 @@ def admin_toggle_product(request: Request, product_id: int, action: str):
             session.commit()
             
     return RedirectResponse(url="/admin", status_code=303)
+@app.get("/clean-mimi")
+def clean_mimi():
+    with Session(engine) as session:
+        # Find all products with "mimi" in the title (case-insensitive)
+        products = session.exec(select(Product).where(Product.title.ilike("%mimi%"))).all()
+        count = 0
+        for p in products:
+            session.delete(p) # Permanently delete it from the Product table
+            count += 1
+        session.commit()
+        return {"message": f"Successfully deleted {count} 'mimi' products from the store!"}
