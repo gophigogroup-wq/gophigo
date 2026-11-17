@@ -1302,3 +1302,23 @@ def check_purchases():
                 "customer_id": p.customer_id
             })
         return {"purchases": results}
+@app.post("/snippe-webhook")
+async def snippe_webhook(request: Request):
+    body = await request.body()
+    try:
+        event = json.loads(body)
+    except:
+        return {"status": "error", "message": "invalid json"}
+
+    metadata = event.get("data", {}).get("metadata", {})
+    purchase_ref = metadata.get("purchase_reference")
+    
+    if purchase_ref:
+        with Session(engine) as session:
+            purchase = session.exec(select(Purchase).where(Purchase.reference == purchase_ref)).first()
+            if purchase and purchase.status != "paid":
+                purchase.status = "paid"
+                session.add(purchase)
+                session.commit()
+                
+    return {"status": "success"}
