@@ -292,8 +292,14 @@ def store(request: Request, search: str = None, category: str = "Book"):
             stars = "⭐" * int(round(avg)) if reviews else "No reviews yet"
             
             price_display = f"{p.price:,.0f}"
-            extra_info = f"{p.institution} | {p.course_code}" if p.category == "Manual" else p.category
-
+             if p.category == "Manual":
+                extra_info = f"{p.institution} | {p.course_code}"
+            elif p.category == "Ticket":
+                extra_info = "🎟️ Event Ticket"
+            elif p.category == "Media":
+                extra_info = "🎬 Media / Video"
+            else:
+                extra_info = p.category
             html += f"""
             <div class="book-card">
                 <div>
