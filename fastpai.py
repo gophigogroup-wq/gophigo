@@ -489,51 +489,50 @@ def author_portal(request: Request):
 
 @app.get("/register", response_class=HTMLResponse)
 def register_page(request: Request):
-    return '<html><body style="font-family:Arial; background:#f4f4f4;">' + get_navbar(request) + '<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;"><h2 style="text-align:center;">Author Registration</h2><form action="/register" method="POST" enctype="multipart/form-data"><input type="text" name="fullname" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Name"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Book Title"><select name="book_format" style="width:100%; padding:10px; margin:10px 0;"><option value="Ebook">Ebook</option><option value="Paperback">Paperback</option><option value="Both">Both</option></select><input type="number" name="ebook_price" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Ebook Price"><input type="number" name="paperback_price" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Paperback Price"><input type="file" name="cover" accept="image/*" required style="width:100%; padding:10px; margin:10px 0;"><input type="file" name="pdf_file" accept=".pdf" style="width:100%; padding:10px; margin:10px 0;"><div style="margin: 15px 0; display: flex; align-items: flex-start; gap: 10px;"><input type="checkbox" name="agree_terms" value="yes" required style="margin-top: 5px; transform: scale(1.5);"><label style="font-size: 14px; color: #555;">I declare that I am the copyright owner of this book and I agree to the <a href="/terms" target="_blank" style="color: #3498db;">Gophigo Author Terms & Conditions</a>, including the indemnification clause.</label></div><button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px; font-size:16px; font-weight:bold; cursor:pointer;">Submit Registration</button></form></div></div>' + FOOTER + '</body></html>'
-
-@app.post("/register", response_class=HTMLResponse)
-def process_registration(request: Request, fullname: str = Form(...), email: str = Form(...), password: str = Form(...), book_title: str = Form(...), book_format: str = Form(...), ebook_price: float = Form(...), paperback_price: float = Form(...), cover: UploadFile = File(...), pdf_file: UploadFile = File(None), agree_terms: str = Form(None)):
-    
-    if not agree_terms:
-        return HTMLResponse(content="<h1>Error</h1><p>You must agree to the Terms and Conditions to register.</p>", status_code=400)
-        
-    cover_url = cloudinary.uploader.upload(cover.file, folder="gophigo_covers", resource_type="image").get("secure_url")
-    pdf_url = None
-    if pdf_file and pdf_file.filename: 
-        pdf_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw", access_mode="public").get("secure_url")
-
-    # Generate the Predictable Book ID (e.g., GOP-2026-0001)
-    current_year = datetime.now().year
-    with Session(engine) as session:
-        total_books = len(session.exec(select(Author)).all())
-    new_book_id = f"GOP-{current_year}-{total_books + 1:04d}"
-
-    new_author = Author(
-        fullname=fullname, 
-        email=email, 
-        password=hashlib.sha256(password.encode()).hexdigest(), 
-        book_title=book_title, 
-        book_format=book_format, 
-        ebook_price=ebook_price, 
-        paperback_price=paperback_price, 
-        cover_image=cover_url, 
-        pdf_file=pdf_url,
-        book_id=new_book_id
-    )
-    
-    with Session(engine) as session: 
-        session.add(new_author)
-        session.commit()
-
     return f"""
     <html><body style="font-family:Arial; background:#f4f4f4;">
         {get_navbar(request)}
-        <div style="text-align:center; padding:100px;">
-            <h1 style="color:#2ecc71;">Registration Successful!</h1>
-            <p>Your Book ID is: <strong style="font-size:24px; color:#2c3e50;">{new_book_id}</strong></p>
-            <p>Your unique share link is: <br> <code>www.gophigo.co.tz/book/{new_book_id}</code></p>
-            <br>
-            <a href="/login" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Go to Login</a>
+        <div style="padding:50px;">
+            <div style="background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;">
+                <h2 style="text-align:center;">Author / Lecturer Registration</h2>
+                <form action="/register" method="POST" enctype="multipart/form-data">
+                    <input type="text" name="fullname" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Full Name">
+                    <input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email">
+                    <input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password">
+                    
+                    <input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Title of Book / Manual">
+                    
+                    <select name="category" required style="width:100%; padding:10px; margin:10px 0;">
+                        <option value="Book">General Book</option>
+                        <option value="Manual">University Manual / Lecture Notes</option>
+                        <option value="Newspaper">Newspaper / Magazine</option>
+                        <option value="Religious">Religious Book</option>
+                        <option value="Professional">Professional / Business</option>
+                    </select>
+
+                    <!-- These fields only show if they select 'Manual' -->
+                    <input type="text" name="institution" style="width:100%; padding:10px; margin:10px 0;" placeholder="University Name (e.g., CBE, UDSM) - Leave blank if not a Manual">
+                    <input type="text" name="course_code" style="width:100%; padding:10px; margin:10px 0;" placeholder="Course Code (e.g., BUS 101) - Leave blank if not a Manual">
+                    
+                    <input type="number" name="price" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Price (TZS)">
+                    
+                    <label style="font-size:14px; font-weight:bold;">Upload Cover Image:</label>
+                    <input type="file" name="cover" accept="image/*" required style="width:100%; padding:10px; margin:10px 0;">
+                    
+                    <label style="font-size:14px; font-weight:bold;">Upload PDF / Document:</label>
+                    <input type="file" name="pdf_file" accept=".pdf" style="width:100%; padding:10px; margin:10px 0;">
+                    
+                    <div style="margin: 15px 0; display: flex; align-items: flex-start; gap: 10px;">
+                        <input type="checkbox" name="agree_terms" value="yes" required style="margin-top: 5px; transform: scale(1.5);">
+                        <label style="font-size: 14px; color: #555;">
+                            I declare that I am the copyright owner of this work and I agree to the
+                            <a href="/terms" target="_blank" style="color: #3498db;">Gophigo Terms & Conditions</a>.
+                        </label>
+                    </div>
+                    
+                    <button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px; font-size:16px; font-weight:bold; cursor:pointer;">Submit Registration</button>
+                </form>
+            </div>
         </div>
         {FOOTER}
     </body></html>
