@@ -1291,16 +1291,3 @@ def my_library(request: Request):
         import traceback
         error_details = traceback.format_exc()
         return HTMLResponse(content=f"<h1>Library Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)
-@app.get("/debug-webhook")
-def debug_webhook():
-    # This just returns the last 5 purchases so we can see the status
-    with Session(engine) as session:
-        purchases = session.exec(select(Purchase).order_by(Purchase.id.desc()).limit(5)).all()
-        results = []
-        for p in purchases:
-            results.append({
-                "id": p.id,
-                "ref": p.reference,
-                "status": p.status
-            })
-        return {"recent_purchases": results}
