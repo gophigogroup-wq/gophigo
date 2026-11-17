@@ -827,7 +827,7 @@ def admin_dashboard(request: Request):
                 </div>
 
                 <!-- Products Table -->
-<h3>📚 All Products</h3>
+               <h3>📚 All Products</h3>
                 <table border="1" style="width:100%; background:white; border-collapse:collapse; margin-bottom: 40px;">
                     <tr style="background:#34495e; color:white;">
                         <th>ID</th><th>Title</th><th>Category</th><th>Price</th><th>Status</th><th>Action</th>
