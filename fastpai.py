@@ -158,14 +158,21 @@ def get_navbar(request: Request):
     </nav>
     '''
 @app.get("/", response_class=HTMLResponse)
-def store(request: Request, search: str = None):
+def store(request: Request, search: str = None, category: str = "Book"):
     with Session(engine) as session:
-        query = select(Author).where(Author.membership_status == "Active", Author.book_status == "Approved", Author.is_hidden == False)
-        if search: 
-            query = query.where((Author.book_title.contains(search)) | (Author.fullname.contains(search)))
-            
-        active_authors = session.exec(query).all()
+        # 1. Get only approved, visible products
+        query = select(Product).where(Product.status == "Approved", Product.is_hidden == False)
         
+        # 2. Filter by category (Book vs Manual vs Newspaper)
+        query = query.where(Product.category == category)
+        
+        # 3. Search filter
+        if search:
+            query = query.where(Product.title.contains(search))
+            
+        products = session.exec(query).all()
+
+        # 4. Build the HTML
         html = """
         <html><head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -176,6 +183,13 @@ def store(request: Request, search: str = None):
             .search-bar { max-width: 500px; margin: 15px auto 0; display: flex; gap: 10px; padding: 0 15px; }
             .search-bar input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
             .search-bar button { background: #3498db; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+            
+            /* Category Tabs */
+            .category-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+            .cat-btn { padding: 10px 20px; border-radius: 30px; text-decoration: none; font-weight: bold; font-size: 14px; transition: 0.2s; }
+            .cat-btn.active { background: #2c3e50; color: white; }
+            .cat-btn.inactive { background: white; color: #7f8c8d; border: 1px solid #ddd; }
+            
             .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; padding: 15px; max-width: 1200px; margin: auto; }
             .book-card { background: white; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s; }
             .book-card:hover { transform: translateY(-5px); }
@@ -189,41 +203,55 @@ def store(request: Request, search: str = None):
         <div class="store-header">
             <h1 style="color: #2c3e50; margin: 0; font-size: 24px;">Gophigo Store</h1>
             <form action="/" method="GET" class="search-bar">
-                <input type="text" name="search" placeholder="Search books or authors..." value="{search or ''}">
+                <input type="hidden" name="category" value="{category}">
+                <input type="text" name="search" placeholder="Search..." value="{search or ''}">
                 <button type="submit">Search</button>
             </form>
         </div>
+        
+        <!-- Category Tabs -->
+        <div class="category-tabs">
+            <a href="/?category=Book" class="cat-btn {'active' if category == 'Book' else 'inactive'}">📚 Books</a>
+            <a href="/?category=Manual" class="cat-btn {'active' if category == 'Manual' else 'inactive'}">🏫 University Manuals</a>
+            <a href="/?category=Newspaper" class="cat-btn {'active' if category == 'Newspaper' else 'inactive'}">📰 Newspapers</a>
+        </div>
+
         <div class="book-grid">
         """
-        if not active_authors: 
-            html += "<p style='text-align:center; grid-column:1/-1;'>No books found.</p>"
+        
+        if not products:
+            html += "<p style='text-align:center; grid-column:1/-1; color:#7f8c8d;'>No products found in this category.</p>"
             
-        for a in active_authors:
-            reviews = session.exec(select(Review).where(Review.author_id == a.id)).all()
+        for p in products:
+            # Get author name
+            author = session.get(Author, p.author_id)
+            author_name = author.fullname if author else "Gophigo"
+            
+            # Get reviews (for books)
+            reviews = session.exec(select(Review).where(Review.author_id == p.author_id)).all()
             avg = sum(r.rating for r in reviews)/len(reviews) if reviews else 0
-            stars = "*" * int(round(avg)) if reviews else "No reviews yet"
-            btns = ""
-            if a.book_format in ["Ebook","Both"]: 
-                btns += f"<a href='/checkout/{a.id}?format=Ebook' class='btn-buy' style='background:#3498db;'>Buy Ebook ({a.ebook_price:,.0f} TZS)</a>"
-            if a.book_format in ["Paperback","Both"]:
-                btns += f"<a href='/checkout/{a.id}?format=Paperback' class='btn-buy' style='background:#f39c12;'>Buy Paperback ({a.paperback_price:,.0f} TZS)</a>"
+            stars = "⭐" * int(round(avg)) if reviews else "No reviews yet"
             
+            price_display = f"{p.price:,.0f}"
+            extra_info = f"{p.institution} | {p.course_code}" if p.category == "Manual" else p.category
+
             html += f"""
             <div class="book-card">
                 <div>
-                    <img src="{a.cover_image}" alt="{a.book_title}">
-                    <h3 class="book-title">{a.book_title}</h3>
-                    <p class="book-author">By {a.fullname}</p>
-                    <p style="color:#f1c40f; margin:0 0 10px; font-size:14px;">{stars} ({len(reviews)})</p>
+                    <img src="{p.cover_image}" alt="{p.title}">
+                    <h3 class="book-title">{p.title}</h3>
+                    <p class="book-author">By {author_name}</p>
+                    <p style="color:#f1c40f; margin:0 0 10px; font-size:14px;">{stars}</p>
                 </div>
                 <div>
-                    <span style="background:#e0e0e0; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; display:inline-block; margin-bottom:10px;">{a.book_format}</span>
-                    {btns}
+                    <span style="background:#e0e0e0; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; display:inline-block; margin-bottom:10px;">{extra_info}</span>
+                    <a href="/checkout-product/{p.id}" class="btn-buy" style="background:#3498db;">Buy ({price_display} TZS)</a>
                 </div>
             </div>
-            """   
-        return html + f"</div></div>{FOOTER}</body></html>"
-
+            """
+            
+        return html + f"</div>{FOOTER}</body></html>"
+        
 @app.get("/checkout/{author_id}", response_class=HTMLResponse)
 def checkout(request: Request, author_id: int, format: str = "Ebook"):
     customer_email = request.cookies.get("customer_email")
