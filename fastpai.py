@@ -47,7 +47,27 @@ with engine.connect() as conn:
         conn.execute(text("ALTER TABLE author ADD COLUMN book_id VARCHAR;"))
         conn.commit()
     except Exception:
-        pass   
+        pass  
+    try:
+        conn.execute(text("ALTER TABLE product ADD COLUMN religion VARCHAR;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE product ADD COLUMN year_of_study VARCHAR;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE product ADD COLUMN language VARCHAR;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE product ADD COLUMN sub_category VARCHAR;"))
+        conn.commit()
+    except Exception:
+        pass
 
     try:
         conn.execute(text("ALTER TABLE product ADD COLUMN year_of_study VARCHAR;"))
