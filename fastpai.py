@@ -59,6 +59,21 @@ class Author(SQLModel, table=True):
     cover_image: str | None = Field(default=None); pdf_file: str | None = Field(default=None) 
     is_read: bool = Field(default=False)
     is_hidden: bool = Field(default=False) # NEW: For soft delete
+
+class Product(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    author_id: int = Field(foreign_key="author.id") # Links to the Author/Seller
+    title: str
+    category: str = Field(default="Book") # Book, Newspaper, Manual, Ticket
+    institution: str | None = Field(default=None) # e.g., CBE, UDSM (for Manuals)
+    course_code: str | None = Field(default=None) # e.g., BUS 101 (for Manuals)
+    price: float = Field(default=0.0)
+    description: str | None = Field(default=None)
+    cover_image: str | None = Field(default=None)
+    file_url: str | None = Field(default=None) # The PDF or Audio/Video link
+    product_code: str | None = Field(default=None, index=True, unique=True) # e.g., GOP-2026-0001
+    status: str = Field(default="Approved") # Approved, Pending, Flagged
+    is_hidden: bool = Field(default=False)
     
 class Customer(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
