@@ -1217,3 +1217,22 @@ def run_migration_v2():
         pass
         
     return {"status": "success", "message": "Product table updated with religion, sub_category, year_of_study, and language!"}
+@app.get("/fix-product-columns")
+def fix_product_columns():
+    with engine.connect() as conn:
+        columns = [
+            "religion VARCHAR",
+            "sub_category VARCHAR",
+            "year_of_study VARCHAR",
+            "language VARCHAR"
+        ]
+        added = []
+        for col in columns:
+            try:
+                conn.execute(text(f"ALTER TABLE product ADD COLUMN {col};"))
+                conn.commit()
+                added.append(col.split()[0])
+            except Exception:
+                pass # If it already exists, ignore
+        
+        return {"status": "success", "columns_checked": added}
