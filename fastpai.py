@@ -1042,7 +1042,9 @@ def direct_book_link(request: Request, book_id: str):
             return RedirectResponse(url=f"/customer-login?next=/checkout-product/{product.id}", status_code=303)
             
         # If logged in, go straight to checkout
-        return RedirectResponse(url=f"/checkout-product/{product.id}", status_code=303)@app.post("/upload-product")
+        return RedirectResponse(url=f"/checkout-product/{product.id}", status_code=303)
+        
+@app.post("/upload-product")
 def process_upload_product(request: Request, title: str = Form(...), category: str = Form(...), institution: str = Form(None), level_of_study: str = Form(None), year_of_study: str = Form(None), course_code: str = Form(None), religion: str = Form(None), sub_category: str = Form(None), language: str = Form(None), price: float = Form(...), cover: UploadFile = File(...), file: UploadFile = File(...)):
     author_email = request.cookies.get("author_email")
     if not author_email: return RedirectResponse(url="/login", status_code=303)
