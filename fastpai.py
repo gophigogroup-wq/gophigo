@@ -1041,125 +1041,20 @@ from fastapi.responses import JSONResponse
 
 @app.get("/book/{book_id}")
 def direct_book_link(request: Request, book_id: str):
-    try:
-        with Session(engine) as session:
-            # Look in the NEW Product table for the code
-            product = session.exec(select(Product).where(Product.product_code == book_id)).first()
-            
-            if not product:
-                # Let's see what products actually exist!
-                all_products = session.exec(select(Product)).all()
-                debug_msg = f"<h1>Book Not Found</h1><p>Looked for: {book_id}</p>"
-                debug_msg += "<h3>Products in Database:</h3><ul>"
-                for p in all_products:
-                    debug_msg += f"<li>ID: {p.id} | Title: {p.title} | Code: {p.product_code}</li>"
-                debug_msg += "</ul>"
-                return HTMLResponse(content=debug_msg, status_code=404)
-                
-            # Redirect to the new checkout-product route
-            return RedirectResponse(url=f"/checkout-product/{product.id}", status_code=303)
-    except Exception as e:
-        import traceback
-        return HTMLResponse(content=f"<h1>Debug Error</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", status_code=500)@app.get("/upload-product", response_class=HTMLResponse)
-def upload_product_page(request: Request):
-    author_email = request.cookies.get("author_email")
-    if not author_email: return RedirectResponse(url="/login", status_code=303)
-    
-    return f"""
-    <html><body style="font-family:Arial; background:#f4f4f4;">
-        {get_navbar(request)}
-        <div style="padding:50px;">
-            <div style="background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;">
-                <h2 style="text-align:center;">Upload New Product</h2>
-                <form action="/upload-product" method="POST" enctype="multipart/form-data">
-                    
-                    <input type="text" name="title" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Product Title (e.g., Business Statistics or Kiswahili Bible)">
-                    
-                    <select name="category" id="categorySelect" required style="width:100%; padding:10px; margin:10px 0;" onchange="toggleFields()">
-                        <option value="Book">Book</option>
-                        <option value="Manual">University Manual</option>
-                        <option value="Professional">Professional Studies (CPA, Law, etc.)</option>
-                        <option value="Religious">Religious Material</option>
-                        <option value="Newspaper">Newspaper / Magazine</option>
-                    </select>
-
-                    <!-- University Fields -->
-                    <div id="uniFields" style="display:none; background:#f9f9f9; padding:10px; border-radius:5px; margin-bottom:10px;">
-                        <input type="text" name="institution" style="width:100%; padding:10px; margin:5px 0;" placeholder="University / Institution (e.g., CBE)">
-                        <select name="level_of_study" style="width:100%; padding:10px; margin:5px 0;">
-                            <option value="">-- Select Level --</option>
-                            <option value="Certificate">Certificate</option>
-                            <option value="Degree">Degree</option>
-                            <option value="Post Graduate">Post Graduate</option>
-                            <option value="PhD">PhD</option>
-                        </select>
-                        <select name="year_of_study" style="width:100%; padding:10px; margin:5px 0;">
-                            <option value="">-- Select Year --</option>
-                            <option value="First Year">First Year</option>
-                            <option value="Second Year">Second Year</option>
-                            <option value="Third Year">Third Year</option>
-                            <option value="Fourth Year">Fourth Year</option>
-                            <option value="Fifth Year">Fifth Year</option>
-                            <option value="Sixth Year">Sixth Year</option>
-                        </select>
-                        <input type="text" name="course_code" style="width:100%; padding:10px; margin:5px 0;" placeholder="Course Code (e.g., BUS 101)">
-                    </div>
-
-                    <!-- Religious Fields -->
-                    <div id="relFields" style="display:none; background:#f9f9f9; padding:10px; border-radius:5px; margin-bottom:10px;">
-                        <select name="religion" style="width:100%; padding:10px; margin:5px 0;">
-                            <option value="">-- Select Religion --</option>
-                            <option value="Christianity">Christianity</option>
-                            <option value="Islam">Islam</option>
-                            <option value="Judaism">Judaism</option>
-                            <option value="Traditional">Traditional</option>
-                        </select>
-                        <input type="text" name="sub_category" style="width:100%; padding:10px; margin:5px 0;" placeholder="Type (e.g., Bible, Quran, Hymn Book, Lesoni)">
-                        <select name="language" style="width:100%; padding:10px; margin:5px 0;">
-                            <option value="">-- Language --</option>
-                            <option value="Swahili">Swahili</option>
-                            <option value="English">English</option>
-                            <option value="Arabic">Arabic</option>
-                        </select>
-                    </div>
-                    
-                    <input type="number" name="price" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Price in TZS (e.g., 5000)">
-                    
-                    <label style="font-size:14px; font-weight:bold;">Cover Image:</label>
-                    <input type="file" name="cover" accept="image/*" required style="width:100%; padding:10px; margin:10px 0;">
-                    
-                    <label style="font-size:14px; font-weight:bold;">PDF / Document:</label>
-                    <input type="file" name="file" accept=".pdf" required style="width:100%; padding:10px; margin:10px 0;">
-                    
-                    <button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px; font-size:16px; font-weight:bold; cursor:pointer;">Upload & Publish</button>
-                </form>
-            </div>
-        </div>
-        {FOOTER}
+    with Session(engine) as session:
+        product = session.exec(select(Product).where(Product.product_code == book_id)).first()
         
-        <script>
-            function toggleFields() {{
-                var cat = document.getElementById("categorySelect").value;
-                var uni = document.getElementById("uniFields");
-                var rel = document.getElementById("relFields");
-                
-                if (cat === "Manual" || cat === "Professional") {{
-                    uni.style.display = "block";
-                }} else {{
-                    uni.style.display = "none";
-                }}
-                
-                if (cat === "Religious") {{
-                    rel.style.display = "block";
-                }} else {{
-                    rel.style.display = "none";
-                }}
-            }}
-            toggleFields();
-        </script>
-    </body></html>
-    """
-@app.post("/upload-product")
+        if not product:
+            return HTMLResponse(content="<h1>Book not found</h1>", status_code=404)
+            
+        # Check if they are logged in
+        customer_email = request.cookies.get("customer_email")
+        if not customer_email:
+            # Send to login, but tell it to come BACK to this specific checkout page
+            return RedirectResponse(url=f"/customer-login?next=/checkout-product/{product.id}", status_code=303)
+            
+        # If logged in, go straight to checkout
+        return RedirectResponse(url=f"/checkout-product/{product.id}", status_code=303)@app.post("/upload-product")
 def process_upload_product(request: Request, title: str = Form(...), category: str = Form(...), institution: str = Form(None), level_of_study: str = Form(None), year_of_study: str = Form(None), course_code: str = Form(None), religion: str = Form(None), sub_category: str = Form(None), language: str = Form(None), price: float = Form(...), cover: UploadFile = File(...), file: UploadFile = File(...)):
     author_email = request.cookies.get("author_email")
     if not author_email: return RedirectResponse(url="/login", status_code=303)
