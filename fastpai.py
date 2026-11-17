@@ -1,4 +1,4 @@
-@app.get("/customer-logifrom fastapi import FastAPI, Form, Depends, HTTPException, status, Request, Response, UploadFile, File
+@app.get("/customer-login from fastapi import FastAPI, Form, Depends, HTTPException, status, Request, Response, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import SQLModel, Field, Session, create_engine, select
