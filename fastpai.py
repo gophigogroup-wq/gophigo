@@ -794,7 +794,15 @@ def admin_dashboard(request: Request):
     with Session(engine) as session:
         authors = session.exec(select(Author)).all()
         products = session.exec(select(Product)).all()
-              raw_purchases = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.status == "paid")).all()
+                          raw_purchases = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.status == "paid")).all()
+            
+            # Remove duplicates based on the book title
+            seen = set()
+            purchases = []
+            for p in raw_purchases:
+                if p.book_title not in seen:
+                    seen.add(p.book_title)
+                    purchases.append(p)
             
             # Remove duplicates based on the book title
             seen = set()
