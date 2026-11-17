@@ -1041,36 +1041,26 @@ from fastapi.responses import JSONResponse
 
 @app.get("/book/{book_id}")
 def direct_book_link(request: Request, book_id: str):
-    with Session(engine) as session:
-        # Look in the NEW Product table for the code
-        product = session.exec(select(Product).where(Product.product_code == book_id)).first()
-        
-        if not product:
-            return HTMLResponse(content="<h1>Book not found</h1><p>The link you clicked is invalid or the product has been removed.</p>", status_code=404)
-            
-        # Redirect to the new checkout-product route
-        return RedirectResponse(url=f"/checkout-product/{product.id}", status_code=303)@app.post("/snippe-webhook")
-async def snippe_webhook(request: Request):
-    body = await request.body()
     try:
-        event = json.loads(body)
-    except:
-        return {"status": "error", "message": "invalid json"}
-
-    # Extract the reference
-    metadata = event.get("data", {}).get("metadata", {})
-    purchase_ref = metadata.get("purchase_reference")
-    
-    if purchase_ref:
         with Session(engine) as session:
-            purchase = session.exec(select(Purchase).where(Purchase.reference == purchase_ref)).first()
-            if purchase and purchase.status != "paid":
-                purchase.status = "paid"
-                session.add(purchase)
-                session.commit()
+            # Look in the NEW Product table for the code
+            product = session.exec(select(Product).where(Product.product_code == book_id)).first()
+            
+            if not product:
+                # Let's see what products actually exist!
+                all_products = session.exec(select(Product)).all()
+                debug_msg = f"<h1>Book Not Found</h1><p>Looked for: {book_id}</p>"
+                debug_msg += "<h3>Products in Database:</h3><ul>"
+                for p in all_products:
+                    debug_msg += f"<li>ID: {p.id} | Title: {p.title} | Code: {p.product_code}</li>"
+                debug_msg += "</ul>"
+                return HTMLResponse(content=debug_msg, status_code=404)
                 
-    return {"status": "success"}
-@app.get("/upload-product", response_class=HTMLResponse)
+            # Redirect to the new checkout-product route
+            return RedirectResponse(url=f"/checkout-product/{product.id}", status_code=303)
+    except Exception as e:
+        import traceback
+        return HTMLResponse(content=f"<h1>Debug Error</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", status_code=500)@app.get("/upload-product", response_class=HTMLResponse)
 def upload_product_page(request: Request):
     author_email = request.cookies.get("author_email")
     if not author_email: return RedirectResponse(url="/login", status_code=303)
