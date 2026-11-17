@@ -846,12 +846,12 @@ def admin_dashboard(request: Request):
                 btn = f"<a href='/admin-toggle-product/{p.id}?action=hide' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Hide / Delete</a>"
                 status_display = "<span style='color:green;'>Active</span>"
                 
-            html += f"<tr><td>{p.id}</td><td>{p.title}</td><td>{p.category}</td><td>{p.price} TZS</td><td>{status_display}</td><td>{btn}</td></tr>"            else:
+        html += f"<tr><td>{p.id}</td><td>{p.title}</td><td>{p.category}</td><td>{p.price} TZS</td><td>{status_display}</td><td>{btn}</td></tr>"            else:
                 btn = f"<a href='/admin-delete-book/{a.id}?action=hide' style='background:#f39c12; color:white; padding:5px 10px; text-decoration:none; border-radius:3px; margin-right:5px;'>Hide</a>"
                 btn += f"<a href='/admin-delete-book/{a.id}?action=delete' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Red Flag</a>"
                 status_display = f"<span style='color:green;'>{a.book_status}</span>"
                 
-            html += f"<tr><td>{a.id}</td><td>{a.fullname}</td><td>{a.book_title}</td><td>{a.book_format}</td><td>{status_display}</td><td>{btn}</td></tr>"
+        html += f"<tr><td>{p.id}</td><td>{p.title}</td><td>{p.category}</td><td>{p.price} TZS</td><td>{status_display}</td><td>{btn}</td></tr>"
             
         html += f"""
                 </table>
@@ -859,6 +859,7 @@ def admin_dashboard(request: Request):
             {FOOTER}
         </body></html>
         """
+        
         return html
 @app.get("/admin-logout")
 def admin_logout():
