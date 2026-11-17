@@ -1262,72 +1262,35 @@ def process_registration(
     """
 @app.get("/my-library", response_class=HTMLResponse)
 def my_library(request: Request):
-    customer_email = request.cookies.get("customer_email")
-    if not customer_email:
-        return RedirectResponse(url="/customer-login?next=/my-library", status_code=303)
-
-    with Session(engine) as session:
-        c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
-        if not c:
+    try:
+        customer_email = request.cookies.get("customer_email")
+        if not customer_email:
             return RedirectResponse(url="/customer-login?next=/my-library", status_code=303)
 
-        # Get paid purchases for this specific customer
-        purchases = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.status == "paid")).all()
-
-        if not purchases:
-            body = '<div style="text-align:center; padding:60px;"><h2>Your library is empty</h2><p>Items you buy will appear here. (Make sure you are logged in with the account you used to pay).</p><a href="/" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Browse the Store</a></div>'
-        else:
-            body = '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:20px; padding:40px;">'
-            for p in purchases:
-                # Try to find the product to get the cover image
-                product = session.exec(select(Product).where(Product.title == p.book_title)).first()
-                cover = product.cover_image if product else "https://via.placeholder.com/220x300?text=No+Cover"
-                
-                action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>📖 Read / View</a>"
-                
-                body += f'<div style="background:white; border-radius:8px; padding:15px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.1);"><img src="{cover}" style="width:100%; height:220px; object-fit:cover; border-radius:4px; margin-bottom:10px;"><h3 style="margin:0 0 5px; font-size:16px;">{p.book_title}</h3><p style="color:#7f8c8d; font-size:13px; margin:0 0 10px;">{p.format_bought}</p>{action}</div>'
-            body += "</div>"
-
-        return f'<html><body style="font-family:Arial; background:#f4f4f4; margin:0;">{get_navbar(request)}<h1 style="text-align:center; color:#2c3e50; padding:20px;">My Library</h1>{body}{FOOTER}</body></html>'@app.get("/check-purchases")
-def check_purchases():
-    with Session(engine) as session:
-        purchases = session.exec(select(Purchase)).all()
-        results = []
-        for p in purchases:
-            results.append({
-                "id": p.id,
-                "title": p.book_title,
-                "status": p.status,
-                "ref": p.reference,
-                "customer_id": p.customer_id
-            })
-        return {"purchases": results}
-@app.post("/snippe-webhook")
-async def snippe_webhook(request: Request):
-    body = await request.body()
-    try:
-        event = json.loads(body)
-    except:
-        return {"status": "error", "message": "invalid json"}
-
-    # --- ADD THIS PRINT STATEMENT ---
-    print("=== SNIPPE WEBHOOK RECEIVED ===")
-    print(event)
-    # --------------------------------
-
-    metadata = event.get("data", {}).get("metadata", {})
-    purchase_ref = metadata.get("purchase_reference")
-    
-    if purchase_ref:
         with Session(engine) as session:
-            purchase = session.exec(select(Purchase).where(Purchase.reference == purchase_ref)).first()
-            if purchase and purchase.status != "paid":
-                purchase.status = "paid"
-                session.add(purchase)
-                session.commit()
-                print("=== STATUS UPDATED TO PAID ===")
-                
-    return {"status": "success"}
+            c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
+            if not c:
+                return RedirectResponse(url="/customer-login?next=/my-library", status_code=303)
+
+            purchases = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.status == "paid")).all()
+
+            if not purchases:
+                body = '<div style="text-align:center; padding:60px;"><h2>Your library is empty</h2><p>Items you buy will appear here.</p><a href="/" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Browse the Store</a></div>'
+            else:
+                body = '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:20px; padding:40px;">'
+                for p in purchases:
+                    product = session.exec(select(Product).where(Product.title == p.book_title)).first()
+                    cover = product.cover_image if product else "https://via.placeholder.com/220x300?text=No+Cover"
+                    action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>📖 Read / View</a>"
+                    body += f'<div style="background:white; border-radius:8px; padding:15px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.1);"><img src="{cover}" style="width:100%; height:220px; object-fit:cover; border-radius:4px; margin-bottom:10px;"><h3 style="margin:0 0 5px; font-size:16px;">{p.book_title}</h3><p style="color:#7f8c8d; font-size:13px; margin:0 0 10px;">{p.format_bought}</p>{action}</div>'
+                body += "</div>"
+
+            return f'<html><body style="font-family:Arial; background:#f4f4f4; margin:0;">{get_navbar(request)}<h1 style="text-align:center; color:#2c3e50; padding:20px;">My Library</h1>{body}{FOOTER}</body></html>'
+            
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        return HTMLResponse(content=f"<h1>Library Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)
 @app.get("/debug-webhook")
 def debug_webhook():
     # This just returns the last 5 purchases so we can see the status
