@@ -74,6 +74,27 @@ with engine.connect() as conn:
         conn.commit()
     except Exception:
         pass
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE product ADD COLUMN religion VARCHAR;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE product ADD COLUMN year_of_study VARCHAR;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE product ADD COLUMN language VARCHAR;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE product ADD COLUMN sub_category VARCHAR;"))
+        conn.commit()
+    except Exception:
+        pass
 class Author(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; book_title: str
