@@ -1310,6 +1310,11 @@ async def snippe_webhook(request: Request):
     except:
         return {"status": "error", "message": "invalid json"}
 
+    # --- ADD THIS PRINT STATEMENT ---
+    print("=== SNIPPE WEBHOOK RECEIVED ===")
+    print(event)
+    # --------------------------------
+
     metadata = event.get("data", {}).get("metadata", {})
     purchase_ref = metadata.get("purchase_reference")
     
@@ -1320,5 +1325,19 @@ async def snippe_webhook(request: Request):
                 purchase.status = "paid"
                 session.add(purchase)
                 session.commit()
+                print("=== STATUS UPDATED TO PAID ===")
                 
     return {"status": "success"}
+@app.get("/debug-webhook")
+def debug_webhook():
+    # This just returns the last 5 purchases so we can see the status
+    with Session(engine) as session:
+        purchases = session.exec(select(Purchase).order_by(Purchase.id.desc()).limit(5)).all()
+        results = []
+        for p in purchases:
+            results.append({
+                "id": p.id,
+                "ref": p.reference,
+                "status": p.status
+            })
+        return {"recent_purchases": results}
