@@ -1290,7 +1290,7 @@ def my_library(request: Request):
 
 @app.get("/check-purchases")
 def check_purchases():
-    with Session(engine) as session:
+        with Session(engine) as session:
         purchases = session.exec(select(Purchase)).all()
         results = []
         for p in purchases:
