@@ -321,7 +321,8 @@ def store(request: Request, search: str = None, category: str = "Book"):
             elif p.category == "Law":
                 extra_info = "⚖️ Laws & Regulations"
             else:
-                extra_info = p.category            <div class="book-card">
+                extra_info = p.category            
+                <div class="book-card">
                 <div>
                     <img src="{p.cover_image}" alt="{p.title}">
                     <h3 class="book-title">{p.title}</h3>
