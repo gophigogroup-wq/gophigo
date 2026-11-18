@@ -351,15 +351,7 @@ def checkout_product(request: Request, product_id: int):
         author = session.get(Author, p.author_id)
         cover = p.cover_image if p.cover_image else "https://via.placeholder.com/180x250?text=No+Cover"
         
-        pay_btn = f"""
-        <form action="/pay-product/{p.id}" method="POST">
-            <div style="margin-bottom: 15px; text-align: left;">
-                <label style="font-weight: bold;">Enter Mobile Money Number:</label><br>
-                <input type="text" name="phone" placeholder="e.g. 0754123456" required style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; font-size: 16px;">
-            </div>
-            <button type="submit" style="background:#3498db; color:white; padding:15px; border:none; border-radius:5px; display:block; width:100%; font-size:16px; font-weight:bold; cursor:pointer;">Pay {p.price:,.0f} TZS</button>
-        </form>
-        """
+                pay_btn = f'<form action="/pay-product/{p.id}" method="POST"><div style="margin-bottom: 15px; text-align: left;"><label style="font-weight: bold;">Enter Mobile Money Number:</label><br><input type="text" name="phone" placeholder="e.g. 0754123456" required style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; font-size: 16px;"></div><button type="submit" style="background:#3498db; color:white; padding:15px; border:none; border-radius:5px; display:block; width:100%; font-size:16px; font-weight:bold; cursor:pointer;">Pay {p.price:,.0f} TZS</button></form>'
         
         return f"""
         <html><body style="font-family:Arial; background:#f4f4f4;">
