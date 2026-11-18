@@ -782,13 +782,13 @@ def process_reset_password(request: Request, token: str = Form(...), new_passwor
             e = session.exec(select(Employee).where(Employee.reset_token == token)).first()
             if e: e.password = pwd; e.must_change_password = False; e.reset_token = None; session.add(e); session.commit(); success = True
             elif type == "customer":
-            c = session.exec(select(Customer).where(Customer.reset_token == token)).first()
-            if c: 
-                c.password = pwd
-                c.reset_token = None
-                session.add(c)
-                session.commit()
-                success = True
+                c = session.exec(select(Customer).where(Customer.reset_token == token)).first()
+                if c: 
+                   c.password = pwd
+                   c.reset_token = None
+                   session.add(c)
+                   session.commit()
+                   success = True
     if success: return f"<html><body style='text-align:center; padding:50px;'><h1 style='color:green;'>Password Updated!</h1><a href='/login'>Login</a></body></html>"
     return HTMLResponse(content=f"<h1>Invalid token. <a href='/forgot-password'>Try again</a></h1>{FOOTER}", status_code=400)
 
