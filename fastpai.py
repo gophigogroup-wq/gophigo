@@ -278,15 +278,16 @@ def store(request: Request, search: str = None, category: str = "Book"):
         </div>
         
         <!-- Category Tabs -->
-        <div class="category-tabs">
+         <div class="category-tabs">
             <a href="/?category=Book" class="cat-btn {'active' if category == 'Book' else 'inactive'}">📚 Books</a>
             <a href="/?category=Manual" class="cat-btn {'active' if category == 'Manual' else 'inactive'}">🏫 University Manuals</a>
+            <a href="/?category=Ticket" class="cat-btn {'active' if category == 'Ticket' else 'inactive'}">🎟️ Tickets</a>
+            <a href="/?category=Media" class="cat-btn {'active' if category == 'Media' else 'inactive'}">🎬 Movies & Music</a>
             <a href="/?category=Newspaper" class="cat-btn {'active' if category == 'Newspaper' else 'inactive'}">📰 Newspapers</a>
+            <a href="/?category=Religious" class="cat-btn {'active' if category == 'Religious' else 'inactive'}">🙏 Religious</a>
         </div>
-
         <div class="book-grid">
-        """
-        
+        """    
         if not products:
             html += "<p style='text-align:center; grid-column:1/-1; color:#7f8c8d;'>No products found in this category.</p>"
             
@@ -756,6 +757,13 @@ def process_forgot_password(request: Request, email: str = Form(...)):
         if a: a.reset_token = token; session.add(a); session.commit(); found = True; link = f"/reset-password?token={token}&type=author"
         e = session.exec(select(Employee).where(Employee.email == email)).first()
         if e: e.reset_token = token; session.add(e); session.commit(); found = True; link = f"/reset-password?token={token}&type=employee"
+        cust = session.exec(select(Customer).where(Customer.email == email)).first()
+        if cust: 
+            cust.reset_token = token
+            session.add(cust)
+            session.commit()
+            found = True
+            link = f"/reset-password?token={token}&type=customer"
     if found: return f"<html><body style='text-align:center; padding:50px;'>{get_navbar(request)}<h2 style='color:green;'>Simulated Email Sent</h2><a href='{link}' style='background:#3498db; color:white; padding:12px; text-decoration:none; border-radius:5px;'>Click to Reset</a>{FOOTER}</body></html>"
     return HTMLResponse(content=f"<h1>Email not found. <a href='/forgot-password'>Try again</a></h1>{FOOTER}", status_code=404)
 
@@ -773,6 +781,14 @@ def process_reset_password(request: Request, token: str = Form(...), new_passwor
         elif type == "employee":
             e = session.exec(select(Employee).where(Employee.reset_token == token)).first()
             if e: e.password = pwd; e.must_change_password = False; e.reset_token = None; session.add(e); session.commit(); success = True
+            elif type == "customer":
+            c = session.exec(select(Customer).where(Customer.reset_token == token)).first()
+            if c: 
+                c.password = pwd
+                c.reset_token = None
+                session.add(c)
+                session.commit()
+                success = True
     if success: return f"<html><body style='text-align:center; padding:50px;'><h1 style='color:green;'>Password Updated!</h1><a href='/login'>Login</a></body></html>"
     return HTMLResponse(content=f"<h1>Invalid token. <a href='/forgot-password'>Try again</a></h1>{FOOTER}", status_code=400)
 
@@ -1294,8 +1310,13 @@ def my_library(request: Request):
             if not c:
                 return RedirectResponse(url="/customer-login?next=/my-library", status_code=303)
 
-            purchases = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.status == "paid")).all()
-
+            raw_purchases = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.status == "paid")).all()
+            seen = set()
+            purchases = []
+            for p in raw_purchases:
+                if p.book_title not in seen:
+                    seen.add(p.book_title)
+                    purchases.append(p)
             if not purchases:
                 body = '<div style="text-align:center; padding:60px;"><h2>Your library is empty</h2><p>Items you buy will appear here.</p><a href="/" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Browse the Store</a></div>'
             else:
