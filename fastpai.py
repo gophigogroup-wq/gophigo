@@ -1185,8 +1185,10 @@ def customer_login_page(request: Request, next: str = "/"):
                     <input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password">
                     <button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button>
                 </form>
-                <p style="text-align:center; margin-top:15px;"><a href="/customer-register?next={next}">Register here</a></p>
-            </div>
+                <div style="text-align:center; margin-top:15px;">
+                    <p style="margin-bottom: 5px;"><a href="/customer-register?next={next}">Register here</a></p>
+                    <p style="margin-top: 5px;"><a href="/forgot-password" style="color: #e74c3c;">Forgot Password?</a></p>
+                </div>
         </div>
         {FOOTER}
     </body></html>
