@@ -322,11 +322,6 @@ def store(request: Request, search: str = None, category: str = "Book"):
                 extra_info = "⚖️ Laws & Regulations"
             else:
                 extra_info = p.category
-                extra_info = f"{p.institution} | {p.course_code}"
-            elif p.category == "Ticket":
-             if p.category == "Manual":
-                extra_info = "🎟️ Event Ticket"
-            elif p.category == "Media":
                 extra_info = "🎬 Media / Video"
             else:
                 extra_info = p.category
