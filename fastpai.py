@@ -266,7 +266,17 @@ def store(request: Request, search: str = None, category: str = "Book"):
             <a href="/?category=Media" class="cat-btn {'active' if category == 'Media' else 'inactive'}">🎬 Movies & Music</a>
             <a href="/?category=Newspaper" class="cat-btn {'active' if category == 'Newspaper' else 'inactive'}">📰 Newspapers</a>
             <a href="/?category=Religious" class="cat-btn {'active' if category == 'Religious' else 'inactive'}">🙏 Religious</a>
-        </div>        
+        </div>    
+        <div class="category-tabs">
+            <a href="/?category=Book" class="cat-btn {'active' if category == 'Book' else 'inactive'}">📚 Books</a>
+            <a href="/?category=Manual" class="cat-btn {'active' if category == 'Manual' else 'inactive'}">🏫 University Manuals</a>
+            <a href="/?category=Law" class="cat-btn {'active' if category == 'Law' else 'inactive'}">⚖️ Laws & Regulations</a>
+            <a href="/?category=Ticket" class="cat-btn {'active' if category == 'Ticket' else 'inactive'}">🎟️ Tickets</a>
+            <a href="/?category=Media" class="cat-btn {'active' if category == 'Media' else 'inactive'}">🎬 Movies & Music</a>
+            <a href="/?category=Newspaper" class="cat-btn {'active' if category == 'Newspaper' else 'inactive'}">📰 Newspapers</a>
+            <a href="/?category=Religious" class="cat-btn {'active' if category == 'Religious' else 'inactive'}">🙏 Religious</a>
+        </div>
+        
         """ + get_navbar(request) + f"""
         <div class="store-header">
             <h1 style="color: #2c3e50; margin: 0; font-size: 24px;">Gophigo Store</h1>
@@ -303,6 +313,15 @@ def store(request: Request, search: str = None, category: str = "Book"):
             
             price_display = f"{p.price:,.0f}"
             if p.category == "Manual":
+                extra_info = f"{p.institution} | {p.course_code}"
+            elif p.category == "Ticket":
+                extra_info = "🎟️ Event Ticket"
+            elif p.category == "Media":
+                extra_info = "🎬 Media / Video"
+            elif p.category == "Law":
+                extra_info = "⚖️ Laws & Regulations"
+            else:
+                extra_info = p.category
                 extra_info = f"{p.institution} | {p.course_code}"
             elif p.category == "Ticket":
                 extra_info = "🎟️ Event Ticket"
@@ -532,6 +551,14 @@ def register_page(request: Request):
                         <option value="Newspaper">Newspaper / Magazine</option>
                         <option value="Ticket">Event Ticket / Football Match</option>
                         <option value="Media">Audio / Video / Movie</option>
+                    </select>
+                    <select name="category" required style="width:100%; padding:10px; margin:10px 0;">
+                        <option value="Book">General Book</option>
+                        <option value="Manual">University Manual / Lecture Notes</option>
+                        <option value="Newspaper">Newspaper / Magazine</option>
+                        <option value="Ticket">Event Ticket / Football Match</option>
+                        <option value="Media">Audio / Video / Movie</option>
+                        <option value="Law">Laws & Regulations</option>
                     </select>
                     <!-- These fields only show if they select 'Manual' -->
                     <input type="text" name="institution" style="width:100%; padding:10px; margin:10px 0;" placeholder="University Name (e.g., CBE, UDSM) - Leave blank if not a Manual">
