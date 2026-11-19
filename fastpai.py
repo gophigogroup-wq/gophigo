@@ -259,21 +259,13 @@ def store(request: Request, search: str = None, category: str = "Book"):
             .btn-buy { display: block; width: 100%; padding: 10px; border-radius: 5px; text-decoration: none; font-weight: bold; color: white; margin-top: 5px; font-size: 14px; box-sizing: border-box; }
         </style>
         </head><body>
-        <div class="category-tabs">
+                <div class="category-tabs">
             <a href="/?category=Book" class="cat-btn {'active' if category == 'Book' else 'inactive'}">📚 Books</a>
             <a href="/?category=Manual" class="cat-btn {'active' if category == 'Manual' else 'inactive'}">🏫 University Manuals</a>
+            <a href="/?category=Law" class="cat-btn {'active' if category == 'Law' else 'inactive'}">⚖️ Laws & Manuals</a>
             <a href="/?category=Ticket" class="cat-btn {'active' if category == 'Ticket' else 'inactive'}">🎟️ Tickets</a>
             <a href="/?category=Media" class="cat-btn {'active' if category == 'Media' else 'inactive'}">🎬 Movies & Music</a>
-            <a href="/?category=Newspaper" class="cat-btn {'active' if category == 'Newspaper' else 'inactive'}">📰 Newspapers</a>
-            <a href="/?category=Religious" class="cat-btn {'active' if category == 'Religious' else 'inactive'}">🙏 Religious</a>
-        </div>    
-        <div class="category-tabs">
-            <a href="/?category=Book" class="cat-btn {'active' if category == 'Book' else 'inactive'}">📚 Books</a>
-            <a href="/?category=Manual" class="cat-btn {'active' if category == 'Manual' else 'inactive'}">🏫 University Manuals</a>
-            <a href="/?category=Law" class="cat-btn {'active' if category == 'Law' else 'inactive'}">⚖️ Laws & Regulations</a>
-            <a href="/?category=Ticket" class="cat-btn {'active' if category == 'Ticket' else 'inactive'}">🎟️ Tickets</a>
-            <a href="/?category=Media" class="cat-btn {'active' if category == 'Media' else 'inactive'}">🎬 Movies & Music</a>
-            <a href="/?category=Newspaper" class="cat-btn {'active' if category == 'Newspaper' else 'inactive'}">📰 Newspapers</a>
+            <a href="/?category=Newspaper" class="cat-btn {'active' if category == 'Newspaper' else 'inactive'}">📰 News & Articles</a>
             <a href="/?category=Religious" class="cat-btn {'active' if category == 'Religious' else 'inactive'}">🙏 Religious</a>
         </div>
         
@@ -314,30 +306,30 @@ def store(request: Request, search: str = None, category: str = "Book"):
             price_display = f"{p.price:,.0f}"
             if p.category == "Manual":
                 extra_info = f"{p.institution} | {p.course_code}"
+            elif p.category == "Law":
+                extra_info = "⚖️ Law & Manual"
+            elif p.category == "Newspaper":
+                extra_info = "📰 News & Article"
             elif p.category == "Ticket":
                 extra_info = "🎟️ Event Ticket"
             elif p.category == "Media":
                 extra_info = "🎬 Media / Video"
-            elif p.category == "Law":
-                extra_info = "⚖️ Laws & Regulations"
             else:
                 extra_info = p.category            
-                <div class="book-card">
-                <div>
-                    <img src="{p.cover_image}" alt="{p.title}">
-                    <h3 class="book-title">{p.title}</h3>
-                    <p class="book-author">By {author_name}</p>
-                    <p style="color:#f1c40f; margin:0 0 10px; font-size:14px;">{stars}</p>
-                </div>
-                <div>
-                    <span style="background:#e0e0e0; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; display:inline-block; margin-bottom:10px;">{extra_info}</span>
-                    <a href="/checkout-product/{p.id}" class="btn-buy" style="background:#3498db;">Buy ({price_display} TZS)</a>
-                </div>
+        html += f"""
+        <div class="book-card">
+            <div>
+                <img src="{p.cover_image}" alt="{p.title}">
+                <h3 class="book-title">{p.title}</h3>
+                <p class="book-author">By {author_name}</p>
+                <p style="color:#f1c40f; margin:0 0 10px; font-size:14px;">{stars}</p>
             </div>
-            """
-            
-        return html + f"</div>{FOOTER}</body></html>"
-        
+            <div>
+                <span style="background:#e0e0e0; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; display:inline-block; margin-bottom:10px;">{extra_info}</span>
+                <a href="/checkout-product/{p.id}" class="btn-buy" style="background:#3498db;">Buy ({price_display} TZS)</a>
+            </div>
+        </div>
+        """
 @app.get("/checkout-product/{product_id}", response_class=HTMLResponse)
 def checkout_product(request: Request, product_id: int):
     customer_email = request.cookies.get("customer_email")
@@ -507,29 +499,15 @@ def register_page(request: Request):
                     
                     <input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Title of Book / Manual">
                     
-                    <select name="category" required style="width:100%; padding:10px; margin:10px 0;">
+                     <select name="category" required style="width:100%; padding:10px; margin:10px 0;">
                         <option value="Book">General Book</option>
                         <option value="Manual">University Manual / Lecture Notes</option>
-                        <option value="Newspaper">Newspaper / Magazine</option>
+                        <option value="Law">Laws, Regulations & Manuals</option>
+                        <option value="Newspaper">Newspaper & Articles</option>
+                        <option value="Ticket">Event Ticket / Football Match</option>
+                        <option value="Media">Audio / Video / Movie</option>
                         <option value="Religious">Religious Book</option>
-                        <option value="Professional">Professional / Business</option>
-                    </select>
-                    <select name="category" required style="width:100%; padding:10px; margin:10px 0;">
-                        <option value="Book">General Book</option>
-                        <option value="Manual">University Manual / Lecture Notes</option>
-                        <option value="Newspaper">Newspaper / Magazine</option>
-                        <option value="Ticket">Event Ticket / Football Match</option>
-                        <option value="Media">Audio / Video / Movie</option>
-                    </select>
-                    <select name="category" required style="width:100%; padding:10px; margin:10px 0;">
-                        <option value="Book">General Book</option>
-                        <option value="Manual">University Manual / Lecture Notes</option>
-                        <option value="Newspaper">Newspaper / Magazine</option>
-                        <option value="Ticket">Event Ticket / Football Match</option>
-                        <option value="Media">Audio / Video / Movie</option>
-                        <option value="Law">Laws & Regulations</option>
-                    </select>
-                    <!-- These fields only show if they select 'Manual' -->
+                    </select>                    <!-- These fields only show if they select 'Manual' -->
                     <input type="text" name="institution" style="width:100%; padding:10px; margin:10px 0;" placeholder="University Name (e.g., CBE, UDSM) - Leave blank if not a Manual">
                     <input type="text" name="course_code" style="width:100%; padding:10px; margin:10px 0;" placeholder="Course Code (e.g., BUS 101) - Leave blank if not a Manual">
                     
