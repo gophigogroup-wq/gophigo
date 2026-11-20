@@ -862,7 +862,7 @@ def admin_dashboard(request: Request):
                     </tr>
         """
         
-        for p in products:
+       for p in products:
             if p.status == "Flagged & Removed" or p.is_hidden:
                 btn = f"<a href='/admin-toggle-product/{p.id}?action=unhide' style='background:#3498db; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Unhide</a>"
                 status_display = "<span style='color:red;'>Hidden</span>"
