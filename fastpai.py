@@ -498,8 +498,7 @@ def author_portal(request: Request):
 
 @app.get("/register", response_class=HTMLResponse)
 def register_page(request: Request):
-    return f"""
-    <html><body style="font-family:Arial; background:#f4f4f4;">
+    return f"""<html><body style="font-family:Arial; background:#f4f4f4;">
         {get_navbar(request)}
         <div style="padding:50px;">
             <div style="background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;">
@@ -521,7 +520,6 @@ def register_page(request: Request):
                         <option value="Religious">Religious Book</option>
                     </select>
 
-                    <!-- These fields are for University Manuals -->
                     <input type="text" name="institution" style="width:100%; padding:10px; margin:10px 0;" placeholder="University Name (e.g., CBE, UDSM) - Optional">
                     <input type="text" name="course_code" style="width:100%; padding:10px; margin:10px 0;" placeholder="Course Code (e.g., BUS 101) - Optional">
                     
@@ -546,8 +544,8 @@ def register_page(request: Request):
             </div>
         </div>
         {FOOTER}
-    </body></html>
-    """
+    </body></html>"""
+
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return '<html><body style="font-family:Arial; background:#f4f4f4;">' + get_navbar(request) + '<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center;">Author Login</h2><form action="/login" method="POST"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#3498db; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button></form><div style="text-align:center; margin-top:15px;"><a href="/forgot-password">Forgot Password?</a></div></div></div>' + FOOTER + '</body></html>'
