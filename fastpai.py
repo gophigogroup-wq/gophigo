@@ -562,7 +562,7 @@ def process_login(response: Response, email: str = Form(...), password: str = Fo
 
 @app.get("/author-dashboard", response_class=HTMLResponse)
 def author_dashboard(request: Request):
-    try:
+     try:
         author_email = request.cookies.get("author_email")
         if not author_email: return RedirectResponse(url="/login", status_code=303)
         
@@ -614,11 +614,10 @@ def author_dashboard(request: Request):
                 </div>
                 {FOOTER}
             </body></html>'''
-            """
-             except Exception as e:
-                import traceback
-                error_details = traceback.format_exc()
-                return HTMLResponse(content=f"<h1>Dashboard Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)        
+     except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            return HTMLResponse(content=f"<h1>Dashboard Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)        
 
 @app.get("/pay-membership")
 def pay_membership(request: Request):
