@@ -596,7 +596,7 @@ def author_dashboard(request: Request):
 
             share_link_form = f'<div style="background: #e8f8f5; border: 1px solid #2ecc71; padding: 15px; border-radius: 8px; margin-top: 15px; text-align: center;"><h4 style="margin: 0; color: #2c3e50;">Your Book Link</h4><p style="word-break: break-all; color: #3498db; font-weight: bold; margin: 10px 0;">www.gophigo.co.tz/book/{author.book_id}</p><button onclick="navigator.clipboard.writeText(\'www.gophigo.co.tz/book/{author.book_id}\'); alert(\'Link copied to clipboard!\');" style="background: #2ecc71; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Copy Link</button></div>'
 
-            return f"""<html><body style="font-family:Arial; background:#f4f4f4;">                
+             return f"""<html><body style="font-family:Arial; background:#f4f4f4;">                
             {get_navbar(request)}
                 <div style="padding:50px; text-align:center;">
                     <h2>Welcome, {author.fullname}!</h2>
