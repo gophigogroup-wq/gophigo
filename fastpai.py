@@ -499,7 +499,7 @@ def author_portal(request: Request):
 @app.get("/register", response_class=HTMLResponse)
 def register_page(request: Request):
     return f"""<html><body style="font-family:Arial; background:#f4f4f4;">
-        {get_navbar(request)}
+    {get_navbar(request)}
         <div style="padding:50px;">
             <div style="background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;">
                 <h2 style="text-align:center;">Author / Lecturer Registration</h2>
