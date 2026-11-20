@@ -509,9 +509,9 @@ def register_page(request: Request):
                     <input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email">
                     <input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password">
                     
-                    <input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Title of Book / Manual">
+                    <input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Title of Book / Manual / Article">
                     
-                     <select name="category" required style="width:100%; padding:10px; margin:10px 0;">
+                    <select name="category" required style="width:100%; padding:10px; margin:10px 0;">
                         <option value="Book">General Book</option>
                         <option value="Manual">University Manual / Lecture Notes</option>
                         <option value="Law">Laws, Regulations & Manuals</option>
@@ -519,9 +519,11 @@ def register_page(request: Request):
                         <option value="Ticket">Event Ticket / Football Match</option>
                         <option value="Media">Audio / Video / Movie</option>
                         <option value="Religious">Religious Book</option>
-                    </select>                    <!-- These fields only show if they select 'Manual' -->
-                    <input type="text" name="institution" style="width:100%; padding:10px; margin:10px 0;" placeholder="University Name (e.g., CBE, UDSM) - Leave blank if not a Manual">
-                    <input type="text" name="course_code" style="width:100%; padding:10px; margin:10px 0;" placeholder="Course Code (e.g., BUS 101) - Leave blank if not a Manual">
+                    </select>
+
+                    <!-- These fields are for University Manuals -->
+                    <input type="text" name="institution" style="width:100%; padding:10px; margin:10px 0;" placeholder="University Name (e.g., CBE, UDSM) - Optional">
+                    <input type="text" name="course_code" style="width:100%; padding:10px; margin:10px 0;" placeholder="Course Code (e.g., BUS 101) - Optional">
                     
                     <input type="number" name="price" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Price (TZS)">
                     
