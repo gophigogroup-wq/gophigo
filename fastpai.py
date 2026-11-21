@@ -780,6 +780,7 @@ def admin_login(response: Response, username: str = Form(...), password: str = F
     if username == "admin" and password == "gophigo2026":
         res = RedirectResponse(url="/admin", status_code=303); res.set_cookie(key="admin_session", value="true", httponly=True); return res
     return HTMLResponse(content=f"<h1>Invalid Credentials. <a href='/admin-login'>Try again</a></h1>{FOOTER}", status_code=401)
+
 @app.get("/admin", response_class=HTMLResponse)
 def admin_dashboard(request: Request):
     try:
@@ -801,7 +802,7 @@ def admin_dashboard(request: Request):
                     gophigo_revenue += price * 0.5
                     author_payouts += price * 0.5
 
-            html = f"""<html><body style="font-family:Arial; background:#f4f4f4;">
+            html = f'''<html><body style="font-family:Arial; background:#f4f4f4;">
             {get_navbar(request)}
             <div style="padding:50px; max-width: 1000px; margin: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -843,7 +844,7 @@ def admin_dashboard(request: Request):
                     <tr style="background:#34495e; color:white;">
                         <th>ID</th><th>Title</th><th>Category</th><th>Price</th><th>Status</th><th>Action</th>
                     </tr>
-            """
+            '''
             
             for p in products:
                 if p.status == "Flagged & Removed" or p.is_hidden:
@@ -855,10 +856,10 @@ def admin_dashboard(request: Request):
                     
                 html += f"<tr><td>{p.id}</td><td>{p.title}</td><td>{p.category}</td><td>{p.price} TZS</td><td>{status_display}</td><td>{btn}</td></tr>"
                 
-            html += f"""</table>
+            html += f'''</table>
             </div>
             {FOOTER}
-            </body></html>"""
+            </body></html>'''
             
             return html
             
@@ -866,7 +867,6 @@ def admin_dashboard(request: Request):
         import traceback
         error_details = traceback.format_exc()
         return HTMLResponse(content=f"<h1>Dashboard Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)
-
 @app.get("/admin-logout")
 def admin_logout():
     res = RedirectResponse(url="/admin-login", status_code=303); res.delete_cookie("admin_session"); return res
