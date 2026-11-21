@@ -445,32 +445,25 @@ def process_payment_product(request: Request, product_id: int, phone: str = Form
             "metadata": {"purchase_reference": purchase_ref}
         }
 
-            try:
-                response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers, timeout=15)
+        try:
+            response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers, timeout=15)
+            
+            if response.status_code in [200, 201]:
+                data = response.json()
+                payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
                 
-                if response.status_code in [200, 201]:
-                    data = response.json()
-                    payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
+                if payment_url:
+                    return RedirectResponse(url=payment_url, status_code=303)
                     
-                    if payment_url:
-                        return RedirectResponse(url=payment_url, status_code=303)
-                        
-                    # If no URL, show the prompt page
-                    return HTMLResponse(content=f'<html><body style="font-family:Arial; text-align:center; padding:50px;"><h1 style="color:#2ecc71;">Payment Prompt Sent!</h1><p>We have sent a payment request to <strong>{phone}</strong>.</p><p>Please check your phone and enter your mobile money PIN to complete the purchase.</p><p style="color:#7f8c8d;">Reference: {purchase_ref}</p><br><a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">I have paid - Go to My Library</a></body></html>', status_code=200)
-                else:
-                    purchase.status = "failed"
-                    session.add(purchase)
-                    session.commit()
-                    return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
-                    
-            except Exception as e:
-                return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)@app.get("/review/{purchase_id}", response_class=HTMLResponse)
-def review_page(request: Request, purchase_id: int):
-    with Session(engine) as session:
-        p = session.get(Purchase, purchase_id)
-        return f'<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto; text-align:center;"><h2>Review: {p.book_title}</h2><form action="/review/{purchase_id}" method="POST"><label>Rating (1-5):</label><br><input type="number" name="rating" min="1" max="5" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Comment:</label><br><textarea name="comment" required style="width:100%; padding:10px; margin:10px 0;"></textarea><br><button type="submit" style="background:#2ecc71; color:white; padding:12px; width:100%; border:none; border-radius:5px; cursor:pointer;">Submit Review</button></form></div></div>{FOOTER}</body></html>'
-
-@app.post("/review/{purchase_id}")
+                return HTMLResponse(content=f'<html><body style="font-family:Arial; text-align:center; padding:50px;"><h1 style="color:#2ecc71;">Payment Prompt Sent!</h1><p>We have sent a payment request to <strong>{phone}</strong>.</p><p>Please check your phone and enter your mobile money PIN to complete the purchase.</p><p style="color:#7f8c8d;">Reference: {purchase_ref}</p><br><a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">I have paid - Go to My Library</a></body></html>', status_code=200)
+            else:
+                purchase.status = "failed"
+                session.add(purchase)
+                session.commit()
+                return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
+                
+        except Exception as e:
+            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)@app.post("/review/{purchase_id}")
 def process_review(request: Request, purchase_id: int, rating: int = Form(...), comment: str = Form(...)):
     customer_email = request.cookies.get("customer_email")
     with Session(engine) as session:
