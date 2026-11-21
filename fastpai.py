@@ -1234,9 +1234,8 @@ def process_registration(
         session.add(new_product)
         session.commit()
 
-    return f"""
-    <html><body style="font-family:Arial; background:#f4f4f4;">
-        {get_navbar(request)}
+    return f"""<html><body style="font-family:Arial; background:#f4f4f4;">
+    {get_navbar(request)}
         <div style="text-align:center; padding:100px;">
             <h1 style="color:#2ecc71;">Registration Successful!</h1>
             <p>Your unique product ID is: <strong style="font-size:24px; color:#2c3e50;">{new_book_id}</strong></p>
