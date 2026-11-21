@@ -862,7 +862,7 @@ return f'''<html><body style="font-family:Arial; background:#f4f4f4;">{get_navba
                     </tr>
         """
         
-        for p in products:
+         for p in products:
             if p.status == "Flagged & Removed" or p.is_hidden:
                 btn = f"<a href='/admin-toggle-product/{p.id}?action=unhide' style='background:#3498db; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Unhide</a>"
                 status_display = "<span style='color:red;'>Hidden</span>"
@@ -877,7 +877,6 @@ return f'''<html><body style="font-family:Arial; background:#f4f4f4;">{get_navba
             </div>
             {FOOTER}
         </body></html>'''
-        
         
         return html
 @app.get("/admin-logout")
