@@ -962,6 +962,7 @@ def update_price(request: Request, ebook_price: float = Form(...), paperback_pri
             session.commit()
             
     return RedirectResponse(url="/author-dashboard", status_code=303)
+
 @app.get("/author-reports", response_class=HTMLResponse)
 def author_reports(request: Request):
     author_email = request.cookies.get("author_email")
@@ -971,7 +972,6 @@ def author_reports(request: Request):
     with Session(engine) as session:
         author = session.exec(select(Author).where(Author.email == author_email)).first()
         
-        # Get ONLY this author's paid purchases
         purchases = session.exec(select(Purchase).where(Purchase.author_id == author.id, Purchase.status == "paid").order_by(Purchase.created_at.desc())).all()
         
         total_sales = len(purchases)
@@ -983,12 +983,12 @@ def author_reports(request: Request):
             else:
                 total_earnings += author.paperback_price * 0.5
                 
-        html = f"""<html><body style="font-family:Arial; background:#f4f4f4;">
-        {get_navbar(request)}
+        html = f'''<html><body style="font-family:Arial; background:#f4f4f4;">
+            {get_navbar(request)}
             <div style="padding:50px; max-width: 1000px; margin: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h1 style="color:#2c3e50;"> My Earnings Report</h1>
-                    <a href="/author-dashboard" style="background: #34495e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;"> Back to Dashboard</a>
+                    <h1 style="color:#2c3e50;">My Earnings Report</h1>
+                    <a href="/author-dashboard" style="background: #34495e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Back to Dashboard</a>
                 </div>
 
                 <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px;">
@@ -1001,7 +1001,7 @@ def author_reports(request: Request):
                     <tr style="background:#34495e; color:white;">
                         <th>Date</th><th>Book</th><th>Format</th><th>Your Royalty</th><th>Status</th>
                     </tr>
-        """
+        '''
         
         for p in purchases:
             date_str = p.created_at.strftime("%Y-%m-%d %H:%M") if p.created_at else "Unknown"
@@ -1010,13 +1010,13 @@ def author_reports(request: Request):
             
             html += f"<tr><td>{date_str}</td><td>{p.book_title}</td><td>{p.format_bought}</td><td style='color:#2ecc71; font-weight:bold;'>{royalty:,.2f} TZS</td><td style='color:green;'>{p.status.upper()}</td></tr>"
             
-        html += f"""
-                </table>
+        html += f'''</table>
             </div>
             {FOOTER}
-        </body></html>
-        """
+        </body></html>'''
+        
         return html
+
 @app.get("/admin-delete-book/{author_id}")
 def admin_delete_book(request: Request, author_id: int, action: str):
     if request.cookies.get("admin_session") != "true": 
