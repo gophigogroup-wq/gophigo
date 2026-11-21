@@ -1202,7 +1202,7 @@ def process_registration(
         session.add(new_product)
         session.commit()
 
-         return '<html><body style="font-family:Arial; text-align:center; padding:100px; background:#f4f4f4;">' + get_navbar(request) + f'<div style="text-align:center; padding:100px;"><h1 style="color:#2ecc71;">Registration Successful!</h1><p>Your Book ID is: <strong style="font-size:24px; color:#2c3e50;">{new_book_id}</strong></p><p>Your unique share link is: <br> <code>www.gophigo.co.tz/book/{new_book_id}</code></p><br><a href="/login" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Go to Login</a></div>' + FOOTER + '</body></html>'
+    return '<html><body style="font-family:Arial; text-align:center; padding:100px; background:#f4f4f4;">' + get_navbar(request) + f'<div style="text-align:center; padding:100px;"><h1 style="color:#2ecc71;">Registration Successful!</h1><p>Your Book ID is: <strong style="font-size:24px; color:#2c3e50;">{new_book_id}</strong></p><p>Your unique share link is: <br> <code>www.gophigo.co.tz/book/{new_book_id}</code></p><br><a href="/login" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Go to Login</a></div>' + FOOTER + '</body></html>'
 @app.get("/my-library", response_class=HTMLResponse)
 def my_library(request: Request):
     try:
