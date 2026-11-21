@@ -907,8 +907,7 @@ def admin_reports(request: Request, period: str = "all"):
                 price = author.ebook_price if p.format_bought == "Ebook" else author.paperback_price
                 total_revenue += price * 0.5
                 
-        html = f"""
-        <html><body style="font-family:Arial; background:#f4f4f4;">
+        html = f"""<html><body style="font-family:Arial; background:#f4f4f4;">
             {get_navbar(request)}
             <div style="padding:50px; max-width: 1000px; margin: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
