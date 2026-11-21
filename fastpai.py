@@ -1092,8 +1092,7 @@ def process_upload_product(request: Request, title: str = Form(...), category: s
         session.add(new_product)
         session.commit()
         
-        return f"""
-        <html><body style="font-family:Arial; text-align:center; padding:100px; background:#f4f4f4;">
+        return f"""<html><body style="font-family:Arial; text-align:center; padding:100px; background:#f4f4f4;">
             <h1 style="color:#2ecc71;">Product Uploaded Successfully!</h1>
             <p>Your product <strong>{title}</strong> is now live.</p>
             <a href="/author-dashboard" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Go to Dashboard</a>
