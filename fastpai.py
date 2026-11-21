@@ -987,7 +987,7 @@ def author_reports(request: Request):
             {get_navbar(request)}
             <div style="padding:50px; max-width: 1000px; margin: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h1 style="color:#2c3e50;">📊 My Earnings Report</h1>
+                    <h1 style="color:#2c3e50;"> My Earnings Report</h1>
                     <a href="/author-dashboard" style="background: #34495e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">← Back to Dashboard</a>
                 </div>
 
