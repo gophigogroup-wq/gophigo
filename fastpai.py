@@ -872,7 +872,7 @@ return f'''<html><body style="font-family:Arial; background:#f4f4f4;">{get_navba
                 
             html += f"<tr><td>{p.id}</td><td>{p.title}</td><td>{p.category}</td><td>{p.price} TZS</td><td>{status_display}</td><td>{btn}</td></tr>"
             
-        html += f"""
+        html += f'''
                 </table>
             </div>
             {FOOTER}
