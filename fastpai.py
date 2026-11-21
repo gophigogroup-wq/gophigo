@@ -780,50 +780,35 @@ def admin_login(response: Response, username: str = Form(...), password: str = F
     if username == "admin" and password == "gophigo2026":
         res = RedirectResponse(url="/admin", status_code=303); res.set_cookie(key="admin_session", value="true", httponly=True); return res
     return HTMLResponse(content=f"<h1>Invalid Credentials. <a href='/admin-login'>Try again</a></h1>{FOOTER}", status_code=401)
-
 @app.get("/admin", response_class=HTMLResponse)
 def admin_dashboard(request: Request):
-    if request.cookies.get("admin_session") != "true": 
-        return RedirectResponse(url="/admin-login", status_code=303)
-        
-    with Session(engine) as session:
-        authors = session.exec(select(Author)).all()
-        products = session.exec(select(Product)).all()
-        raw_purchases = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.status == "paid")).all()
-        
-        seen = set()
-        purchases = []
-        for p in raw_purchases:
-            if p.book_title not in seen:
-                seen.add(p.book_title)
-                purchases.append(p)            
-            # Remove duplicates based on the book title
-            seen = set()
-            purchases = []
-            for p in raw_purchases:
-                if p.book_title not in seen:
-                    seen.add(p.book_title)
-                    purchases.append(p)          
-            # Remove duplicates based on the book title
-            seen = set()
-            purchases = []
-            for p in raw_purchases:
-                if p.book_title not in seen:
-                    seen.add(p.book_title)
-                    purchases.append(p)        
-        total_sales_count = len(purchases)
-        gophigo_revenue = 0.0
-        author_payouts = 0.0
-        
-        for p in purchases:
-            author = session.get(Author, p.author_id)
-            if author:
-                price = author.ebook_price if p.format_bought == "Ebook" else author.paperback_price
-                gophigo_revenue += price * 0.5
-                author_payouts += price * 0.5
+    try:
+        if request.cookies.get("admin_session") != "true": 
+            return RedirectResponse(url="/admin-login", status_code=303)
+            
+        with Session(engine) as session:
+            products = session.exec(select(Product)).all()
+            purchases = session.exec(select(Purchase).where(Purchase.status == "paid")).all()
+            
+            total_sales_count = len(purchases)
+            gophigo_revenue = 0.0
+            author_payouts = 0.0
+            
+            for p in purchases:
+                author = session.get(Author, p.author_id)
+                if author:
+                    price = author.ebook_price if p.format_bought == "Ebook" else author.paperback_price
+                    gophigo_revenue += price * 0.5
+                    author_payouts += price * 0.5
 
-return f'''<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}                
-             <!-- Financial Overview Cards -->
+            html = f"""<html><body style="font-family:Arial; background:#f4f4f4;">
+            {get_navbar(request)}
+            <div style="padding:50px; max-width: 1000px; margin: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1 style="color:#2c3e50;">Admin Dashboard</h1>
+                    <a href="/admin-reports" style="background: #9b59b6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Full Reports</a>
+                </div>
+                
                 <div style="display: flex; gap: 20px; margin-bottom: 30px; margin-top: 20px;">
                     <div style="background: #3498db; color: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;">
                         <h4 style="margin: 0;">Total Books Sold</h4>
@@ -839,9 +824,8 @@ return f'''<html><body style="font-family:Arial; background:#f4f4f4;">{get_navba
                     </div>
                 </div>
 
-                <!-- Add Employee Form -->
                 <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 30px;">
-                    <h3 style="margin-top: 0; color: #2c3e50;">➕ Add New Employee</h3>
+                    <h3 style="margin-top: 0; color: #2c3e50;">Add New Employee</h3>
                     <form action="/admin-create-employee" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <input type="text" name="fullname" placeholder="Full Name" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
                         <input type="email" name="email" placeholder="Email Address" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
@@ -854,31 +838,35 @@ return f'''<html><body style="font-family:Arial; background:#f4f4f4;">{get_navba
                     </form>
                 </div>
 
-                <!-- Products Table -->
-               <h3>📚 All Products</h3>
+                <h3>All Products</h3>
                 <table border="1" style="width:100%; background:white; border-collapse:collapse; margin-bottom: 40px;">
                     <tr style="background:#34495e; color:white;">
                         <th>ID</th><th>Title</th><th>Category</th><th>Price</th><th>Status</th><th>Action</th>
                     </tr>
-        """
-        
-         for p in products:
-            if p.status == "Flagged & Removed" or p.is_hidden:
-                btn = f"<a href='/admin-toggle-product/{p.id}?action=unhide' style='background:#3498db; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Unhide</a>"
-                status_display = "<span style='color:red;'>Hidden</span>"
-            else:
-                btn = f"<a href='/admin-toggle-product/{p.id}?action=hide' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Hide / Delete</a>"
-                status_display = "<span style='color:green;'>Active</span>"
-                
-            html += f"<tr><td>{p.id}</td><td>{p.title}</td><td>{p.category}</td><td>{p.price} TZS</td><td>{status_display}</td><td>{btn}</td></tr>"
+            """
             
-        html += f"""
-                </table>
+            for p in products:
+                if p.status == "Flagged & Removed" or p.is_hidden:
+                    btn = f"<a href='/admin-toggle-product/{p.id}?action=unhide' style='background:#3498db; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Unhide</a>"
+                    status_display = "<span style='color:red;'>Hidden</span>"
+                else:
+                    btn = f"<a href='/admin-toggle-product/{p.id}?action=hide' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Hide / Delete</a>"
+                    status_display = "<span style='color:green;'>Active</span>"
+                    
+                html += f"<tr><td>{p.id}</td><td>{p.title}</td><td>{p.category}</td><td>{p.price} TZS</td><td>{status_display}</td><td>{btn}</td></tr>"
+                
+            html += f"""</table>
             </div>
             {FOOTER}
-        </body></html>"""
-        
-        return html
+            </body></html>"""
+            
+            return html
+            
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        return HTMLResponse(content=f"<h1>Dashboard Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)
+
 @app.get("/admin-logout")
 def admin_logout():
     res = RedirectResponse(url="/admin-login", status_code=303); res.delete_cookie("admin_session"); return res
