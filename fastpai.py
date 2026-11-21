@@ -445,7 +445,7 @@ def process_payment_product(request: Request, product_id: int, phone: str = Form
             "metadata": {"purchase_reference": purchase_ref}
         }
 
-              try:
+            try:
                 response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers, timeout=15)
                 
                 if response.status_code in [200, 201]:
@@ -464,19 +464,7 @@ def process_payment_product(request: Request, product_id: int, phone: str = Form
                     return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
                     
             except Exception as e:
-                return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)
-                
-        except Exception as e:
-            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)            else:
-                # THIS WILL SHOW THE EXACT SNIPPE ERROR ON THE SCREEN
-                purchase.status = "failed"
-                session.add(purchase)
-                session.commit()
-                return HTMLResponse(content=f"<h1>Snippe Error</h1><p>Status Code: {response.status_code}</p><pre>{response.text}</pre>", status_code=400)
-                
-        except Exception as e:
-            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)
-@app.get("/review/{purchase_id}", response_class=HTMLResponse)
+                return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)@app.get("/review/{purchase_id}", response_class=HTMLResponse)
 def review_page(request: Request, purchase_id: int):
     with Session(engine) as session:
         p = session.get(Purchase, purchase_id)
