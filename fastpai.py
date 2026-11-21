@@ -983,8 +983,7 @@ def author_reports(request: Request):
             else:
                 total_earnings += author.paperback_price * 0.5
                 
-        html = f"""
-        <html><body style="font-family:Arial; background:#f4f4f4;">
+        html = f"""<html><body style="font-family:Arial; background:#f4f4f4;">
             {get_navbar(request)}
             <div style="padding:50px; max-width: 1000px; margin: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
