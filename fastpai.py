@@ -874,6 +874,7 @@ def admin_logout():
 @app.get("/terms", response_class=HTMLResponse)
 def terms_page(request: Request):
     return '<html><body style="font-family:Arial; background:#f4f4f4; margin:0;">' + get_navbar(request) + f'<div style="padding: 50px; max-width: 800px; margin: auto; background: white; border-radius: 8px; margin-top: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"><h1 style="color: #2c3e50; text-align: center;">Gophigo Author Terms & Conditions</h1><hr style="border: 1px solid #eee; margin: 20px 0;"><h3 style="color: #e74c3c;">1. Platform Role</h3><p>Gophigo store operates as a digital marketplace and distribution platform. Gophigo is not the publisher, creator, or owner of the books uploaded by authors.</p><h3 style="color: #e74c3c;">2. Author Responsibility</h3><p>By uploading a manuscript, the Author declares that they are the sole creator and copyright owner of the work, or have obtained all necessary legal rights and permissions to distribute the work.</p><h3 style="color: #e74c3c;">3. Prohibited Content</h3><p>Authors are strictly prohibited from uploading any material that is illegal, defamatory, infringing on copyright, plagiarized, or pornographic.</p><h3 style="color: #e74c3c;">4. Indemnification (Liability)</h3><p>The Author agrees to fully indemnify and hold harmless Gophigo store, its founders, and employees from any and all legal claims, damages, or expenses (including legal fees) arising from the Author\'s uploaded content. <strong>Gophigo will not be held responsible for any copyright disputes, legal actions, or damages resulting from the Author\'s actions.</strong> If a copyright claim is made against Gophigo due to an Author\'s book, Gophigo reserves the right to immediately remove the book and deduct any legal costs from the Author\'s pending royalties.</p><h3 style="color: #e74c3c;">5. Royalties and Fees</h3><p>Gophigo will retain a 50% commission on all net sales. The remaining 50% will be credited to the Author\'s dashboard. Gophigo reserves the right to adjust this fee structure with 30 days\' notice to the Author.</p><h3 style="color: #e74c3c;">6. Account Termination</h3><p>Gophigo reserves the right to suspend or permanently ban any Author and delete their books if they violate these terms, without refunding the annual membership fee.</p><h3 style="color: #e74c3c;">7. Governing Law</h3><p>These terms are governed by the laws of the United Republic of Tanzania.</p><br><p style="text-align: center; color: #7f8c8d; font-size: 14px;">Last updated: November 2026</p><div style="text-align: center; margin-top: 20px;"><a href="/register" style="background: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Back to Registration</a></div></div>' + FOOTER + '</body></html>'
+
 @app.get("/admin-reports", response_class=HTMLResponse)
 def admin_reports(request: Request, period: str = "all"):
     if request.cookies.get("admin_session") != "true": 
@@ -907,12 +908,12 @@ def admin_reports(request: Request, period: str = "all"):
                 price = author.ebook_price if p.format_bought == "Ebook" else author.paperback_price
                 total_revenue += price * 0.5
                 
-        html = f"""<html><body style="font-family:Arial; background:#f4f4f4;">
+        html = f'''<html><body style="font-family:Arial; background:#f4f4f4;">
             {get_navbar(request)}
             <div style="padding:50px; max-width: 1000px; margin: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h1 style="color:#2c3e50;"> Sales Reports</h1>
-                    <a href="/admin" style="background: #34495e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;"> Back to Dashboard</a>
+                    <h1 style="color:#2c3e50;">Sales Reports</h1>
+                    <a href="/admin" style="background: #34495e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Back to Dashboard</a>
                 </div>
 
                 <div style="margin-bottom: 20px; display: flex; gap: 10px;">
@@ -933,19 +934,18 @@ def admin_reports(request: Request, period: str = "all"):
                     <tr style="background:#34495e; color:white;">
                         <th>Date</th><th>Reference</th><th>Book</th><th>Format</th><th>Phone</th><th>Status</th>
                     </tr>
-        """
+        '''
         
         for p in purchases:
             phone = p.phone_number if p.phone_number else "N/A"
             date_str = p.created_at.strftime("%Y-%m-%d %H:%M") if p.created_at else "Unknown"
             html += f"<tr><td>{date_str}</td><td>{p.reference[:8]}...</td><td>{p.book_title}</td><td>{p.format_bought}</td><td>{phone}</td><td style='color:green; font-weight:bold;'>{p.status.upper()}</td></tr>"
             
-        html += f"""
-                </table>
+        html += f'''</table>
             </div>
             {FOOTER}
-        </body></html>
-        """
+        </body></html>'''
+        
         return html
 @app.post("/update-price")
 def update_price(request: Request, ebook_price: float = Form(...), paperback_price: float = Form(...)):
