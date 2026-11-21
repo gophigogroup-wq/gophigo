@@ -822,7 +822,7 @@ def admin_dashboard(request: Request):
                 gophigo_revenue += price * 0.5
                 author_payouts += price * 0.5
 
-    return f'''<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}                
+return f'''<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}                
              <!-- Financial Overview Cards -->
                 <div style="display: flex; gap: 20px; margin-bottom: 30px; margin-top: 20px;">
                     <div style="background: #3498db; color: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;">
