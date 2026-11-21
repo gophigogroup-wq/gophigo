@@ -1123,8 +1123,7 @@ def run_migration_v2():
     return {"status": "success", "message": "Product table updated with religion, sub_category, year_of_study, and language!"}
 @app.get("/customer-login", response_class=HTMLResponse)
 def customer_login_page(request: Request, next: str = "/"):
-    return f"""
-    <html><body style="font-family:Arial; background:#f4f4f4;">
+    return f"""<html><body style="font-family:Arial; background:#f4f4f4;">
         {get_navbar(request)}
         <div style="padding:50px;">
             <div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;">
