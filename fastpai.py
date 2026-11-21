@@ -912,7 +912,7 @@ def admin_reports(request: Request, period: str = "all"):
             <div style="padding:50px; max-width: 1000px; margin: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h1 style="color:#2c3e50;"> Sales Reports</h1>
-                    <a href="/admin" style="background: #34495e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">← Back to Dashboard</a>
+                    <a href="/admin" style="background: #34495e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;"> Back to Dashboard</a>
                 </div>
 
                 <div style="margin-bottom: 20px; display: flex; gap: 10px;">
