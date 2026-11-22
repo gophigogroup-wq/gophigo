@@ -1203,6 +1203,11 @@ def process_registration(
         session.commit()
 
     return '<html><body style="font-family:Arial; text-align:center; padding:100px; background:#f4f4f4;">' + get_navbar(request) + f'<div style="text-align:center; padding:100px;"><h1 style="color:#2ecc71;">Registration Successful!</h1><p>Your Book ID is: <strong style="font-size:24px; color:#2c3e50;">{new_book_id}</strong></p><p>Your unique share link is: <br> <code>www.gophigo.co.tz/book/{new_book_id}</code></p><br><a href="/login" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Go to Login</a></div>' + FOOTER + '</body></html>'
+
+import qrcode
+import base64
+from io import BytesIO
+
 @app.get("/my-library", response_class=HTMLResponse)
 def my_library(request: Request):
     try:
@@ -1216,12 +1221,14 @@ def my_library(request: Request):
                 return RedirectResponse(url="/customer-login?next=/my-library", status_code=303)
 
             raw_purchases = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.status == "paid")).all()
+            
             seen = set()
             purchases = []
             for p in raw_purchases:
                 if p.book_title not in seen:
                     seen.add(p.book_title)
                     purchases.append(p)
+
             if not purchases:
                 body = '<div style="text-align:center; padding:60px;"><h2>Your library is empty</h2><p>Items you buy will appear here.</p><a href="/" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Browse the Store</a></div>'
             else:
@@ -1229,7 +1236,25 @@ def my_library(request: Request):
                 for p in purchases:
                     product = session.exec(select(Product).where(Product.title == p.book_title)).first()
                     cover = product.cover_image if product else "https://via.placeholder.com/220x300?text=No+Cover"
-                    action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>📖 Read / View</a>"
+                    
+                    # IF IT IS A TICKET, GENERATE A QR CODE
+                    if product and product.category == "Ticket":
+                        # The QR code contains the Event Code and the unique Purchase Reference
+                        qr_data = f"EVENT:{product.product_code}|TICKET:{p.reference}"
+                        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+                        qr.add_data(qr_data)
+                        qr.make(fit=True)
+                        img = qr.make_image(fill_color="black", back_color="white")
+                        
+                        buffered = BytesIO()
+                        img.save(buffered, format="PNG")
+                        img_str = base64.b64encode(buffered.getvalue()).decode()
+                        
+                        action = f"<img src='data:image/png;base64,{img_str}' style='width:100%; max-width:150px; margin-top:10px;'><p style='font-size:12px; color:#7f8c8d;'>Ticket ID: {p.reference[:8]}</p>"
+                    else:
+                        # For books/manuals, just show the read button
+                        action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>📖 Read / View</a>"
+                        
                     body += f'<div style="background:white; border-radius:8px; padding:15px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.1);"><img src="{cover}" style="width:100%; height:220px; object-fit:cover; border-radius:4px; margin-bottom:10px;"><h3 style="margin:0 0 5px; font-size:16px;">{p.book_title}</h3><p style="color:#7f8c8d; font-size:13px; margin:0 0 10px;">{p.format_bought}</p>{action}</div>'
                 body += "</div>"
 
