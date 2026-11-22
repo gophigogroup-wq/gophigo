@@ -217,7 +217,9 @@ def get_navbar(request: Request):
     else:
         links += '<a href="/author-portal" style="color: white; text-decoration: none; margin-left: 20px;">Author Portal</a><a href="/customer-login" style="color: white; text-decoration: none; margin-left: 20px;">Customer Login</a><a href="/employee-login" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-weight: bold;">Staff Login</a>'
         
-    return f'<nav style="background-color: #2c3e50; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: Poppins, sans-serif;"><div style="font-size: 24px; font-weight: bold;"><a href="/" style="color: white; text-decoration: none;">🛍️ Gophigo Store</a></div><div>{links}</div></nav>'@app.get("/", response_class=HTMLResponse)
+    return f'<nav style="background-color: #2c3e50; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: Poppins, sans-serif;"><div style="font-size: 24px; font-weight: bold;"><a href="/" style="color: white; text-decoration: none;">🛍️ Gophigo Store</a></div><div>{links}</div></nav>'
+    
+    @app.get("/", response_class=HTMLResponse)
 def store(request: Request, search: str = None, category: str = "Book"):
     with Session(engine) as session:
         query = select(Product).where(Product.status == "Approved", Product.is_hidden == False)
