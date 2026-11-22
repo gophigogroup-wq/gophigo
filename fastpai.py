@@ -1281,7 +1281,6 @@ def my_library(request: Request):
                     
                     # IF IT IS A TICKET, GENERATE A QR CODE
                     if product and product.category == "Ticket":
-                        # The QR code contains the Event Code and the unique Purchase Reference
                         qr_data = f"EVENT:{product.product_code}|TICKET:{p.reference}"
                         qr = qrcode.QRCode(version=1, box_size=10, border=5)
                         qr.add_data(qr_data)
@@ -1294,8 +1293,7 @@ def my_library(request: Request):
                         
                         action = f"<img src='data:image/png;base64,{img_str}' style='width:100%; max-width:150px; margin-top:10px;'><p style='font-size:12px; color:#7f8c8d;'>Ticket ID: {p.reference[:8]}</p>"
                     else:
-                        # For books/manuals, just show the read button
-                        action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>📖 Read / View</a>"
+                        action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>Read / View</a>"
                         
                     body += f'<div style="background:white; border-radius:8px; padding:15px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.1);"><img src="{cover}" style="width:100%; height:220px; object-fit:cover; border-radius:4px; margin-bottom:10px;"><h3 style="margin:0 0 5px; font-size:16px;">{p.book_title}</h3><p style="color:#7f8c8d; font-size:13px; margin:0 0 10px;">{p.format_bought}</p>{action}</div>'
                 body += "</div>"
@@ -1305,8 +1303,7 @@ def my_library(request: Request):
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        return HTMLResponse(content=f"<h1>Library Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)
-@app.get("/item/{product_code}")
+        return HTMLResponse(content=f"<h1>Library Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)@app.get("/item/{product_code}")
 def direct_item_link(request: Request, product_code: str):
     with Session(engine) as session:
         product = session.exec(select(Product).where(Product.product_code == product_code)).first()
