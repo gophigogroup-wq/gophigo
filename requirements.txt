@@ -5,3 +5,5 @@ python-multipart
 psycopg[binary]
 cloudinary
 requests
+qrcode
+pillow
