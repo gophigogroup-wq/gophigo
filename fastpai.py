@@ -484,18 +484,18 @@ def author_portal(request: Request):
 @app.get("/register", response_class=HTMLResponse)
 def register_page(request: Request):
     return f'''<html><body style="font-family:Arial; background:#f4f4f4;">
-    {get_navbar(request)}
+        {get_navbar(request)}
         <div style="padding:50px;">
             <div style="background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;">
-                <h2 style="text-align:center;">Author / Lecturer Registration</h2>
+                <h2 style="text-align:center;">Upload New Product</h2>
                 <form action="/register" method="POST" enctype="multipart/form-data">
                     <input type="text" name="fullname" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Full Name">
                     <input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email">
                     <input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password">
                     
-                    <input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Title of Book / Manual / Article">
+                    <input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Title of Product">
                     
-                    <select name="category" required style="width:100%; padding:10px; margin:10px 0;">
+                    <select name="category" id="categorySelect" required style="width:100%; padding:10px; margin:10px 0;">
                         <option value="Book">General Book</option>
                         <option value="Manual">University Manual / Lecture Notes</option>
                         <option value="Law">Laws, Regulations & Manuals</option>
@@ -505,8 +505,11 @@ def register_page(request: Request):
                         <option value="Religious">Religious Book</option>
                     </select>
 
-                    <input type="text" name="institution" style="width:100%; padding:10px; margin:10px 0;" placeholder="University Name (e.g., CBE, UDSM) - Optional">
-                    <input type="text" name="course_code" style="width:100%; padding:10px; margin:10px 0;" placeholder="Course Code (e.g., BUS 101) - Optional">
+                    <!-- These fields are hidden by default -->
+                    <div id="universityFields" style="display: none;">
+                        <input type="text" name="institution" style="width:100%; padding:10px; margin:10px 0;" placeholder="University Name (e.g., CBE)">
+                        <input type="text" name="course_code" style="width:100%; padding:10px; margin:10px 0;" placeholder="Course Code (e.g., BUS 101)">
+                    </div>
                     
                     <input type="number" name="price" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Price (TZS)">
                     
@@ -524,13 +527,25 @@ def register_page(request: Request):
                         </label>
                     </div>
                     
-                    <button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px; font-size:16px; font-weight:bold; cursor:pointer;">Submit Registration</button>
+                    <button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px; font-size:16px; font-weight:bold; cursor:pointer;">Submit Product</button>
                 </form>
             </div>
         </div>
         {FOOTER}
-     </body></html>'''
-
+        
+        <!-- JavaScript to show/hide fields -->
+        <script>
+            document.getElementById('categorySelect').addEventListener('change', function() {{
+                var uniFields = document.getElementById('universityFields');
+                if (this.value === 'Manual') {{
+                    uniFields.style.display = 'block';
+                }} else {{
+                    uniFields.style.display = 'none';
+                }}
+            }});
+        </script>
+    </body></html>'''
+        
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return '<html><body style="font-family:Arial; background:#f4f4f4;">' + get_navbar(request) + '<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center;">Author Login</h2><form action="/login" method="POST"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#3498db; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button></form><div style="text-align:center; margin-top:15px;"><a href="/forgot-password">Forgot Password?</a></div></div></div>' + FOOTER + '</body></html>'
