@@ -1244,70 +1244,29 @@ def my_library(request: Request):
             if not c:
                 return RedirectResponse(url="/customer-login?next=/my-library", status_code=303)
 
-            raw_purchases = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.status == "paid")).all()
-            
-            seen = set()
-            purchases = []
-            for p in purchases:
-                    # Try to find the product by title, or fallback to looking it up by author
-                    product = session.exec(select(Product).where(Product.title == p.book_title)).first()
-                    if not product:
-                        product = session.exec(select(Product).where(Product.author_id == p.author_id)).first()
-                        
-                    cover = product.cover_image if product else "https://via.placeholder.com/220x300?text=No+Cover"
-                    category = product.category if product else "Book"
-                    
-                    # IF IT IS A TICKET, GENERATE A QR CODE
-                    if category == "Ticket":
-                        qr_data = f"EVENT:{product.product_code if product else 'UNKNOWN'}|TICKET:{p.reference}"
-                        qr = qrcode.QRCode(version=1, box_size=10, border=5)
-                        qr.add_data(qr_data)
-                        qr.make(fit=True)
-                        img = qr.make_image(fill_color="black", back_color="white")
-                        
-                        buffered = BytesIO()
-                        img.save(buffered, format="PNG")
-                        img_str = base64.b64encode(buffered.getvalue()).decode()
-                        
-                        action = f"<img src='data:image/png;base64,{img_str}' style='width:100%; max-width:150px; margin-top:10px;'><p style='font-size:12px; color:#7f8c8d;'>Ticket ID: {p.reference[:8]}</p>"
-                    else:
-                        action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>📖 Read / View</a>"
-                        
-                    body += f'<div style="background:white; border-radius:8px; padding:15px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.1);"><img src="{cover}" style="width:100%; height:220px; object-fit:cover; border-radius:4px; margin-bottom:10px;"><h3 style="margin:0 0 5px; font-size:16px;">{p.book_title}</h3><p style="color:#7f8c8d; font-size:13px; margin:0 0 10px;">{p.format_bought}</p>{action}</div>'
-            if not purchases:
-                body = '<div style="text-align:center; padding:60px;"><h2>Your library is empty</h2><p>Items you buy will appear here.</p><a href="/" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Browse the Store</a></div>'
-            else:
-                body = '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:20px; padding:40px;">'
-                for p in purchases:
-                    product = session.exec(select(Product).where(Product.title == p.book_title)).first()
-                    cover = product.cover_image if product else "https://via.placeholder.com/220x300?text=No+Cover"
-                    
-                    # IF IT IS A TICKET, GENERATE A QR CODE
-                    if product and product.category == "Ticket":
-                        qr_data = f"EVENT:{product.product_code}|TICKET:{p.reference}"
-                        qr = qrcode.QRCode(version=1, box_size=10, border=5)
-                        qr.add_data(qr_data)
-                        qr.make(fit=True)
-                        img = qr.make_image(fill_color="black", back_color="white")
-                        
-                        buffered = BytesIO()
-                        img.save(buffered, format="PNG")
-                        img_str = base64.b64encode(buffered.getvalue()).decode()
-                        
-                        action = f"<img src='data:image/png;base64,{img_str}' style='width:100%; max-width:150px; margin-top:10px;'><p style='font-size:12px; color:#7f8c8d;'>Ticket ID: {p.reference[:8]}</p>"
-                    else:
-                        action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>Read / View</a>"
-                        
-                    body += f'<div style="background:white; border-radius:8px; padding:15px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.1);"><img src="{cover}" style="width:100%; height:220px; object-fit:cover; border-radius:4px; margin-bottom:10px;"><h3 style="margin:0 0 5px; font-size:16px;">{p.book_title}</h3><p style="color:#7f8c8d; font-size:13px; margin:0 0 10px;">{p.format_bought}</p>{action}</div>'
-                body += "</div>"
+            # Get ALL paid purchases
+            purchases = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.status == "paid")).all()
 
-            return f'<html><body style="font-family:Arial; background:#f4f4f4; margin:0;">{get_navbar(request)}<h1 style="text-align:center; color:#2c3e50; padding:20px;">My Library</h1>{body}{FOOTER}</body></html>'
+            html = f"<html><body style='font-family:Arial; padding:20px;'><h1>Debug Library</h1>"
+            html += f"<h3>Logged in as: {c.email}</h3>"
+            html += f"<h3>Total Paid Purchases: {len(purchases)}</h3><hr>"
+
+            for p in purchases:
+                product = session.exec(select(Product).where(Product.title == p.book_title)).first()
+                html += f"<div style='border:1px solid #ccc; padding:10px; margin:10px 0;'>"
+                html += f"<p><strong>Title in DB:</strong> {p.book_title}</p>"
+                html += f"<p><strong>Status:</strong> {p.status}</p>"
+                html += f"<p><strong>Product Found in Product Table:</strong> {product.title if product else 'NOT FOUND'}</p>"
+                html += f"<p><strong>Category:</strong> {product.category if product else 'N/A'}</p>"
+                html += f"</div>"
+
+            html += "</body></html>"
+            return html
             
     except Exception as e:
         import traceback
-        error_details = traceback.format_exc()
-        return HTMLResponse(content=f"<h1>Library Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)
-        
+        return HTMLResponse(content=f"<h1>Library Crash</h1><pre>{traceback.format_exc()}</pre>", status_code=500)        
+
 @app.get("/item/{product_code}")
 def direct_item_link(request: Request, product_code: str):
     with Session(engine) as session:
