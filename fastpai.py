@@ -1303,3 +1303,15 @@ def my_library(request: Request):
         import traceback
         error_details = traceback.format_exc()
         return HTMLResponse(content=f"<h1>Library Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)
+@app.get("/item/{product_code}")
+def direct_item_link(request: Request, product_code: str):
+    with Session(engine) as session:
+        product = session.exec(select(Product).where(Product.product_code == product_code)).first()
+        if not product:
+            return HTMLResponse(content="<h1>Item not found</h1>", status_code=404)
+            
+        customer_email = request.cookies.get("customer_email")
+        if not customer_email:
+            return RedirectResponse(url=f"/customer-login?next=/checkout-product/{product.id}", status_code=303)
+            
+        return RedirectResponse(url=f"/checkout-product/{product.id}", status_code=303)
