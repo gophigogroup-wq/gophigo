@@ -3,6 +3,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import SQLModel, Field, Session, create_engine, select
 import hashlib, secrets, os, uuid, cloudinary, cloudinary.uploader, requests
+import qrcode
+import base64
+from io import BytesIO
 from datetime import datetime, timedelta, timezone
 import json
 app = FastAPI()
