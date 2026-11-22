@@ -1248,7 +1248,7 @@ def my_library(request: Request):
             
             seen = set()
             purchases = []
-                   for p in purchases:
+            for p in purchases:
                     # Try to find the product by title, or fallback to looking it up by author
                     product = session.exec(select(Product).where(Product.title == p.book_title)).first()
                     if not product:
