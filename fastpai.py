@@ -219,7 +219,7 @@ def get_navbar(request: Request):
         
     return f'<nav style="background-color: #2c3e50; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: Poppins, sans-serif;"><div style="font-size: 24px; font-weight: bold;"><a href="/" style="color: white; text-decoration: none;">🛍️ Gophigo Store</a></div><div>{links}</div></nav>'
     
-    @app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse)
 def store(request: Request, search: str = None, category: str = "Book"):
     with Session(engine) as session:
         query = select(Product).where(Product.status == "Approved", Product.is_hidden == False)
