@@ -98,6 +98,12 @@ with engine.connect() as conn:
         conn.commit()
     except Exception:
         pass
+        with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE purchase ADD COLUMN snippe_ref VARCHAR;"))
+        conn.commit()
+    except Exception:
+        pass
 class Author(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; book_title: str
@@ -141,6 +147,7 @@ class Purchase(SQLModel, table=True):
     region: str | None = Field(default=None)
     shipping_address: str | None = Field(default=None)
     reference: str | None = Field(default=None, index=True)
+    snippe_ref: str | None = Field(default=None)
     status: str = Field(default="pending")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 class Employee(SQLModel, table=True):
