@@ -1306,7 +1306,9 @@ def my_library(request: Request):
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        return HTMLResponse(content=f"<h1>Library Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)@app.get("/item/{product_code}")
+        return HTMLResponse(content=f"<h1>Library Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)
+        
+        @app.get("/item/{product_code}")
 def direct_item_link(request: Request, product_code: str):
     with Session(engine) as session:
         product = session.exec(select(Product).where(Product.product_code == product_code)).first()
