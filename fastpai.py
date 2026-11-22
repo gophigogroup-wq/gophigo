@@ -459,6 +459,11 @@ def process_payment_product(request: Request, product_id: int, phone: str = Form
             
             if response.status_code in [200, 201]:
                 data = response.json()
+            snippe_ref = data.get("data", {}).get("reference")
+            if snippe_ref:
+                purchase.snippe_ref = snippe_ref
+                session.add(purchase)
+                session.commit()
                 payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
                 
                 if payment_url:
