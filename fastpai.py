@@ -197,30 +197,27 @@ def get_navbar(request: Request):
     c = request.cookies.get("customer_email")
     e = request.cookies.get("employee_email")
     ad = request.cookies.get("admin_session")
-    
     links = ''
-    if ad:
-        links += '<a href="/admin" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-weight: bold;">Admin Dashboard</a><a href="/admin-logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px;">Logout</a>'
-    elif e:
-        links += '<a href="/employee-dashboard" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-weight: bold;">Staff Dashboard</a><a href="/employee-logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px;">Logout</a>'
-    elif a:
-        links += '<a href="/author-dashboard" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-weight: bold;">Author Dashboard</a><a href="/logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px;">Logout</a>'
+    
+    if a:
+        with Session(engine) as session:
+            author = session.exec(select(Author).where(Author.email == a)).first()
+            author_name = author.fullname if author else "Author"
+            
+        links += f'<a href="/author-dashboard" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-weight: bold;">{author_name} Dashboard</a>'
+        links += '<a href="/register" style="color: #3498db; text-decoration: none; margin-left: 20px; font-weight: bold;">Upload New Product</a>'
+        links += '<a href="/author-reports" style="color: #9b59b6; text-decoration: none; margin-left: 20px; font-weight: bold;">Earnings Report</a>'
+        links += '<a href="/logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px;">Logout</a>'
     elif c:
         links += '<a href="/my-library" style="color: #2ecc71; text-decoration: none; margin-left: 20px; font-weight: bold;">My Library</a><a href="/customer-logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px;">Logout</a>'
+    elif e:
+        links += '<a href="/employee-dashboard" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-weight: bold;">Staff Dashboard</a><a href="/employee-logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px;">Logout</a>'
+    elif ad:
+        links += '<a href="/admin" style="color: #e74c3c; text-decoration: none; margin-left: 20px; font-weight: bold;">Admin Dashboard</a><a href="/admin-logout" style="color: #e74c3c; text-decoration: none; margin-left: 20px;">Logout</a>'
     else:
         links += '<a href="/author-portal" style="color: white; text-decoration: none; margin-left: 20px;">Author Portal</a><a href="/customer-login" style="color: white; text-decoration: none; margin-left: 20px;">Customer Login</a><a href="/employee-login" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-weight: bold;">Staff Login</a>'
         
-    return f'''
-    <nav style="background-color: #2c3e50; padding: 15px 20px; font-family: Poppins, sans-serif; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;">
-        <div style="font-size: 22px; font-weight: bold; width: 100%; text-align: center; margin-bottom: 10px;">
-            <a href="/" style="color: white; text-decoration: none;">🛍️ Gophigo Store</a>
-        </div>
-        <div style="width: 100%; text-align: center; display: flex; justify-content: center; gap: 15px; font-size: 14px;">
-            {links}
-        </div>
-    </nav>
-    '''
-@app.get("/", response_class=HTMLResponse)
+    return f'<nav style="background-color: #2c3e50; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: Poppins, sans-serif;"><div style="font-size: 24px; font-weight: bold;"><a href="/" style="color: white; text-decoration: none;">🛍️ Gophigo Store</a></div><div>{links}</div></nav>'@app.get("/", response_class=HTMLResponse)
 def store(request: Request, search: str = None, category: str = "Book"):
     with Session(engine) as session:
         query = select(Product).where(Product.status == "Approved", Product.is_hidden == False)
