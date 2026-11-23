@@ -1391,3 +1391,39 @@ def verify_ticket(qr_data: str):
         session.commit()
         
         return f"<html><body style='background:#2ecc71; color:white; text-align:center; padding:100px; font-family:Arial;'><h1>ENTRY ALLOWED!</h1><h2>{purchase.book_title}</h2><p>Ticket ID: {purchase.reference[:8]}</p><a href='/scanner' style='background:white; color:#2ecc71; padding:15px 30px; text-decoration:none; border-radius:5px; font-weight:bold; font-size:20px;'>Scan Next Fan</a></body></html>"
+@app.get("/play-media/{purchase_id}", response_class=HTMLResponse)
+def play_media(request: Request, purchase_id: int):
+    customer_email = request.cookies.get("customer_email")
+    if not customer_email:
+        return RedirectResponse(url="/customer-login", status_code=303)
+        
+    with Session(engine) as session:
+        p = session.get(Purchase, purchase_id)
+        if not p:
+            return HTMLResponse(content="<h1>Media not found.</h1>", status_code=404)
+            
+        # Get the media URL from the product or the purchase record
+        media_url = p.pdf_file if p.pdf_file else ""
+        
+        # This checks if it's an audio file or video file
+        is_audio = ".mp3" in media_url or ".wav" in media_url or ".m4a" in media_url
+        
+        if is_audio:
+            player_html = f"<audio controls style='width: 100%; max-width: 600px; margin-top: 20px;'><source src='{media_url}' type='audio/mpeg'>Your browser does not support the audio element.</audio>"
+        else:
+            player_html = f"<video controls style='width: 100%; max-width: 800px; border-radius: 8px; margin-top: 20px;'><source src='{media_url}' type='video/mp4'>Your browser does not support the video tag.</video>"
+
+        return f"""
+        <html><body style="font-family:Arial; background:#f4f4f4;">
+            {get_navbar(request)}
+            <div style="padding:50px; text-align:center;">
+                <h2 style="color:#2c3e50;">🎬 Now Playing: {p.book_title}</h2>
+                <div style="background:white; padding:30px; border-radius:8px; max-width:900px; margin:auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    {player_html}
+                    <br><br>
+                    <a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px; font-weight:bold;">← Back to Library</a>
+                </div>
+            </div>
+            {FOOTER}
+        </body></html>
+        """
