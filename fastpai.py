@@ -108,7 +108,7 @@ with engine.connect() as conn:
      try:
         conn.execute(text("ALTER TABLE purchase ADD COLUMN scanned BOOLEAN DEFAULT FALSE;"))
         conn.commit()
-    except Exception:
+     except Exception:
          pass
 class Author(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
