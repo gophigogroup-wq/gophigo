@@ -154,6 +154,7 @@ class Purchase(SQLModel, table=True):
     shipping_address: str | None = Field(default=None)
     reference: str | None = Field(default=None, index=True)
     snippe_ref: str | None = Field(default=None)
+    scanned: bool = Field(default=False)
     status: str = Field(default="pending")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 class Employee(SQLModel, table=True):
@@ -164,7 +165,6 @@ class Employee(SQLModel, table=True):
 class Review(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     author_id: int; customer_id: int; rating: int; comment: str
-scanned: bool = Field(default=False)
 SQLModel.metadata.create_all(engine)
 
 with Session(engine) as session:
