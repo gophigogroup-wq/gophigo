@@ -1310,25 +1310,6 @@ def direct_item_link(request: Request, product_code: str):
             
         return RedirectResponse(url=f"/checkout-product/{product.id}", status_code=303)
         
-@app.get("/force-my-ticket")
-def force_my_ticket(request: Request):
-    customer_email = request.cookies.get("customer_email")
-    if not customer_email:
-        return {"error": "Please log in first."}
-        
-    with Session(engine) as session:
-        c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
-        # Find ALL pending purchases for this specific customer
-        pending = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.status == "pending")).all()
-        
-        count = 0
-        for p in pending:
-            p.status = "paid"
-            session.add(p)
-            count += 1
-        session.commit()
-        
-        return {"message": f"Success! Forced {count} pending purchases to PAID for {customer_email}."}
 @app.post("/snippe-webhook")
 async def snippe_webhook(request: Request):
     body = await request.body()
