@@ -104,7 +104,7 @@ with engine.connect() as conn:
         conn.commit()
     except Exception:
         pass
-  with engine.connect() as conn:
+with engine.connect() as conn:
      try:
         conn.execute(text("ALTER TABLE purchase ADD COLUMN scanned BOOLEAN DEFAULT FALSE;"))
         conn.commit()
