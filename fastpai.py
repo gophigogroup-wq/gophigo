@@ -1282,10 +1282,10 @@ def my_library(request: Request):
                 img_str = base64.b64encode(buffered.getvalue()).decode()
                         
                 action = f"<img src='data:image/png;base64,{img_str}' style='width:100%; max-width:150px; margin-top:10px;'><p style='font-size:12px; color:#7f8c8d;'>Ticket ID: {p.reference[:8]}</p>"
-                    elif product and product.category == "Media":
-                        action = f"<a href='/play-media/{p.id}' style='background:#e74c3c; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>▶️ Play Media</a>"
-                    else:
-                        action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>📖 Read / View</a>"            
+            elif product and product.category == "Media":
+                action = f"<a href='/play-media/{p.id}' style='background:#e74c3c; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>▶️ Play Media</a>"
+            else:
+                action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>📖 Read / View</a>"            
                 body += "</div>"
 
             return f'<html><body style="font-family:Arial; background:#f4f4f4; margin:0;">{get_navbar(request)}<h1 style="text-align:center; color:#2c3e50; padding:20px;">My Library</h1>{body}{FOOTER}</body></html>'
