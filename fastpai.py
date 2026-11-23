@@ -1270,32 +1270,7 @@ def my_library(request: Request):
             
             seen = set()
             purchases = []
-            for p in raw_purchases:
-                if p.book_title not in seen:
-                    seen.add(p.book_title)
-                    purchases.append(p)
-
-            if not purchases:
-                body = '<div style="text-align:center; padding:60px;"><h2>Your library is empty</h2><p>Items you buy will appear here.</p><a href="/" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">Browse the Store</a></div>'
-            else:
-                body = '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:20px; padding:40px;">'
-                for p in purchases:
-                    product = session.exec(select(Product).where(Product.title == p.book_title)).first()
-                    cover = product.cover_image if product else "https://via.placeholder.com/220x300?text=No+Cover"
-                    
-                    if product and product.category == "Ticket":
-                        qr_data = f"EVENT:{product.product_code}|TICKET:{p.reference}"
-                        qr = qrcode.QRCode(version=1, box_size=10, border=5)
-                        qr.add_data(qr_data)
-                        qr.make(fit=True)
-                        img = qr.make_image(fill_color="black", back_color="white")
-                        
-                        buffered = BytesIO()
-                        img.save(buffered, format="PNG")
-                        img_str = base64.b64encode(buffered.getvalue()).decode()
-                        
-                        action = f"<img src='data:image/png;base64,{img_str}' style='width:100%; max-width:150px; margin-top:10px;'><p style='font-size:12px; color:#7f8c8d;'>Ticket ID: {p.reference[:8]}</p>"
-                    if product and product.category == "Ticket":
+                                if product and product.category == "Ticket":
                         qr_data = f"EVENT:{product.product_code}|TICKET:{p.reference}"
                         qr = qrcode.QRCode(version=1, box_size=10, border=5)
                         qr.add_data(qr_data)
@@ -1310,11 +1285,7 @@ def my_library(request: Request):
                     elif product and product.category == "Media":
                         action = f"<a href='/play-media/{p.id}' style='background:#e74c3c; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>▶️ Play Media</a>"
                     else:
-                        action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>📖 Read / View</a>"
-                    else:
-                        action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>📖 Read / View</a>"
-                        
-                    body += f'<div style="background:white; border-radius:8px; padding:15px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.1);"><img src="{cover}" style="width:100%; height:220px; object-fit:cover; border-radius:4px; margin-bottom:10px;"><h3 style="margin:0 0 5px; font-size:16px;">{p.book_title}</h3><p style="color:#7f8c8d; font-size:13px; margin:0 0 10px;">{p.format_bought}</p>{action}</div>'
+                        action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>📖 Read / View</a>"            
                 body += "</div>"
 
             return f'<html><body style="font-family:Arial; background:#f4f4f4; margin:0;">{get_navbar(request)}<h1 style="text-align:center; color:#2c3e50; padding:20px;">My Library</h1>{body}{FOOTER}</body></html>'
