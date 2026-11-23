@@ -1270,12 +1270,12 @@ def my_library(request: Request):
             
             seen = set()
             purchases = []
-                                if product and product.category == "Ticket":
-                        qr_data = f"EVENT:{product.product_code}|TICKET:{p.reference}"
-                        qr = qrcode.QRCode(version=1, box_size=10, border=5)
-                        qr.add_data(qr_data)
-                        qr.make(fit=True)
-                        img = qr.make_image(fill_color="black", back_color="white")
+            if product and product.category == "Ticket":
+                qr_data = f"EVENT:{product.product_code}|TICKET:{p.reference}"
+                qr = qrcode.QRCode(version=1, box_size=10, border=5)
+                qr.add_data(qr_data)
+                qr.make(fit=True)
+                img = qr.make_image(fill_color="black", back_color="white")
                         
                         buffered = BytesIO()
                         img.save(buffered, format="PNG")
