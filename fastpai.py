@@ -104,6 +104,12 @@ with engine.connect() as conn:
         conn.commit()
     except Exception:
         pass
+  with engine.connect() as conn:
+     try:
+        conn.execute(text("ALTER TABLE purchase ADD COLUMN scanned BOOLEAN DEFAULT FALSE;"))
+        conn.commit()
+    except Exception:
+        pass
 class Author(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; book_title: str
@@ -158,7 +164,7 @@ class Employee(SQLModel, table=True):
 class Review(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     author_id: int; customer_id: int; rating: int; comment: str
-
+scanned: bool = Field(default=False)
 SQLModel.metadata.create_all(engine)
 
 with Session(engine) as session:
