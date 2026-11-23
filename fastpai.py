@@ -1344,7 +1344,6 @@ async def snippe_webhook(request: Request):
     return {"status": "success"}
 @app.get("/scanner", response_class=HTMLResponse)
 def scanner_page(request: Request):
-    # Only allow Admin or Employees to scan
     if not request.cookies.get("admin_session") and not request.cookies.get("employee_email"):
         return RedirectResponse(url="/employee-login", status_code=303)
 
@@ -1355,38 +1354,17 @@ def scanner_page(request: Request):
     <style>
         body { font-family: Arial; text-align: center; background: #2c3e50; color: white; margin: 0; padding: 20px; }
         #reader { width: 100%; max-width: 400px; margin: auto; background: white; border-radius: 10px; padding: 10px; }
-        #result { margin-top: 20px; font-size: 24px; font-weight: bold; padding: 20px; border-radius: 10px; }
-        .success { background: #2ecc71; color: white; }
-        .error { background: #e74c3c; color: white; }
     </style>
     </head><body>
-        <h1>📷 Gophigo Ticket Scanner</h1>
-        <p>Point the camera at the fan's QR code.</p>
+        <h1>📷 Gophigo Scanner</h1>
         <div id="reader"></div>
-        <div id="result"></div>
-
         <script>
             function onScanSuccess(decodedText, decodedResult) {
-                // Stop scanning to process
+                // Stop scanning
                 html5QrcodeScanner.clear();
-                document.getElementById('result').innerHTML = "Checking...";
-                document.getElementById('result').className = "";
-                
-                // Send the QR data to our backend
-                fetch('/verify-ticket?qr_data=' + encodeURIComponent(decodedText))
-                    .then(response => response.json())
-                    .then(data => {
-                        let resDiv = document.getElementById('result');
-                        if (data.status === 'success') {
-                            resDiv.innerHTML = "✅ " + data.message;
-                            resDiv.className = "success";
-                        } else {
-                            resDiv.innerHTML = "❌ " + data.message;
-                            resDiv.className = "error";
-                        }
-                    });
+                // Redirect the page to the verify URL directly!
+                window.location.href = '/verify-ticket?qr_data=' + encodeURIComponent(decodedText);
             }
-
             let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
             html5QrcodeScanner.render(onScanSuccess);
         </script>
