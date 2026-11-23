@@ -427,7 +427,7 @@ def process_payment_product(request: Request, product_id: int, phone: str = Form
             author_id=p.author_id, 
             book_title=p.title,
             pdf_file=p.file_url, 
-            format_bought="Ebook",
+            format_bought="p.category",
             reference=purchase_ref, 
             status="pending",
         )
