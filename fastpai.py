@@ -1329,3 +1329,29 @@ def force_my_ticket(request: Request):
         session.commit()
         
         return {"message": f"Success! Forced {count} pending purchases to PAID for {customer_email}."}
+@app.post("/snippe-webhook")
+async def snippe_webhook(request: Request):
+    body = await request.body()
+    try:
+        event = json.loads(body)
+    except:
+        return {"status": "error", "message": "invalid json"}
+
+    # Get references from Snippe's payload
+    metadata = event.get("data", {}).get("metadata", {}) or {}
+    purchase_ref = metadata.get("purchase_reference")
+    snippe_ref_from_payload = event.get("data", {}).get("reference")
+    
+    if purchase_ref or snippe_ref_from_payload:
+        with Session(engine) as session:
+            # Match by our UUID or Snippe's SN...
+            purchase = session.exec(select(Purchase).where(
+                (Purchase.reference == purchase_ref) | (Purchase.snippe_ref == snippe_ref_from_payload)
+            )).first()
+            
+            if purchase and purchase.status != "paid":
+                purchase.status = "paid"
+                session.add(purchase)
+                session.commit()
+                
+    return {"status": "success"}
