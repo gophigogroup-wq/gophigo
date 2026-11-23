@@ -1392,3 +1392,36 @@ def scanner_page(request: Request):
         </script>
     </body></html>
     """
+@app.get("/verify-ticket")
+def verify_ticket(qr_data: str):
+    # The QR code contains: EVENT:GOP-2026-XXXX|TICKET:UUID
+    try:
+        parts = qr_data.split("|")
+        event_code = parts[0].replace("EVENT:", "")
+        ticket_ref = parts[1].replace("TICKET:", "")
+    except:
+        return {"status": "error", "message": "Invalid QR Code format."}
+
+    with Session(engine) as session:
+        purchase = session.exec(select(Purchase).where(Purchase.reference == ticket_ref)).first()
+        
+        if not purchase:
+            return {"status": "error", "message": "Fake Ticket! Not found in database."}
+            
+        if purchase.status != "paid":
+            return {"status": "error", "message": "Unpaid Ticket!"}
+            
+        if purchase.scanned:
+            return {"status": "error", "message": "ALREADY SCANNED! This ticket has been used."}
+            
+        # Check if the ticket belongs to the correct event
+        product = session.exec(select(Product).where(Product.title == purchase.book_title)).first()
+        if not product or product.product_code != event_code:
+            return {"status": "error", "message": "Wrong Event! This ticket is for a different match."}
+            
+        # If we pass all checks, mark as scanned
+        purchase.scanned = True
+        session.add(purchase)
+        session.commit()
+        
+        return {"status": "success", "message": f"ENTRY ALLOWED! {purchase.book_title}"}
