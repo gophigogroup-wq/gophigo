@@ -1177,10 +1177,14 @@ def process_registration(
         
     # 1. Upload files to Cloudinary
     cover_url = cloudinary.uploader.upload(cover.file, folder="gophigo_covers", resource_type="image").get("secure_url")
-    pdf_url = None
+    file_url = None
     if pdf_file and pdf_file.filename: 
-        pdf_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw", access_mode="public").get("secure_url")
-
+        if category == "Media":
+            # Upload as video/audio
+            file_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_media", resource_type="video").get("secure_url")
+        else:
+            # Upload as PDF document
+            file_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw", access_mode="public").get("secure_url")
     # 2. Generate the Predictable Book ID
     current_year = datetime.now().year
     with Session(engine) as session:
