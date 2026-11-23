@@ -1370,36 +1370,33 @@ def scanner_page(request: Request):
         </script>
     </body></html>
     """
-@app.get("/verify-ticket")
+@app.get("/verify-ticket", response_class=HTMLResponse)
 def verify_ticket(qr_data: str):
-    # The QR code contains: EVENT:GOP-2026-XXXX|TICKET:UUID
     try:
         parts = qr_data.split("|")
         event_code = parts[0].replace("EVENT:", "")
         ticket_ref = parts[1].replace("TICKET:", "")
     except:
-        return {"status": "error", "message": "Invalid QR Code format."}
+        return "<h1 style='color:red;'>Invalid QR Code format.</h1><a href='/scanner'>Scan Again</a>"
 
     with Session(engine) as session:
         purchase = session.exec(select(Purchase).where(Purchase.reference == ticket_ref)).first()
         
         if not purchase:
-            return {"status": "error", "message": "Fake Ticket! Not found in database."}
+            return "<h1 style='color:red; text-align:center; padding:50px;'>Fake Ticket! Not found.</h1><a href='/scanner' style='display:block; text-align:center;'>Scan Again</a>"
             
         if purchase.status != "paid":
-            return {"status": "error", "message": "Unpaid Ticket!"}
+            return "<h1 style='color:red; text-align:center; padding:50px;'>Unpaid Ticket!</h1><a href='/scanner' style='display:block; text-align:center;'>Scan Again</a>"
             
         if purchase.scanned:
-            return {"status": "error", "message": "ALREADY SCANNED! This ticket has been used."}
+            return "<h1 style='color:red; text-align:center; padding:50px;'>ALREADY SCANNED! This ticket has been used.</h1><a href='/scanner' style='display:block; text-align:center;'>Scan Again</a>"
             
-        # Check if the ticket belongs to the correct event
         product = session.exec(select(Product).where(Product.title == purchase.book_title)).first()
         if not product or product.product_code != event_code:
-            return {"status": "error", "message": "Wrong Event! This ticket is for a different match."}
+            return "<h1 style='color:red; text-align:center; padding:50px;'>Wrong Event! This ticket is for a different match.</h1><a href='/scanner' style='display:block; text-align:center;'>Scan Again</a>"
             
-        # If we pass all checks, mark as scanned
         purchase.scanned = True
         session.add(purchase)
         session.commit()
         
-        return {"status": "success", "message": f"ENTRY ALLOWED! {purchase.book_title}"}
+        return f"<html><body style='background:#2ecc71; color:white; text-align:center; padding:100px; font-family:Arial;'><h1>ENTRY ALLOWED!</h1><h2>{purchase.book_title}</h2><p>Ticket ID: {purchase.reference[:8]}</p><a href='/scanner' style='background:white; color:#2ecc71; padding:15px 30px; text-decoration:none; border-radius:5px; font-weight:bold; font-size:20px;'>Scan Next Fan</a></body></html>"
