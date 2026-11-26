@@ -503,15 +503,43 @@ def author_portal(request: Request):
 
 @app.get("/register", response_class=HTMLResponse)
 def register_page(request: Request):
+    author_email = request.cookies.get("author_email")
+    is_logged_in = False
+    author_name = ""
+    author_email_val = ""
+
+    if author_email:
+        with Session(engine) as session:
+            author = session.exec(select(Author).where(Author.email == author_email)).first()
+            if author:
+                is_logged_in = True
+                author_name = author.fullname
+                author_email_val = author.email
+
+    # Dynamic form based on login status
+    login_fields = ""
+    if not is_logged_in:
+        login_fields = f'''
+            <input type="text" name="fullname" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Full Name">
+            <input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email">
+            <input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password">
+        '''
+    else:
+        login_fields = f'''
+            <input type="hidden" name="fullname" value="{author_name}">
+            <input type="hidden" name="email" value="{author_email_val}">
+            <div style="background:#e8f8f5; padding:10px; border-radius:5px; margin-bottom:15px; color:#2c3e50;">
+                <strong>Logged in as:</strong> {author_name} ({author_email_val})
+            </div>
+        '''
+
     return f'''<html><body style="font-family:Arial; background:#f4f4f4;">
         {get_navbar(request)}
         <div style="padding:50px;">
             <div style="background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;">
                 <h2 style="text-align:center;">Upload New Product</h2>
                 <form action="/register" method="POST" enctype="multipart/form-data">
-                    <input type="text" name="fullname" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Full Name">
-                    <input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email">
-                    <input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password">
+                    {login_fields}
                     
                     <input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Title of Product">
                     
@@ -535,7 +563,6 @@ def register_page(request: Request):
                     <label style="font-size:14px; font-weight:bold;">Upload Cover Image:</label>
                     <input type="file" name="cover" accept="image/*" required style="width:100%; padding:10px; margin:10px 0;">
                     
-                    <!-- ID added to label and input -->
                     <label id="fileLabel" style="font-size:14px; font-weight:bold;">Upload PDF / Document:</label>
                     <input type="file" id="fileInput" name="pdf_file" accept=".pdf" style="width:100%; padding:10px; margin:10px 0;">
                     
@@ -559,14 +586,12 @@ def register_page(request: Request):
                 var fileInput = document.getElementById('fileInput');
                 var fileLabel = document.getElementById('fileLabel');
                 
-                // Handle University Fields
                 if (this.value === 'Manual') {{
                     uniFields.style.display = 'block';
                 }} else {{
                     uniFields.style.display = 'none';
                 }}
                 
-                // Handle Media Files
                 if (this.value === 'Media') {{
                     fileInput.accept = "video/*,audio/*";
                     fileLabel.innerText = "Upload Audio/Video File:";
@@ -576,8 +601,7 @@ def register_page(request: Request):
                 }}
             }});
         </script>
-    </body></html>'''        
-@app.get("/login", response_class=HTMLResponse)
+    </body></html>'''@app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return '<html><body style="font-family:Arial; background:#f4f4f4;">' + get_navbar(request) + '<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center;">Author Login</h2><form action="/login" method="POST"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#3498db; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button></form><div style="text-align:center; margin-top:15px;"><a href="/forgot-password">Forgot Password?</a></div></div></div>' + FOOTER + '</body></html>'
 
@@ -1169,102 +1193,87 @@ def admin_toggle_product(request: Request, product_id: int, action: str):
 @app.post("/register", response_class=HTMLResponse)
 def process_registration(
     request: Request, 
-    fullname: str = Form(...), 
-    email: str = Form(...), 
-    password: str = Form(...), 
+    fullname: str = Form(None), 
+    email: str = Form(None), 
+    password: str = Form(None), 
     book_title: str = Form(...), 
     category: str = Form(...), 
     institution: str = Form(None), 
     course_code: str = Form(None), 
     price: float = Form(...), 
-    event_venue: str = Form(None),
-    event_date: str = Form(None),
     cover: UploadFile = File(...), 
     pdf_file: UploadFile = File(None), 
     agree_terms: str = Form(None)
 ):
     if not agree_terms:
-        return HTMLResponse(content="<h1>Error</h1><p>You must agree to the Terms and Conditions to register.</p>", status_code=400)
+        return HTMLResponse(content="<h1>Error</h1><p>You must agree to the Terms and Conditions.</p>", status_code=400)
         
+    author_email = request.cookies.get("author_email")
+    
     # 1. Upload files to Cloudinary
     cover_url = cloudinary.uploader.upload(cover.file, folder="gophigo_covers", resource_type="image").get("secure_url")
     file_url = None
     if pdf_file and pdf_file.filename: 
         if category == "Media":
-            # Upload video/audio to Cloudinary
             file_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_media", resource_type="video").get("secure_url")
         else:
-            # Upload PDF to Cloudinary
             file_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw", access_mode="public").get("secure_url")
+
     # 2. Generate the Predictable Book ID
     current_year = datetime.now().year
     with Session(engine) as session:
         total_products = len(session.exec(select(Product)).all())
     new_book_id = f"GOP-{current_year}-{total_products + 1:04d}"
 
-    # 3. Save the Author first
     with Session(engine) as session:
-        new_author = Author(
-            fullname=fullname, 
-            email=email, 
-            password=hashlib.sha256(password.encode()).hexdigest(), 
-            book_title=book_title, 
-            book_format=category, 
-            ebook_price=price, 
-            cover_image=cover_url, 
-            pdf_file=pdf_url,
-            book_id=new_book_id,
-            membership_status="Pending" # Automatically active for now
-        )
-        session.add(new_author)
-        session.commit()
-        session.refresh(new_author)
-        
-        # 4. Save the Product!
+        # 3. Check if the author is already logged in
+        if author_email:
+            author = session.exec(select(Author).where(Author.email == author_email)).first()
+            if not author:
+                return HTMLResponse(content="<h1>Error: Author session invalid. Please log in again.</h1>", status_code=400)
+        else:
+            # 4. If not logged in, create a NEW author
+            author = Author(
+                fullname=fullname, 
+                email=email, 
+                password=hashlib.sha256(password.encode()).hexdigest(), 
+                book_title=book_title, 
+                book_format=category, 
+                ebook_price=price, 
+                cover_image=cover_url, 
+                pdf_file=file_url,
+                book_id=new_book_id,
+                membership_status="Pending"
+            )
+            session.add(author)
+            session.commit()
+            session.refresh(author)
+            
+            # Auto-login the new author
+            author_email = email
+
+        # 5. Create the Product (for both new and existing authors)
         new_product = Product(
-            author_id=new_author.id,
+            author_id=author.id,
             title=book_title,
             category=category,
             institution=institution,
             course_code=course_code,
             price=price,
             cover_image=cover_url,
-            file_url=pdf_url,
+            file_url=file_url,
             product_code=new_book_id,
             status="Approved"
         )
         session.add(new_product)
         session.commit()
 
-    # ... (keep the code above this that uploads images and saves the author) ...
-    
-    # Make sure it says Pending!
-    new_author = Author(
-        fullname=fullname, 
-        email=email, 
-        password=hashlib.sha256(password.encode()).hexdigest(), 
-        book_title=book_title, 
-        book_format=category, 
-        ebook_price=price, 
-        cover_image=cover_url, 
-        pdf_file=pdf_url,
-        book_id=new_book_id,
-        membership_status="Pending" # <--- CHANGED TO PENDING
-    )
-    with Session(engine) as session: 
-        session.add(new_author)
-        session.commit()
-
-    # Auto-login the author and show the success page
-    success_html = '<html><body style="font-family:Arial; text-align:center; padding:100px; background:#f4f4f4;">' + get_navbar(request) + f'<div style="text-align:center; padding:100px; background:white; border-radius:8px; max-width:500px; margin:auto;"><h1 style="color:#2ecc71;">Registration Successful!</h1><p>Your Item ID is: <strong style="font-size:24px; color:#2c3e50;">{new_book_id}</strong></p><p>Your unique share link is: <br> <code>www.gophigo.co.tz/item/{new_book_id}</code></p><br><a href="/author-dashboard" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px; font-weight:bold;">Go to My Dashboard</a></div>' + FOOTER + '</body></html>'
+    # 6. Show Success Page
+    success_html = '<html><body style="font-family:Arial; text-align:center; padding:100px; background:#f4f4f4;">' + get_navbar(request) + f'<div style="text-align:center; padding:100px; background:white; border-radius:8px; max-width:500px; margin:auto;"><h1 style="color:#2ecc71;">Product Uploaded!</h1><p>Your Item ID is: <strong style="font-size:24px; color:#2c3e50;">{new_book_id}</strong></p><p>Your unique share link is: <br> <code>www.gophigo.co.tz/item/{new_book_id}</code></p><br><a href="/author-dashboard" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px; font-weight:bold;">Go to My Dashboard</a></div>' + FOOTER + '</body></html>'
     
     response = HTMLResponse(content=success_html)
-    response.set_cookie(key="author_email", value=email, httponly=True)
+    response.set_cookie(key="author_email", value=author_email, httponly=True)
     return response
-import qrcode
-import base64
-from io import BytesIO
-
 @app.get("/my-library", response_class=HTMLResponse)
 def my_library(request: Request):
     try:
