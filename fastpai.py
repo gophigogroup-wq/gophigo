@@ -1191,10 +1191,10 @@ def process_registration(
     file_url = None
     if pdf_file and pdf_file.filename: 
         if category == "Media":
-            # Upload as video/audio
+            # Upload video/audio to Cloudinary
             file_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_media", resource_type="video").get("secure_url")
         else:
-            # Upload as PDF document
+            # Upload PDF to Cloudinary
             file_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw", access_mode="public").get("secure_url")
     # 2. Generate the Predictable Book ID
     current_year = datetime.now().year
