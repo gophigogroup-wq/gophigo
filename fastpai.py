@@ -580,7 +580,7 @@ def register_page(request: Request):
         </div>
         {FOOTER}
         
-        <script>
+                <script>
             document.getElementById('categorySelect').addEventListener('change', function() {{
                 var uniFields = document.getElementById('universityFields');
                 var fileInput = document.getElementById('fileInput');
@@ -593,16 +593,15 @@ def register_page(request: Request):
                 }}
                 
                 if (this.value === 'Media') {{
-                    fileInput.accept = "video/*,audio/*";
+                    // Explicitly list extensions so Android OS opens the File Manager
+                    fileInput.accept = ".mp3, .mp4, .wav, .m4a, .mov, audio/*, video/*";
                     fileLabel.innerText = "Upload Audio/Video File:";
                 }} else {{
-                    fileInput.accept = ".pdf";
+                    fileInput.accept = ".pdf, .doc, .docx";
                     fileLabel.innerText = "Upload PDF / Document:";
                 }}
             }});
-        </script>
-    </body></html>'''
-    
+        </script>    
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return '<html><body style="font-family:Arial; background:#f4f4f4;">' + get_navbar(request) + '<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center;">Author Login</h2><form action="/login" method="POST"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#3498db; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button></form><div style="text-align:center; margin-top:15px;"><a href="/forgot-password">Forgot Password?</a></div></div></div>' + FOOTER + '</body></html>'
