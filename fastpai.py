@@ -901,8 +901,7 @@ def admin_dashboard(request: Request):
             {FOOTER}
             </body></html>'''
             
-            return html
-            
+            return html     
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
