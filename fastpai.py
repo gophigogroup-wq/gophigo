@@ -525,7 +525,6 @@ def register_page(request: Request):
                         <option value="Religious">Religious Book</option>
                     </select>
 
-                    <!-- These fields are hidden by default -->
                     <div id="universityFields" style="display: none;">
                         <input type="text" name="institution" style="width:100%; padding:10px; margin:10px 0;" placeholder="University Name (e.g., CBE)">
                         <input type="text" name="course_code" style="width:100%; padding:10px; margin:10px 0;" placeholder="Course Code (e.g., BUS 101)">
@@ -536,8 +535,9 @@ def register_page(request: Request):
                     <label style="font-size:14px; font-weight:bold;">Upload Cover Image:</label>
                     <input type="file" name="cover" accept="image/*" required style="width:100%; padding:10px; margin:10px 0;">
                     
-                    <label style="font-size:14px; font-weight:bold;">Upload PDF / Document:</label>
-                    <input type="file" name="pdf_file" accept=".pdf" style="width:100%; padding:10px; margin:10px 0;">
+                    <!-- ID added to label and input -->
+                    <label id="fileLabel" style="font-size:14px; font-weight:bold;">Upload PDF / Document:</label>
+                    <input type="file" id="fileInput" name="pdf_file" accept=".pdf" style="width:100%; padding:10px; margin:10px 0;">
                     
                     <div style="margin: 15px 0; display: flex; align-items: flex-start; gap: 10px;">
                         <input type="checkbox" name="agree_terms" value="yes" required style="margin-top: 5px; transform: scale(1.5);">
@@ -553,19 +553,30 @@ def register_page(request: Request):
         </div>
         {FOOTER}
         
-        <!-- JavaScript to show/hide fields -->
         <script>
             document.getElementById('categorySelect').addEventListener('change', function() {{
                 var uniFields = document.getElementById('universityFields');
+                var fileInput = document.getElementById('fileInput');
+                var fileLabel = document.getElementById('fileLabel');
+                
+                // Handle University Fields
                 if (this.value === 'Manual') {{
                     uniFields.style.display = 'block';
                 }} else {{
                     uniFields.style.display = 'none';
                 }}
+                
+                // Handle Media Files
+                if (this.value === 'Media') {{
+                    fileInput.accept = "video/*,audio/*";
+                    fileLabel.innerText = "Upload Audio/Video File:";
+                }} else {{
+                    fileInput.accept = ".pdf";
+                    fileLabel.innerText = "Upload PDF / Document:";
+                }}
             }});
         </script>
-    </body></html>'''
-        
+    </body></html>'''        
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return '<html><body style="font-family:Arial; background:#f4f4f4;">' + get_navbar(request) + '<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center;">Author Login</h2><form action="/login" method="POST"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#3498db; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button></form><div style="text-align:center; margin-top:15px;"><a href="/forgot-password">Forgot Password?</a></div></div></div>' + FOOTER + '</body></html>'
