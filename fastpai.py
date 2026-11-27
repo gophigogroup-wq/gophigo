@@ -1443,7 +1443,27 @@ def admin_dashboard(request: Request):
                         <button type="submit" style="background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Create Employee</button>
                     </form>
                 </div>
+            authors_list = session.exec(select(Author).order_by(Author.id.desc())).all()
+            kyc_rows = ""
+            for au in authors_list:
+                r_no = au.author_reg_no or f"GOP-AUTH-2026-{au.id:04d}"
+                nida_link = f"<a href='{au.nida_doc_url}' target='_blank' style='color:#3498db;'>View NIDA</a>" if au.nida_doc_url else "No Doc"
+                tin_link = f"<a href='{au.tin_doc_url}' target='_blank' style='color:#3498db;'>View TIN</a>" if au.tin_doc_url else "Optional/None"
+                if au.kyc_status == "Verified":
+                    k_btn = "<span style='color:green; font-weight:bold;'>✅ Verified</span>"
+                else:
+                    k_btn = f"<a href='/admin-verify-author/{au.id}' style='background:#2ecc71; color:white; padding:5px 10px; text-decoration:none; border-radius:3px; font-weight:bold;'>Verify & Publish</a>"
+                kyc_rows += f"<tr><td>{r_no}</td><td>{au.fullname}</td><td>{au.phone_number or '-'}</td><td>{au.nida_number or '-'} ({nida_link})</td><td>{au.tin_number or '-'} ({tin_link})</td><td>{k_btn}</td></tr>"
 
+            kyc_table_html = f"""
+            <h3>Creator Due Diligence (KYC Verification)</h3>
+            <table border="1" style="width:100%; background:white; border-collapse:collapse; margin-bottom:35px;">
+                <tr style="background:#2c3e50; color:white;">
+                    <th>Reg No</th><th>Full Name</th><th>Phone</th><th>NIDA</th><th>TIN (Optional)</th><th>KYC Action</th>
+                </tr>
+                {kyc_rows}
+            </table>
+            """
                 <h3>All Products</h3>
                 <table border="1" style="width:100%; background:white; border-collapse:collapse; margin-bottom: 40px;">
                     <tr style="background:#34495e; color:white;">
@@ -1758,6 +1778,31 @@ def admin_toggle_product(request: Request, product_id: int, action: str):
             session.commit()
             
     return RedirectResponse(url="/admin", status_code=303)
+
+@app.get("/admin-verify-author/{author_id}")
+def admin_verify_author(request: Request, author_id: int):
+    if request.cookies.get("admin_session") != "true":
+        return RedirectResponse(url="/admin-login", status_code=303)
+
+    with Session(engine) as session:
+        au = session.get(Author, author_id)
+        if au:
+            au.kyc_status = "Verified"
+            if not au.author_reg_no:
+                au.author_reg_no = f"GOP-AUTH-{datetime.now().year}-{au.id:04d}"
+            session.add(au)
+
+            pending_products = session.exec(
+                select(Product).where(Product.author_id == au.id, Product.status == "Pending KYC")
+            ).all()
+            for prod in pending_products:
+                prod.status = "Approved"
+                session.add(prod)
+
+            session.commit()
+
+    return RedirectResponse(url="/admin", status_code=303)
+
 @app.post("/register", response_class=HTMLResponse)
 def process_registration(
     request: Request, 
