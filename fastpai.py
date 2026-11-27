@@ -866,7 +866,24 @@ def register_page(request: Request):
                         <input type="text" name="institution" style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="University Name (e.g., UDSM, CBE)">
                         <input type="text" name="course_code" style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Course Code (e.g., BUS 101)">
                     </div>
-
+                   
+                    <div id="hotelFields" style="display: none; background:#eafaf1; border:1px solid #2ecc71; padding:15px; border-radius:8px; margin:10px 0;">
+                        <h4 style="margin:0 0 10px 0; color:#1e8449;">🏨 Hotel & Restaurant Location</h4>
+                        <select name="venue_type" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; box-sizing:border-box;">
+                            <option value="Hotel">🏨 Hotel</option>
+                            <option value="Lodge & Apartments">🏡 Lodge & Serviced Apartments</option>
+                            <option value="Restaurant">🍽️ Restaurant & Lounge</option>
+                    </select>
+                    <select name="region" id="regRegionSelect" onchange="updateRegDistricts()" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; box-sizing:border-box;">
+                        <option value="">-- Select Region --</option>
+                         {"".join(f'<option value="{r}">{r}</option>' for r in sorted(TZ_REGIONS_DISTRICTS.keys()))}
+                     </select>
+                     <select name="district" id="regDistrictSelect" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; box-sizing:border-box;">
+                         <option value="">-- Select District --</option>
+                     </select>
+                      <input type="text" name="address" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc; box-sizing:border-box;" placeholder="Street / Area Landmark (e.g., Kigamboni, Maweni Road)">
+                    </div>
+                    
                     <div id="mediaFields" style="display: none; background:#1a252f; color:white; padding:15px; border-radius:8px; margin:10px 0;">
                         <h4 style="margin:0 0 10px 0; color:#f1c40f;">🎬 Premiere Studio Details</h4>
                         <select name="media_type" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; box-sizing:border-box;">
@@ -2285,3 +2302,115 @@ def admin_create_employee(request: Request, fullname: str = Form(...), email: st
         {FOOTER}
     </body></html>
     """)
+@app.get("/manage-rooms/{product_id}", response_class=HTMLResponse)
+def manage_rooms_page(request: Request, product_id: int):
+    author_email = request.cookies.get("author_email")
+    if not author_email:
+        return RedirectResponse(url="/login", status_code=303)
+
+    with Session(engine) as session:
+        author = session.exec(select(Author).where(Author.email == author_email)).first()
+        p = session.get(Product, product_id)
+        if not p or not author or p.author_id != author.id:
+            return HTMLResponse(content="<h1>Unauthorized</h1>", status_code=403)
+
+        rooms = session.exec(select(HotelRoom).where(HotelRoom.product_id == p.id)).all()
+        rows = ""
+        for r in rooms:
+            status_badge = f"<span style='color:green; font-weight:bold;'>🟢 {r.available_rooms} / {r.total_rooms} Available</span>" if r.available_rooms > 0 else "<span style='color:red; font-weight:bold;'>🔴 Sold Out</span>"
+            rows += f"""
+            <tr>
+                <td style='padding:10px;'><strong>{r.room_type}</strong><br><small style='color:#7f8c8d;'>{r.amenities or ''}</small></td>
+                <td style='padding:10px;'>{r.rate_per_night:,.0f} TZS</td>
+                <td style='padding:10px;'>{status_badge}</td>
+                <td style='padding:10px;'>
+                    <a href='/update-room-stock/{r.id}/1' style='background:#2ecc71; color:white; padding:4px 9px; text-decoration:none; border-radius:4px; font-weight:bold;'>+1 Check-Out</a>
+                    <a href='/update-room-stock/{r.id}/-1' style='background:#e74c3c; color:white; padding:4px 9px; text-decoration:none; border-radius:4px; font-weight:bold; margin-left:4px;'>-1 Occupy</a>
+                </td>
+            </tr>
+            """
+        if not rows:
+            rows = "<tr><td colspan='4' style='padding:12px; color:#7f8c8d;'>No room types added yet. Add Suite, Executive, or Normal below.</td></tr>"
+
+        return f"""
+        <html><body style="font-family:Poppins, Arial, sans-serif; background:#f4f4f4; margin:0;">
+            {get_navbar(request)}
+            <div style="padding:40px 15px; max-width:750px; margin:auto;">
+                <div style="background:white; padding:25px; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+                    <h2 style="margin-top:0; color:#2c3e50;">🏨 Live Room Inventory — {p.title}</h2>
+                    <p style="color:#7f8c8d;">{p.region or ''} • {p.district or ''} ({p.address or ''})</p>
+
+                    <form action="/manage-rooms/{p.id}" method="POST" style="background:#f8f9fa; padding:15px; border-radius:8px; margin:20px 0;">
+                        <h4 style="margin:0 0 10px 0;">Add Room Type / Dining Package</h4>
+                        <select name="room_type" required style="width:100%; padding:10px; margin-bottom:10px; box-sizing:border-box;">
+                            <option value="Suite">👑 Suite Room</option>
+                            <option value="Executive">⭐ Executive Room</option>
+                            <option value="Normal">🛏️ Normal / Standard Room</option>
+                            <option value="VIP Dining Table">🍽️ Restaurant VIP Table / Buffet</option>
+                        </select>
+                        <input type="number" name="rate_per_night" required style="width:100%; padding:10px; margin-bottom:10px; box-sizing:border-box;" placeholder="Rate per Night / Booking (TZS)">
+                        <input type="number" name="total_rooms" min="1" required style="width:100%; padding:10px; margin-bottom:10px; box-sizing:border-box;" placeholder="Total Number of Available Rooms">
+                        <input type="text" name="amenities" style="width:100%; padding:10px; margin-bottom:10px; box-sizing:border-box;" placeholder="Amenities (e.g., AC, Wi-Fi, Breakfast Included, Pool View)">
+                        <button type="submit" style="background:#3498db; color:white; border:none; padding:12px; width:100%; border-radius:6px; font-weight:bold; cursor:pointer;">+ Save Room Type</button>
+                    </form>
+
+                    <table border="1" style="width:100%; border-collapse:collapse; text-align:left;">
+                        <tr style="background:#2c3e50; color:white;"><th style="padding:10px;">Room Type</th><th style="padding:10px;">Rate</th><th style="padding:10px;">Live Status</th><th style="padding:10px;">Live Update</th></tr>
+                        {rows}
+                    </table>
+                    <br>
+                    <a href="/author-dashboard" style="color:#3498db; text-decoration:none; font-weight:bold;">← Back to Dashboard</a>
+                </div>
+            </div>
+            {FOOTER}
+        </body></html>
+        """
+
+
+@app.post("/manage-rooms/{product_id}")
+def add_hotel_room(
+    request: Request,
+    product_id: int,
+    room_type: str = Form(...),
+    rate_per_night: float = Form(...),
+    total_rooms: int = Form(...),
+    amenities: str = Form(None)
+):
+    author_email = request.cookies.get("author_email")
+    if not author_email:
+        return RedirectResponse(url="/login", status_code=303)
+
+    with Session(engine) as session:
+        author = session.exec(select(Author).where(Author.email == author_email)).first()
+        p = session.get(Product, product_id)
+        if not p or not author or p.author_id != author.id:
+            return HTMLResponse(content="<h1>Unauthorized</h1>", status_code=403)
+
+        session.add(HotelRoom(
+            product_id=p.id,
+            room_type=room_type,
+            rate_per_night=rate_per_night,
+            total_rooms=total_rooms,
+            available_rooms=total_rooms,
+            amenities=amenities
+        ))
+        session.commit()
+
+    return RedirectResponse(url=f"/manage-rooms/{product_id}", status_code=303)
+
+
+@app.get("/update-room-stock/{room_id}/{delta}")
+def update_room_stock(request: Request, room_id: int, delta: int):
+    author_email = request.cookies.get("author_email")
+    if not author_email:
+        return RedirectResponse(url="/login", status_code=303)
+
+    with Session(engine) as session:
+        room = session.get(HotelRoom, room_id)
+        if room:
+            new_avail = max(0, min(room.total_rooms, room.available_rooms + delta))
+            room.available_rooms = new_avail
+            session.add(room)
+            session.commit()
+            return RedirectResponse(url=f"/manage-rooms/{room.product_id}", status_code=303)
+    return RedirectResponse(url="/author-dashboard", status_code=303)
