@@ -433,7 +433,7 @@ def process_payment_product(request: Request, product_id: int, phone: str = Form
             author_id=p.author_id, 
             book_title=p.title,
             pdf_file=p.file_url, 
-            format_bought="p.category",
+            format_bought=p.category,
             reference=purchase_ref, 
             status="pending",
         )
@@ -483,7 +483,9 @@ def process_payment_product(request: Request, product_id: int, phone: str = Form
                 return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
                 
         except Exception as e:
-            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)@app.post("/review/{purchase_id}")
+            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)
+            
+@app.post("/review/{purchase_id}")
 def process_review(request: Request, purchase_id: int, rating: int = Form(...), comment: str = Form(...)):
     customer_email = request.cookies.get("customer_email")
     with Session(engine) as session:
@@ -593,7 +595,6 @@ def register_page(request: Request):
                 }}
                 
                 if (this.value === 'Media') {{
-                    // Explicitly list extensions so Android OS opens the File Manager
                     fileInput.accept = ".mp3, .mp4, .wav, .m4a, .mov, audio/*, video/*";
                     fileLabel.innerText = "Upload Audio/Video File:";
                 }} else {{
@@ -601,7 +602,9 @@ def register_page(request: Request):
                     fileLabel.innerText = "Upload PDF / Document:";
                 }}
             }});
-        </script>    
+        </script>
+    </body></html>'''
+    
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return '<html><body style="font-family:Arial; background:#f4f4f4;">' + get_navbar(request) + '<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center;">Author Login</h2><form action="/login" method="POST"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#3498db; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button></form><div style="text-align:center; margin-top:15px;"><a href="/forgot-password">Forgot Password?</a></div></div></div>' + FOOTER + '</body></html>'
@@ -1277,7 +1280,7 @@ def process_registration(
     response = HTMLResponse(content=success_html)
     response.set_cookie(key="author_email", value=author_email, httponly=True)
     return response
-@app.get("/my-library", response_class=HTMLResponse)
+app.get("/my-library", response_class=HTMLResponse)
 def my_library(request: Request):
     try:
         customer_email = request.cookies.get("customer_email")
@@ -1289,34 +1292,79 @@ def my_library(request: Request):
             if not c:
                 return RedirectResponse(url="/customer-login?next=/my-library", status_code=303)
 
-            raw_purchases = session.exec(select(Purchase).where(Purchase.customer_id == c.id, Purchase.status == "paid")).all()
-            
+            raw_purchases = session.exec(
+                select(Purchase).where(Purchase.customer_id == c.id, Purchase.status == "paid")
+            ).all()
+
             seen = set()
             purchases = []
-            if product and product.category == "Ticket":
-                qr_data = f"EVENT:{product.product_code}|TICKET:{p.reference}"
-                qr = qrcode.QRCode(version=1, box_size=10, border=5)
-                qr.add_data(qr_data)
-                qr.make(fit=True)
-                img = qr.make_image(fill_color="black", back_color="white")
-                        
-                buffered = BytesIO()
-                img.save(buffered, format="PNG")
-                img_str = base64.b64encode(buffered.getvalue()).decode()
-                        
-                action = f"<img src='data:image/png;base64,{img_str}' style='width:100%; max-width:150px; margin-top:10px;'><p style='font-size:12px; color:#7f8c8d;'>Ticket ID: {p.reference[:8]}</p>"
-            elif product and product.category == "Media":
-                action = f"<a href='/play-media/{p.id}' style='background:#e74c3c; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>▶️ Play Media</a>"
+            for item in raw_purchases:
+                key = (item.book_title, item.format_bought)
+                if item.format_bought == "Ticket" or key not in seen:
+                    seen.add(key)
+                    purchases.append(item)
+
+            if not purchases:
+                body = "<p style='text-align:center; color:#7f8c8d; padding:40px;'>You haven't purchased any items yet. <a href='/'>Browse the store</a></p>"
             else:
-                action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>📖 Read / View</a>"            
+                body = '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:20px; padding:20px; max-width:1100px; margin:auto;">'
+                for p in purchases:
+                    product = session.exec(
+                        select(Product).where(Product.title == p.book_title, Product.author_id == p.author_id)
+                    ).first()
+                    cover = product.cover_image if (product and product.cover_image) else "https://via.placeholder.com/180x250?text=Gophigo"
+
+                    if product and product.category == "Ticket":
+                        qr_data = f"EVENT:{product.product_code}|TICKET:{p.reference}"
+                        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+                        qr.add_data(qr_data)
+                        qr.make(fit=True)
+                        img = qr.make_image(fill_color="black", back_color="white")
+
+                        buffered = BytesIO()
+                        img.save(buffered, format="PNG")
+                        img_str = base64.b64encode(buffered.getvalue()).decode()
+
+                        action = f"<img src='data:image/png;base64,{img_str}' style='width:100%; max-width:150px; margin-top:10px;'><p style='font-size:12px; color:#7f8c8d;'>Ticket ID: {p.reference[:8]}</p>"
+                    elif product and product.category == "Media":
+                        action = f"<a href='/play-media/{p.id}' style='background:#e74c3c; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>▶️ Play Media</a>"
+                    elif p.format_bought == "Paperback":
+                        action = f"<span style='background:#f39c12; color:white; padding:8px 12px; border-radius:5px; display:block; margin-bottom:5px; font-size:13px;'>📦 Paperback Shipping to {p.region or 'Address'}</span>"
+                    else:
+                        action = f"<a href='/read/{p.id}' style='background:#3498db; color:white; padding:10px; border-radius:5px; text-decoration:none; display:block; margin-bottom:5px; font-weight:bold;'>📖 Read / View</a>"
+
+                    review_form = f"""
+                    <form action="/review/{p.id}" method="POST" style="margin-top:10px; border-top:1px solid #eee; padding-top:10px;">
+                        <select name="rating" style="width:100%; padding:5px; margin-bottom:5px;">
+                            <option value="5">⭐⭐⭐⭐⭐ (5)</option>
+                            <option value="4">⭐⭐⭐⭐ (4)</option>
+                            <option value="3">⭐⭐⭐ (3)</option>
+                            <option value="2">⭐⭐ (2)</option>
+                            <option value="1">⭐ (1)</option>
+                        </select>
+                        <input type="text" name="comment" placeholder="Leave a review..." required style="width:100%; padding:6px; box-sizing:border-box; margin-bottom:5px;">
+                        <button type="submit" style="background:#2ecc71; color:white; border:none; padding:6px 10px; border-radius:4px; width:100%; cursor:pointer;">Submit Review</button>
+                    </form>
+                    """
+
+                    body += f"""
+                    <div style="background:white; padding:15px; border-radius:8px; text-align:center; box-shadow:0 4px 10px rgba(0,0,0,0.08); display:flex; flex-direction:column; justify-content:space-between;">
+                        <div>
+                            <img src="{cover}" style="width:100%; height:220px; object-fit:cover; border-radius:4px; margin-bottom:10px;">
+                            <h3 style="color:#2c3e50; margin:0 0 8px; font-size:16px;">{p.book_title}</h3>
+                        </div>
+                        <div>
+                            {action}
+                            {review_form}
+                        </div>
+                    </div>
+                    """
                 body += "</div>"
 
             return f'<html><body style="font-family:Arial; background:#f4f4f4; margin:0;">{get_navbar(request)}<h1 style="text-align:center; color:#2c3e50; padding:20px;">My Library</h1>{body}{FOOTER}</body></html>'
-            
+
     except Exception as e:
         import traceback
-        return HTMLResponse(content=f"<h1>Library Debug Error</h1><pre>{traceback.format_exc()}</pre>", status_code=500)
-
 @app.get("/item/{product_code}")
 def direct_item_link(request: Request, product_code: str):
     with Session(engine) as session:
@@ -1450,3 +1498,36 @@ def play_media(request: Request, purchase_id: int):
             {FOOTER}
         </body></html>
         """
+@app.post("/admin-create-employee", response_class=HTMLResponse)
+def admin_create_employee(request: Request, fullname: str = Form(...), email: str = Form(...), role: str = Form(...)):
+    if request.cookies.get("admin_session") != "true":
+        return RedirectResponse(url="/admin-login", status_code=303)
+
+    temp_password = secrets.token_hex(4)
+    with Session(engine) as session:
+        existing = session.exec(select(Employee).where(Employee.email == email)).first()
+        if existing:
+            return HTMLResponse(content=f"<h1>Employee email already exists.</h1><a href='/admin'>Back</a>", status_code=400)
+        emp = Employee(
+            fullname=fullname,
+            email=email,
+            password=hashlib.sha256(temp_password.encode()).hexdigest(),
+            role=role,
+            must_change_password=True
+        )
+        session.add(emp)
+        session.commit()
+
+    return HTMLResponse(content=f"""
+    <html><body style="font-family:Arial; text-align:center; padding:50px;">
+        {get_navbar(request)}
+        <div style="background:white; padding:30px; border-radius:8px; max-width:450px; margin:40px auto;">
+            <h2 style="color:#2ecc71;">Employee Created</h2>
+            <p><strong>Name:</strong> {fullname} ({role})</p>
+            <p><strong>Email:</strong> {email}</p>
+            <p><strong>Temporary Password:</strong> <code style="background:#eee; padding:4px 8px;">{temp_password}</code></p>
+            <a href="/admin" style="display:inline-block; margin-top:15px; background:#3498db; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Back to Admin</a>
+        </div>
+        {FOOTER}
+    </body></html>
+    """)
