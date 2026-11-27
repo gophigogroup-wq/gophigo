@@ -113,6 +113,20 @@ with engine.connect() as conn:
         conn.commit()
      except Exception:
          pass
+with engine.connect() as conn:
+    for stmt in [
+        "ALTER TABLE product ADD COLUMN media_type VARCHAR;",
+        "ALTER TABLE product ADD COLUMN trailer_url VARCHAR;",
+        "ALTER TABLE product ADD COLUMN duration VARCHAR;",
+        "ALTER TABLE product ADD COLUMN cast_or_artist VARCHAR;",
+        "ALTER TABLE purchase ADD COLUMN amount_paid FLOAT;",
+        "ALTER TABLE purchase ADD COLUMN supporter_tier VARCHAR DEFAULT 'Standard';",
+    ]:
+        try:
+            conn.execute(text(stmt))
+            conn.commit()
+        except Exception:
+            pass
 class Author(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; book_title: str
