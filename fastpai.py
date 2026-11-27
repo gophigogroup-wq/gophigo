@@ -857,7 +857,7 @@ def admin_dashboard(request: Request):
                     </div>
                     <div style="background: #2c3e50; color: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;">
                         <h4 style="margin: 0;">Gophigo Revenue (50%)</h4>
-                        <h2 style="margin: 10px 0 0 0;">{gophigo_revenue:,.2f} TZS</h2>
+                        <h2 style='margin: 10px 0 0 0;'>{gophigo_revenue:,.2f} TZS</h2>
                     </div>
                     <div style="background: #2ecc71; color: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;">
                         <h4 style="margin: 0;">Author Payouts (50%)</h4>
