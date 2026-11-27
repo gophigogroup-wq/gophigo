@@ -910,7 +910,7 @@ def admin_dashboard(request: Request):
         import traceback
         error_details = traceback.format_exc()
         return HTMLResponse(content=f"<h1>Dashboard Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)            
-            return html     
+            
   
 @app.get("/admin-logout")
 def admin_logout():
