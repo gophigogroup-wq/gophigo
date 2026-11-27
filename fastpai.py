@@ -842,7 +842,7 @@ def admin_dashboard(request: Request):
                     gophigo_revenue += price * 0.5
                     author_payouts += price * 0.5
 
-            f'''<html><body style="font-family:Arial; background:#f4f4f4;">
+            html = f'''<html><body style="font-family:Arial; background:#f4f4f4;">
             {get_navbar(request)}
             <div style="padding:50px; max-width: 1000px; margin: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -857,7 +857,7 @@ def admin_dashboard(request: Request):
                     </div>
                     <div style="background: #2c3e50; color: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;">
                         <h4 style="margin: 0;">Gophigo Revenue (50%)</h4>
-                        <h2 style='margin: 10px 0 0 0;'>{gophigo_revenue:,.2f} TZS</h2>
+                        <h2 style="margin: 10px 0 0 0;">{gophigo_revenue:,.2f} TZS</h2>
                     </div>
                     <div style="background: #2ecc71; color: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;">
                         <h4 style="margin: 0;">Author Payouts (50%)</h4>
@@ -899,13 +899,16 @@ def admin_dashboard(request: Request):
             html += f'''</table>
             </div>
             {FOOTER}
-            '''
+            </body></html>'''
             
-            return html     
+            return html
+            
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        return HTMLResponse(content=f"<h1>Dashboard Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)
+        return HTMLResponse(content=f"<h1>Dashboard Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)            
+            return html     
+  
 @app.get("/admin-logout")
 def admin_logout():
     res = RedirectResponse(url="/admin-login", status_code=303); res.delete_cookie("admin_session"); return res
