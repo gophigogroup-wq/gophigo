@@ -18,11 +18,14 @@ cloudinary.config(
 
 database_url = os.environ.get("DATABASE_URL")
 if database_url:
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql+psycopg://", 1)
+    elif database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
     sqlite_url = database_url
 else:
     sqlite_url = "sqlite:///gophigo.db"
-engine = create_engine(sqlite_url)
+    engine = create_engine(sqlite_url)
 from sqlalchemy import text
 with engine.connect() as conn:
     try:
