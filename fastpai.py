@@ -127,6 +127,16 @@ with engine.connect() as conn:
             conn.commit()
         except Exception:
             pass
+with engine.connect() as conn:
+    for stmt in [
+        "ALTER TABLE purchase ADD COLUMN referrer_id INTEGER;",
+        "ALTER TABLE purchase ADD COLUMN referral_commission FLOAT DEFAULT 0.0;",
+    ]:
+        try:
+            conn.execute(text(stmt))
+            conn.commit()
+        except Exception:
+            pass            
 class Author(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; book_title: str
@@ -181,10 +191,19 @@ class Purchase(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     amount_paid: float | None = Field(default=None)
     supporter_tier: str | None = Field(default="Standard")
+    referrer_id: int | None = Field(default=None)
+    referral_commission: float = Field(default=0.0)
 class Employee(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; role: str 
     must_change_password: bool = Field(default=True); reset_token: str | None = Field(default=None)
+class ProductTrack(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    product_id: int = Field(foreign_key="product.id")
+    track_number: int = Field(default=1)
+    track_title: str
+    duration: str | None = Field(default=None)
+    file_url: str
 
 class Review(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -604,6 +623,9 @@ def process_payment_product(request: Request, product_id: int, phone: str = Form
     customer_email = request.cookies.get("customer_email")
     if not customer_email: 
         return RedirectResponse(url="/customer-login", status_code=303)
+    ref_cookie = request.cookies.get("gophigo_ref")
+    referrer_id = int(ref_cookie) if (ref_cookie and ref_cookie.isdigit() and int(ref_cookie) != c.id) else None
+    commission = round(final_amount * 0.10, 2) if referrer_id else 0.0
         
     with Session(engine) as session:
         c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
@@ -893,6 +915,88 @@ def process_registration(
     response = HTMLResponse(content=success_html)
     response.set_cookie(key="author_email", value=author_email, httponly=True)
     return response
+
+@app.get("/manage-tracks/{product_id}", response_class=HTMLResponse)
+def manage_tracks_page(request: Request, product_id: int):
+    author_email = request.cookies.get("author_email")
+    if not author_email:
+        return RedirectResponse(url="/login", status_code=303)
+
+    with Session(engine) as session:
+        author = session.exec(select(Author).where(Author.email == author_email)).first()
+        p = session.get(Product, product_id)
+        if not p or not author or p.author_id != author.id:
+            return HTMLResponse(content="<h1>Unauthorized</h1>", status_code=403)
+
+        tracks = session.exec(
+            select(ProductTrack).where(ProductTrack.product_id == p.id).order_by(ProductTrack.track_number)
+        ).all()
+
+        rows = ""
+        for t in tracks:
+            rows += f"<tr><td style='padding:8px;'>#{t.track_number}</td><td style='padding:8px;'>{t.track_title}</td><td style='padding:8px;'>{t.duration or '-'}</td></tr>"
+        if not rows:
+            rows = "<tr><td colspan='3' style='padding:12px; color:#7f8c8d;'>No extra tracks/episodes added yet.</td></tr>"
+
+        return f"""
+        <html><body style="font-family:Poppins, Arial, sans-serif; background:#f4f4f4; margin:0;">
+            {get_navbar(request)}
+            <div style="padding:40px 15px; max-width:600px; margin:auto;">
+                <div style="background:white; padding:25px; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+                    <h2 style="margin-top:0; color:#2c3e50;">💿 Manage Tracks / Episodes</h2>
+                    <p style="color:#7f8c8d;"><strong>Release:</strong> {p.title}</p>
+
+                    <form action="/manage-tracks/{p.id}" method="POST" enctype="multipart/form-data" style="margin:20px 0; background:#f8f9fa; padding:15px; border-radius:8px;">
+                        <input type="number" name="track_number" value="{len(tracks) + 1}" required style="width:100%; padding:10px; margin-bottom:10px; box-sizing:border-box;" placeholder="Track / Episode Number">
+                        <input type="text" name="track_title" required style="width:100%; padding:10px; margin-bottom:10px; box-sizing:border-box;" placeholder="Song Title or Episode Name">
+                        <input type="text" name="duration" style="width:100%; padding:10px; margin-bottom:10px; box-sizing:border-box;" placeholder="Duration (e.g., 3:40 or 42:00)">
+                        <label style="font-size:13px; font-weight:bold;">Upload Audio / Video File:</label>
+                        <input type="file" name="track_file" accept=".mp3,.mp4,.wav,.m4a,.mov,audio/*,video/*" required style="width:100%; padding:8px 0;">
+                        <button type="submit" style="background:#2ecc71; color:white; border:none; padding:12px; width:100%; border-radius:6px; font-weight:bold; cursor:pointer; margin-top:10px;">+ Add Track / Episode</button>
+                    </form>
+
+                    <table border="1" style="width:100%; border-collapse:collapse; text-align:left;">
+                        <tr style="background:#2c3e50; color:white;"><th style="padding:8px;">#</th><th style="padding:8px;">Title</th><th style="padding:8px;">Duration</th></tr>
+                        {rows}
+                    </table>
+                    <br>
+                    <a href="/author-dashboard" style="color:#3498db; text-decoration:none; font-weight:bold;">← Back to Dashboard</a>
+                </div>
+            </div>
+            {FOOTER}
+        </body></html>
+        """
+        
+@app.post("/manage-tracks/{product_id}")
+def add_product_track(
+    request: Request,
+    product_id: int,
+    track_number: int = Form(...),
+    track_title: str = Form(...),
+    duration: str = Form(None),
+    track_file: UploadFile = File(...)
+):
+    author_email = request.cookies.get("author_email")
+    if not author_email:
+        return RedirectResponse(url="/login", status_code=303)
+
+    with Session(engine) as session:
+        author = session.exec(select(Author).where(Author.email == author_email)).first()
+        p = session.get(Product, product_id)
+        if not p or not author or p.author_id != author.id:
+            return HTMLResponse(content="<h1>Unauthorized</h1>", status_code=403)
+
+        uploaded_url = cloudinary.uploader.upload(track_file.file, folder="gophigo_media", resource_type="video").get("secure_url")
+        session.add(ProductTrack(
+            product_id=p.id,
+            track_number=track_number,
+            track_title=track_title,
+            duration=duration,
+            file_url=uploaded_url
+        ))
+        session.commit()
+
+    return RedirectResponse(url=f"/manage-tracks/{product_id}", status_code=303)
     
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
@@ -1655,17 +1759,18 @@ def my_library(request: Request):
     except Exception as e:
         import traceback
 @app.get("/item/{product_code}")
-def direct_item_link(request: Request, product_code: str):
+def direct_item_link(request: Request, product_code: str, ref: int = None):
     with Session(engine) as session:
         product = session.exec(select(Product).where(Product.product_code == product_code)).first()
         if not product:
             return HTMLResponse(content="<h1>Item not found</h1>", status_code=404)
-            
+
         customer_email = request.cookies.get("customer_email")
-        if not customer_email:
-            return RedirectResponse(url=f"/customer-login?next=/checkout-product/{product.id}", status_code=303)
-            
-        return RedirectResponse(url=f"/checkout-product/{product.id}", status_code=303)
+        target = f"/checkout-product/{product.id}" if customer_email else f"/customer-login?next=/checkout-product/{product.id}"
+        res = RedirectResponse(url=target, status_code=303)
+        if ref:
+            res.set_cookie(key="gophigo_ref", value=str(ref), max_age=86400 * 7)
+        return res
         
 @app.post("/snippe-webhook")
 async def snippe_webhook(request: Request):
@@ -1817,6 +1922,36 @@ def play_media(request: Request, purchase_id: int):
                         wm.style.left = (5 + Math.floor(Math.random() * 65)) + '%';
                     }}
                 }}, 6000);
+            </script>
+              """
+
+        extra_tracks = []
+        if product:
+            extra_tracks = session.exec(
+                select(ProductTrack).where(ProductTrack.product_id == product.id).order_by(ProductTrack.track_number)
+            ).all()
+
+        playlist_html = ""
+        if extra_tracks:
+            items = f"<button onclick=\"switchMedia('{media_url}', '{p.title}')\" style='display:block; width:100%; text-align:left; padding:10px; margin-bottom:6px; background:#1f2937; color:#f1c40f; border:1px solid #374151; border-radius:6px; cursor:pointer; font-weight:bold;'>1. {p.title} (Main)</button>"
+            for idx, tr in enumerate(extra_tracks, start=2):
+                tr_url = tr.file_url.replace("/upload/", "/upload/f_auto,q_auto/", 1) if "res.cloudinary.com" in tr.file_url else tr.file_url
+                safe_tr = tr.track_title.replace("'", "\\'")
+                dur_tag = f" ({tr.duration})" if tr.duration else ""
+                items += f"<button onclick=\"switchMedia('{tr_url}', '{safe_tr}')\" style='display:block; width:100%; text-align:left; padding:10px; margin-bottom:6px; background:#111827; color:white; border:1px solid #374151; border-radius:6px; cursor:pointer;'>{idx}. {tr.track_title}{dur_tag}</button>"
+            playlist_html = f"""
+            <div style="max-width:600px; margin:20px auto; text-align:left; background:#0f172a; padding:15px; border-radius:10px; border:1px solid #1e293b;">
+                <h4 style="margin:0 0 10px 0; color:#f1c40f;">💿 Full Tracklist / Episodes</h4>
+                {items}
+            </div>
+            <script>
+                function switchMedia(newUrl, title) {{
+                    var player = document.getElementById('mediaPlayer');
+                    if (player) {{
+                        player.src = newUrl;
+                        player.play();
+                    }}
+                }}
             </script>
             """
 
