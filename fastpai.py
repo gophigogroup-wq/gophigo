@@ -842,7 +842,7 @@ def admin_dashboard(request: Request):
                     gophigo_revenue += price * 0.5
                     author_payouts += price * 0.5
 
-            html = f'''<html><body style="font-family:Arial; background:#f4f4f4;">
+            f'''<html><body style="font-family:Arial; background:#f4f4f4;">
             {get_navbar(request)}
             <div style="padding:50px; max-width: 1000px; margin: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -899,7 +899,7 @@ def admin_dashboard(request: Request):
             html += f'''</table>
             </div>
             {FOOTER}
-            </body></html>'''
+            '''
             
             return html     
     except Exception as e:
