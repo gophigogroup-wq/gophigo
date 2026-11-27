@@ -152,6 +152,65 @@ with engine.connect() as conn:
             conn.commit()
         except Exception:
             pass
+with engine.connect() as conn:
+    for stmt in [
+        "ALTER TABLE product ADD COLUMN region VARCHAR;",
+        "ALTER TABLE product ADD COLUMN district VARCHAR;",
+        "ALTER TABLE product ADD COLUMN venue_type VARCHAR;",
+        "ALTER TABLE product ADD COLUMN address VARCHAR;",
+        "ALTER TABLE purchase ADD COLUMN room_id INTEGER;",
+        "ALTER TABLE purchase ADD COLUMN check_in_date VARCHAR;",
+        "ALTER TABLE purchase ADD COLUMN nights INTEGER DEFAULT 1;",
+        "ALTER TABLE purchase ADD COLUMN rooms_booked INTEGER DEFAULT 1;",
+    ]:
+        try:
+            conn.execute(text(stmt))
+            conn.commit()
+        except Exception:
+            pass
+TZ_REGIONS_DISTRICTS = {
+    "Arusha": ["Arusha City", "Arusha DC", "Karatu", "Longido", "Meru", "Monduli", "Ngorongoro"],
+    "Dar es Salaam": ["Ilala", "Kigamboni", "Kinondoni", "Temeke", "Ubungo"],
+    "Dodoma": ["Bahi", "Chamwino", "Chemba", "Dodoma City", "Kondoa", "Kongwa", "Mpwapwa"],
+    "Geita": ["Bukombe", "Chato", "Geita Town", "Geita DC", "Mbogwe", "Nyang'hwale"],
+    "Iringa": ["Iringa Municipal", "Iringa DC", "Kilolo", "Mafinga Town", "Mufindi"],
+    "Kagera": ["Biharamulo", "Bukoba Municipal", "Bukoba DC", "Karagwe", "Kyerwa", "Missenyi", "Muleba", "Ngara"],
+    "Katavi": ["Mlele", "Mpanda Municipal", "Mpanda DC", "Tanganyika"],
+    "Kigoma": ["Buhigwe", "Kakonko", "Kasulu Town", "Kasulu DC", "Kibondo", "Kigoma Ujiji", "Kigoma DC", "Uvinza"],
+    "Kilimanjaro": ["Hai", "Moshi Municipal", "Moshi DC", "Mwanga", "Rombo", "Same", "Siha"],
+    "Lindi": ["Kilwa", "Lindi Municipal", "Liwale", "Mtama", "Nachingwea", "Ruangwa"],
+    "Manyara": ["Babati Town", "Babati DC", "Hanang", "Kiteto", "Mbulu", "Simanjiro"],
+    "Mara": ["Bunda Town", "Bunda DC", "Butiama", "Musoma Municipal", "Musoma DC", "Rorya", "Serengeti", "Tarime Town", "Tarime DC"],
+    "Mbeya": ["Busokelo", "Chunya", "Kyela", "Mbarali", "Mbeya City", "Mbeya DC", "Rungwe"],
+    "Mjini Magharibi": ["Magharibi A", "Magharibi B", "Mjini"],
+    "Morogoro": ["Gairo", "Ifakara Town", "Kilombero", "Kilosa", "Malinyi", "Morogoro Municipal", "Morogoro DC", "Mvomero", "Ulanga"],
+    "Mtwara": ["Masasi Town", "Masasi DC", "Mtwara Municipal", "Mtwara DC", "Nanyamba", "Nanyumbu", "Newala", "Tandahimba"],
+    "Mwanza": ["Buchosa", "Ilemela", "Kwimba", "Magu", "Misungwi", "Nyamagana", "Sengerema", "Ukerewe"],
+    "Njombe": ["Ludewa", "Makambako Town", "Makete", "Njombe Town", "Njombe DC", "Wanging'ombe"],
+    "Pemba Kaskazini": ["Micheweni", "Wete"],
+    "Pemba Kusini": ["Chake Chake", "Mkoani"],
+    "Pwani": ["Bagamoyo", "Chalinze", "Kibaha Town", "Kibaha DC", "Kibiti", "Kisarawe", "Mafia", "Mkuranga", "Rufiji"],
+    "Rukwa": ["Kalambo", "Nkasi", "Sumbawanga Municipal", "Sumbawanga DC"],
+    "Ruvuma": ["Madaba", "Mbinga Town", "Mbinga DC", "Namtumbo", "Nyasa", "Songea Municipal", "Songea DC", "Tunduru"],
+    "Shinyanga": ["Kahama Municipal", "Kishapu", "Msalala", "Shinyanga Municipal", "Shinyanga DC", "Ushetu"],
+    "Simiyu": ["Bariadi", "Busega", "Itilima", "Maswa", "Meatu"],
+    "Singida": ["Ikungi", "Iramba", "Itigi", "Manyoni", "Mkalama", "Singida Municipal", "Singida DC"],
+    "Songwe": ["Ileje", "Mbozi", "Momba", "Songwe DC", "Tunduma Town"],
+    "Tabora": ["Igunga", "Kaliua", "Nzega Town", "Nzega DC", "Sikonge", "Tabora Municipal", "Urambo", "Uyui"],
+    "Tanga": ["Handeni Town", "Handeni DC", "Kilindi", "Korogwe Town", "Korogwe DC", "Lushoto", "Mkinga", "Muheza", "Pangani", "Tanga City"],
+    "Unguja Kaskazini": ["Kaskazini A", "Kaskazini B"],
+    "Unguja Kusini": ["Kati", "Kusini"],
+}
+
+class HotelRoom(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    product_id: int = Field(foreign_key="product.id")
+    room_type: str = Field(default="Normal")  # Suite, Executive, Normal, Restaurant Table/Package
+    rate_per_night: float = Field(default=0.0)
+    total_rooms: int = Field(default=1)
+    available_rooms: int = Field(default=1)
+    amenities: str | None = Field(default=None)
+
 class Author(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; book_title: str
@@ -192,6 +251,10 @@ class Product(SQLModel, table=True):
     trailer_url: str | None = Field(default=None)     # Free 30s audio hook or 60s video trailer
     duration: str | None = Field(default=None)        # e.g., 3:45 or 1h 55m
     cast_or_artist: str | None = Field(default=None)  # Featured artists or movie cast
+    region: str | None = Field(default=None)
+    district: str | None = Field(default=None)
+    venue_type: str | None = Field(default=None)  # Hotel, Lodge & Apartments, Restaurant
+    address: str | None = Field(default=None)
     
 class Customer(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -214,6 +277,11 @@ class Purchase(SQLModel, table=True):
     supporter_tier: str | None = Field(default="Standard")
     referrer_id: int | None = Field(default=None)
     referral_commission: float = Field(default=0.0)
+    room_id: int | None = Field(default=None)
+    check_in_date: str | None = Field(default=None)
+    nights: int = Field(default=1)
+    rooms_booked: int = Field(default=1)
+    
 class Employee(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; role: str 
