@@ -157,6 +157,11 @@ class Product(SQLModel, table=True):
     sub_category: str | None = Field(default=None)
     year_of_study: str | None = Field(default=None) # First Year, Second Year, etc.
     language: str | None = Field(default=None)
+    media_type: str | None = Field(default=None)      # Single Track, Full Album / EP, Feature Movie, Series / Episode, Comedy / Podcast
+    trailer_url: str | None = Field(default=None)     # Free 30s audio hook or 60s video trailer
+    duration: str | None = Field(default=None)        # e.g., 3:45 or 1h 55m
+    cast_or_artist: str | None = Field(default=None)  # Featured artists or movie cast
+    
 class Customer(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; reset_token: str | None = Field(default=None)
@@ -174,6 +179,8 @@ class Purchase(SQLModel, table=True):
     scanned: bool = Field(default=False)
     status: str = Field(default="pending")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    amount_paid: float | None = Field(default=None)
+    supporter_tier: str | None = Field(default="Standard")
 class Employee(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; role: str 
@@ -248,39 +255,42 @@ def get_navbar(request: Request):
         links += '<a href="/author-portal" style="color: white; text-decoration: none; margin-left: 20px;">Author Portal</a><a href="/customer-login" style="color: white; text-decoration: none; margin-left: 20px;">Customer Login</a><a href="/employee-login" style="color: #f39c12; text-decoration: none; margin-left: 20px; font-weight: bold;">Staff Login</a>'
         
     return f'<nav style="background-color: #2c3e50; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: Poppins, sans-serif;"><div style="font-size: 24px; font-weight: bold;"><a href="/" style="color: white; text-decoration: none;">🛍️ Gophigo Store</a></div><div>{links}</div></nav>'
-    
+
 @app.get("/", response_class=HTMLResponse)
 def store(request: Request, search: str = None, category: str = "Book"):
     with Session(engine) as session:
         query = select(Product).where(Product.status == "Approved", Product.is_hidden == False)
         query = query.where(Product.category == category)
-        
+
         if search:
             query = query.where(Product.title.contains(search))
-            
+
         products = session.exec(query).all()
 
         html = """
         <html><head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
             body { font-family: Poppins, sans-serif; margin: 0; background-color: #f4f4f4; }
             .store-header { text-align: center; padding: 20px; background: white; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
             .search-bar { max-width: 500px; margin: 15px auto 0; display: flex; gap: 10px; padding: 0 15px; }
             .search-bar input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
             .search-bar button { background: #3498db; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-            .category-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+            .category-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; padding: 0 10px; }
             .cat-btn { padding: 10px 20px; border-radius: 30px; text-decoration: none; font-weight: bold; font-size: 14px; transition: 0.2s; }
             .cat-btn.active { background: #2c3e50; color: white; }
             .cat-btn.inactive { background: white; color: #7f8c8d; border: 1px solid #ddd; }
-            .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; padding: 15px; max-width: 1200px; margin: auto; }
-            .book-card { background: white; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s; }
+            .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 18px; padding: 15px; max-width: 1200px; margin: auto; }
+            .book-card { background: white; border-radius: 10px; padding: 15px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s; position: relative; }
             .book-card:hover { transform: translateY(-5px); }
-            .book-card img { width: 100%; height: 220px; object-fit: cover; border-radius: 4px; margin-bottom: 10px; }
-            .book-title { color: #2c3e50; margin: 0 0 5px; font-size: 16px; font-weight: 600; line-height: 1.2; }
-            .book-author { color: #7f8c8d; margin: 0 0 10px; font-size: 13px; }
-            .btn-buy { display: block; width: 100%; padding: 10px; border-radius: 5px; text-decoration: none; font-weight: bold; color: white; margin-top: 5px; font-size: 14px; box-sizing: border-box; }
+            .book-card img { width: 100%; height: 220px; object-fit: cover; border-radius: 6px; margin-bottom: 10px; }
+            .book-title { color: #2c3e50; margin: 0 0 5px; font-size: 16px; font-weight: 600; line-height: 1.25; }
+            .book-author { color: #7f8c8d; margin: 0 0 8px; font-size: 13px; }
+            .btn-buy { display: block; width: 100%; padding: 10px; border-radius: 6px; text-decoration: none; font-weight: bold; color: white; margin-top: 6px; font-size: 14px; box-sizing: border-box; }
+            .btn-preview { display: block; width: 100%; padding: 8px; border-radius: 6px; border: none; background: #1a252f; color: #f1c40f; font-weight: bold; cursor: pointer; font-size: 13px; margin-top: 4px; }
+            .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; padding: 20px; }
+            .modal-box { background: #1a252f; color: white; padding: 20px; border-radius: 12px; max-width: 650px; width: 100%; text-align: center; position: relative; }
         </style>
         </head><body>
         """ + get_navbar(request) + f"""
@@ -295,32 +305,33 @@ def store(request: Request, search: str = None, category: str = "Book"):
         
         <div class="category-tabs">
             <a href="/?category=Book" class="cat-btn {'active' if category == 'Book' else 'inactive'}">📚 Books</a>
+            <a href="/?category=Media" class="cat-btn {'active' if category == 'Media' else 'inactive'}">🎬 Movies & Music</a>
             <a href="/?category=Manual" class="cat-btn {'active' if category == 'Manual' else 'inactive'}">🏫 University Manuals</a>
             <a href="/?category=Law" class="cat-btn {'active' if category == 'Law' else 'inactive'}">⚖️ Laws & Manuals</a>
             <a href="/?category=Ticket" class="cat-btn {'active' if category == 'Ticket' else 'inactive'}">🎟️ Tickets</a>
-            <a href="/?category=Media" class="cat-btn {'active' if category == 'Media' else 'inactive'}">🎬 Movies & Music</a>
             <a href="/?category=Newspaper" class="cat-btn {'active' if category == 'Newspaper' else 'inactive'}">📰 News & Articles</a>
             <a href="/?category=Religious" class="cat-btn {'active' if category == 'Religious' else 'inactive'}">🙏 Religious</a>
         </div>
 
         <div class="book-grid">
         """
-        
+
         if not products:
             html += "<p style='text-align:center; grid-column:1/-1; color:#7f8c8d;'>No products found in this category.</p>"
-            
+
         for p in products:
             author = session.get(Author, p.author_id)
-            author_name = author.fullname if author else "Gophigo"
-            
+            author_name = p.cast_or_artist or (author.fullname if author else "Gophigo")
+
             reviews = session.exec(select(Review).where(Review.author_id == p.author_id)).all()
-            avg = sum(r.rating for r in reviews)/len(reviews) if reviews else 0
-            stars = "⭐" * int(round(avg)) if reviews else "No reviews yet"
-            
+            avg = sum(r.rating for r in reviews) / len(reviews) if reviews else 0
+            stars = "⭐" * int(round(avg)) if reviews else "New Release"
+
             price_display = f"{p.price:,.0f}"
-            
+            preview_btn = ""
+
             if p.category == "Manual":
-                extra_info = f"{p.institution} | {p.course_code}"
+                extra_info = f"{p.institution or ''} | {p.course_code or ''}"
             elif p.category == "Law":
                 extra_info = "⚖️ Law & Manual"
             elif p.category == "Newspaper":
@@ -328,7 +339,12 @@ def store(request: Request, search: str = None, category: str = "Book"):
             elif p.category == "Ticket":
                 extra_info = "🎟️ Event Ticket"
             elif p.category == "Media":
-                extra_info = "🎬 Media / Video"
+                m_type = p.media_type or "Premiere Media"
+                dur = f" • {p.duration}" if p.duration else ""
+                extra_info = f"🎬 {m_type}{dur}"
+                if p.trailer_url:
+                    safe_title = p.title.replace("'", "\\'")
+                    preview_btn = f"<button type='button' class='btn-preview' onclick=\"openPreview('{p.trailer_url}', '{safe_title}')\">▶ Free Preview / Trailer</button>"
             else:
                 extra_info = p.category
 
@@ -337,54 +353,129 @@ def store(request: Request, search: str = None, category: str = "Book"):
                 <div>
                     <img src="{p.cover_image}" alt="{p.title}">
                     <h3 class="book-title">{p.title}</h3>
-                    <p class="book-author">By {author_name}</p>
-                    <p style="color:#f1c40f; margin:0 0 10px; font-size:14px;">{stars}</p>
+                    <p class="book-author">{author_name}</p>
+                    <p style="color:#f1c40f; margin:0 0 8px; font-size:13px;">{stars}</p>
                 </div>
                 <div>
-                    <span style="background:#e0e0e0; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; display:inline-block; margin-bottom:10px;">{extra_info}</span>
-                    <a href="/checkout-product/{p.id}" class="btn-buy" style="background:#3498db;">Buy ({price_display} TZS)</a>
+                    <span style="background:#eef2f7; color:#2c3e50; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600; display:inline-block; margin-bottom:8px;">{extra_info}</span>
+                    {preview_btn}
+                    <a href="/checkout-product/{p.id}" class="btn-buy" style="background:#3498db;">Unlock ({price_display} TZS)</a>
                 </div>
             </div>
             """
-            
-        return html + f"</div>{FOOTER}</body></html>"
+
+        modal_html = """
+        <div id="previewModal" class="modal-backdrop" onclick="if(event.target===this) closePreview();">
+            <div class="modal-box">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <h3 id="previewTitle" style="margin:0; color:#f1c40f;">Free Preview</h3>
+                    <button onclick="closePreview()" style="background:#e74c3c; color:white; border:none; padding:6px 12px; border-radius:5px; cursor:pointer; font-weight:bold;">✕ Close</button>
+                </div>
+                <div id="previewContainer"></div>
+            </div>
+        </div>
+        <script>
+            function openPreview(url, title) {
+                document.getElementById('previewTitle').innerText = '🎬 Preview: ' + title;
+                var isAudio = url.match(/\\.(mp3|wav|m4a|ogg)(\\?|$)/i);
+                var container = document.getElementById('previewContainer');
+                if (isAudio) {
+                    container.innerHTML = '<audio controls autoplay controlsList="nodownload" style="width:100%; margin:20px 0;"><source src="' + url + '"></audio>';
+                } else {
+                    container.innerHTML = '<video controls autoplay controlsList="nodownload" style="width:100%; max-height:420px; border-radius:8px;"><source src="' + url + '"></video>';
+                }
+                document.getElementById('previewModal').style.display = 'flex';
+            }
+            function closePreview() {
+                document.getElementById('previewContainer').innerHTML = '';
+                document.getElementById('previewModal').style.display = 'none';
+            }
+        </script>
+        """
+        return html + f"</div>{modal_html}{FOOTER}</body></html>"
+
 @app.get("/checkout-product/{product_id}", response_class=HTMLResponse)
 def checkout_product(request: Request, product_id: int):
     try:
         customer_email = request.cookies.get("customer_email")
-        if not customer_email: 
+        if not customer_email:
             return RedirectResponse(url=f"/customer-login?next=/checkout-product/{product_id}", status_code=303)
-        
+
         with Session(engine) as session:
             p = session.get(Product, product_id)
             if not p:
-                return HTMLResponse(content="<h1 style='text-align:center; padding:50px;'>Product not found in database.</h1><a href='/' style='display:block; text-align:center;'>Go back to Store</a>", status_code=404)
-                
-            author = session.get(Author, p.author_id)
+                return HTMLResponse(content="<h1 style='text-align:center; padding:50px;'>Product not found.</h1><a href='/'>Back to Store</a>", status_code=404)
+
             cover = p.cover_image if p.cover_image else "https://via.placeholder.com/180x250?text=No+Cover"
-            price = p.price if p.price else 0
-            
-            pay_btn = f"""
-            <form action="/pay-product/{p.id}" method="POST">
-                <div style="margin-bottom: 15px; text-align: left;">
-                    <label style="font-weight: bold;">Enter Mobile Money Number:</label><br>
-                    <input type="text" name="phone" placeholder="e.g. 0754123456" required style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; font-size: 16px;">
+            base_price = float(p.price or 0)
+
+            # Top Supporters Wall (fans who supported above standard price)
+            vip_purchases = session.exec(
+                select(Purchase).where(
+                    Purchase.book_title == p.title,
+                    Purchase.author_id == p.author_id,
+                    Purchase.status == "paid",
+                    Purchase.supporter_tier != "Standard"
+                )
+            ).all()
+
+            supporters_html = ""
+            if vip_purchases:
+                badges = ""
+                for vp in vip_purchases[-10:]:
+                    fan = session.get(Customer, vp.customer_id)
+                    fan_name = fan.fullname if fan else "VIP Fan"
+                    icon = "👑" if vp.supporter_tier == "Executive Producer" else "⭐"
+                    badges += f"<span style='background:#fff8e1; border:1px solid #f1c40f; color:#7f6000; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:bold; display:inline-block; margin:3px;'>{icon} {fan_name} ({vp.supporter_tier})</span>"
+                supporters_html = f"<div style='margin:15px 0; padding:12px; background:#fafafa; border-radius:8px; border:1px solid #eee;'><p style='margin:0 0 6px; font-size:12px; font-weight:bold; color:#2c3e50;'>🏆 Top Supporters Wall</p>{badges}</div>"
+
+            # VIP tier selector for Media creators
+            if p.category == "Media" and base_price > 0:
+                vip_price = base_price * 2
+                exec_price = base_price * 5
+                tier_selector = f"""
+                <div style="margin-bottom:15px; text-align:left;">
+                    <label style="font-weight:bold; font-size:14px;">Choose Access Tier:</label>
+                    <select name="supporter_tier" id="tierSelect" onchange="updatePayBtn()" style="width:100%; padding:11px; border:1px solid #ccc; border-radius:5px; margin-top:5px; font-size:15px;">
+                        <option value="Standard" data-amount="{base_price:.0f}">🎬 Standard Access — {base_price:,.0f} TZS</option>
+                        <option value="VIP Supporter" data-amount="{vip_price:.0f}">⭐ VIP Supporter (Wall Shoutout) — {vip_price:,.0f} TZS</option>
+                        <option value="Executive Producer" data-amount="{exec_price:.0f}">👑 Executive Producer (Gold Badge) — {exec_price:,.0f} TZS</option>
+                    </select>
                 </div>
-                <button type="submit" style="background:#3498db; color:white; padding:15px; border:none; border-radius:5px; display:block; width:100%; font-size:16px; font-weight:bold; cursor:pointer;">Pay {price:,.0f} TZS</button>
-            </form>
-            """
-            
+                <script>
+                    function updatePayBtn() {{
+                        var sel = document.getElementById('tierSelect');
+                        var amt = Number(sel.options[sel.selectedIndex].getAttribute('data-amount')).toLocaleString();
+                        document.getElementById('paySubmitBtn').innerText = 'Pay ' + amt + ' TZS via Mobile Money';
+                    }}
+                </script>
+                """
+            else:
+                tier_selector = '<input type="hidden" name="supporter_tier" value="Standard">'
+
+            trailer_embed = ""
+            if p.category == "Media" and p.trailer_url:
+                trailer_embed = f"<p style='margin:8px 0;'><a href='{p.trailer_url}' target='_blank' style='color:#e67e22; font-weight:bold; font-size:13px;'>▶ Watch / Listen to Free Teaser First</a></p>"
+
             return f"""
-            <html><body style="font-family:Arial; background:#f4f4f4;">
+            <html><body style="font-family:Poppins, Arial, sans-serif; background:#f4f4f4; margin:0;">
                 {get_navbar(request)}
-                <div style="padding:50px;">
-                    <div style="background:white; padding:40px; border-radius:8px; max-width:400px; margin:auto; text-align:center;">
-                        <h2>Checkout</h2>
-                        <img src="{cover}" style="width:180px; height:250px; object-fit:cover; margin:20px 0; border-radius: 5px;">
-                        <h3>{p.title}</h3>
-                        <p style="color:#7f8c8d; font-size:14px;">{p.category}</p>
-                        <h4 style="color:#2ecc71;">{price:,.0f} TZS</h4>
-                        {pay_btn}
+                <div style="padding:40px 15px;">
+                    <div style="background:white; padding:30px; border-radius:10px; max-width:440px; margin:auto; text-align:center; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
+                        <h2 style="margin-top:0; color:#2c3e50;">Checkout</h2>
+                        <img src="{cover}" style="width:170px; height:230px; object-fit:cover; margin:12px 0; border-radius:6px;">
+                        <h3 style="margin:5px 0;">{p.title}</h3>
+                        <p style="color:#7f8c8d; font-size:13px; margin:0;">{p.media_type or p.category}</p>
+                        {trailer_embed}
+                        {supporters_html}
+                        <form action="/pay-product/{p.id}" method="POST" style="margin-top:15px;">
+                            {tier_selector}
+                            <div style="margin-bottom: 15px; text-align: left;">
+                                <label style="font-weight: bold; font-size:14px;">Mobile Money Number (M-Pesa / Tigo / Airtel / Halopesa):</label>
+                                <input type="text" name="phone" placeholder="e.g. 0754123456" required style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; font-size: 16px; box-sizing:border-box;">
+                            </div>
+                            <button id="paySubmitBtn" type="submit" style="background:#2ecc71; color:white; padding:15px; border:none; border-radius:6px; display:block; width:100%; font-size:16px; font-weight:bold; cursor:pointer;">Pay {base_price:,.0f} TZS via Mobile Money</button>
+                        </form>
                     </div>
                 </div>
                 {FOOTER}
@@ -392,8 +483,86 @@ def checkout_product(request: Request, product_id: int):
             """
     except Exception as e:
         import traceback
-        error_details = traceback.format_exc()
-        return HTMLResponse(content=f"<h1>Checkout Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)        
+        return HTMLResponse(content=f"<h1>Checkout Debug Error</h1><pre>{traceback.format_exc()}</pre>", status_code=500)
+
+
+@app.post("/pay-product/{product_id}")
+def process_payment_product(request: Request, product_id: int, phone: str = Form(...), supporter_tier: str = Form("Standard")):
+    customer_email = request.cookies.get("customer_email")
+    if not customer_email:
+        return RedirectResponse(url="/customer-login", status_code=303)
+
+    with Session(engine) as session:
+        c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
+        p = session.get(Product, product_id)
+
+        if not p or not c:
+            return HTMLResponse(content="<h1>Error: Product or Customer not found.</h1>", status_code=400)
+
+        multiplier = 5.0 if supporter_tier == "Executive Producer" else (2.0 if supporter_tier == "VIP Supporter" else 1.0)
+        final_amount = float(p.price) * multiplier
+        purchase_ref = str(uuid.uuid4())
+
+        purchase = Purchase(
+            customer_id=c.id,
+            author_id=p.author_id,
+            book_title=p.title,
+            pdf_file=p.file_url,
+            format_bought=p.category,
+            phone_number=phone,
+            reference=purchase_ref,
+            amount_paid=final_amount,
+            supporter_tier=supporter_tier,
+            status="pending",
+        )
+        session.add(purchase)
+        session.commit()
+
+        api_key = os.environ.get("SNIPPE_API_KEY")
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+        name_parts = c.fullname.split(" ", 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else "Customer"
+
+        clean_phone = phone.strip()
+        if clean_phone.startswith("0"):
+            clean_phone = "255" + clean_phone[1:]
+
+        payload = {
+            "phone_number": clean_phone,
+            "webhook_url": "https://www.gophigo.co.tz/snippe-webhook",
+            "customer": {"firstname": first_name, "lastname": last_name, "email": c.email},
+            "business_name": "Gophigo Store",
+            "details": {"amount": int(final_amount), "currency": "TZS", "description": f"Gophigo ({supporter_tier}): {p.title}"},
+            "metadata": {"purchase_reference": purchase_ref}
+        }
+
+        try:
+            response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers, timeout=15)
+
+            if response.status_code in [200, 201]:
+                data = response.json()
+                snippe_ref = data.get("data", {}).get("reference")
+                if snippe_ref:
+                    purchase.snippe_ref = snippe_ref
+                    session.add(purchase)
+                    session.commit()
+                payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
+
+                if payment_url:
+                    return RedirectResponse(url=payment_url, status_code=303)
+
+                return HTMLResponse(content=f'<html><body style="font-family:Arial; text-align:center; padding:50px;"><h1 style="color:#2ecc71;">Payment Prompt Sent!</h1><p>We have sent a payment request of <strong>{final_amount:,.0f} TZS</strong> to <strong>{phone}</strong>.</p><p>Please check your phone and enter your mobile money PIN to complete the purchase.</p><p style="color:#7f8c8d;">Reference: {purchase_ref}</p><br><a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">I have paid - Go to My Library</a></body></html>', status_code=200)
+            else:
+                purchase.status = "failed"
+                session.add(purchase)
+                session.commit()
+                return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
+
+        except Exception as e:
+            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)
+
 @app.get("/shipping-address/{author_id}", response_class=HTMLResponse)
 def shipping_address_form(request: Request, author_id: int):
     return '<html><body style="font-family:Arial; background:#f4f4f4;">' + get_navbar(request) + f'<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2>Shipping Details</h2><p>Where should we deliver your paperback?</p><form action="/calculate-shipping/{author_id}" method="POST"><label>Phone Number:</label><br><input type="text" name="phone" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Region / City:</label><br><input type="text" name="region" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Delivery Address:</label><br><textarea name="address" required style="width:100%; padding:10px; margin:10px 0;"></textarea><br><button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Complete Order</button></form></div></div>' + FOOTER + '</body></html>'
@@ -535,13 +704,11 @@ def register_page(request: Request):
                 author_name = author.fullname
                 author_email_val = author.email
 
-    # Dynamic form based on login status
-    login_fields = ""
     if not is_logged_in:
-        login_fields = f'''
-            <input type="text" name="fullname" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Full Name">
-            <input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email">
-            <input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password">
+        login_fields = '''
+            <input type="text" name="fullname" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Creator / Studio / Author Full Name">
+            <input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Email">
+            <input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Password">
         '''
     else:
         login_fields = f'''
@@ -552,75 +719,180 @@ def register_page(request: Request):
             </div>
         '''
 
-    return f'''<html><body style="font-family:Arial; background:#f4f4f4;">
+    return f'''<html><body style="font-family:Poppins, Arial, sans-serif; background:#f4f4f4; margin:0;">
         {get_navbar(request)}
-        <div style="padding:50px;">
-            <div style="background:white; padding:30px; border-radius:8px; max-width:500px; margin:auto;">
-                <h2 style="text-align:center;">Upload New Product</h2>
+        <div style="padding:40px 15px;">
+            <div style="background:white; padding:30px; border-radius:10px; max-width:540px; margin:auto; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
+                <h2 style="text-align:center; color:#2c3e50; margin-top:0;">Upload New Product</h2>
                 <form action="/register" method="POST" enctype="multipart/form-data">
                     {login_fields}
                     
-                    <input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Title of Product">
+                    <input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Title of Book, Song, Movie, or Event">
                     
-                    <select name="category" id="categorySelect" required style="width:100%; padding:10px; margin:10px 0;">
-                        <option value="Book">General Book</option>
-                        <option value="Manual">University Manual / Lecture Notes</option>
-                        <option value="Law">Laws, Regulations & Manuals</option>
-                        <option value="Newspaper">Newspaper & Articles</option>
-                        <option value="Ticket">Event Ticket / Football Match</option>
-                        <option value="Media">Audio / Video / Movie</option>
-                        <option value="Religious">Religious Book</option>
+                    <select name="category" id="categorySelect" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;">
+                        <option value="Book">📚 General Book</option>
+                        <option value="Media">🎬 Movies, Music, Comedy & Podcasts</option>
+                        <option value="Manual">🏫 University Manual / Lecture Notes</option>
+                        <option value="Law">⚖️ Laws, Regulations & Manuals</option>
+                        <option value="Newspaper">📰 Newspaper & Articles</option>
+                        <option value="Ticket">🎟️ Event Ticket / Football Match</option>
+                        <option value="Religious">🙏 Religious Book</option>
                     </select>
 
                     <div id="universityFields" style="display: none;">
-                        <input type="text" name="institution" style="width:100%; padding:10px; margin:10px 0;" placeholder="University Name (e.g., CBE)">
-                        <input type="text" name="course_code" style="width:100%; padding:10px; margin:10px 0;" placeholder="Course Code (e.g., BUS 101)">
+                        <input type="text" name="institution" style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="University Name (e.g., UDSM, CBE)">
+                        <input type="text" name="course_code" style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Course Code (e.g., BUS 101)">
+                    </div>
+
+                    <div id="mediaFields" style="display: none; background:#1a252f; color:white; padding:15px; border-radius:8px; margin:10px 0;">
+                        <h4 style="margin:0 0 10px 0; color:#f1c40f;">🎬 Premiere Studio Details</h4>
+                        <select name="media_type" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; box-sizing:border-box;">
+                            <option value="Single Track">🎵 Single Audio Track</option>
+                            <option value="Full Album / EP">💿 Full Album / EP</option>
+                            <option value="Feature Movie">🎬 Feature Movie / Film</option>
+                            <option value="Series / Episode">📺 Series / Episode</option>
+                            <option value="Comedy / Podcast">🎙️ Stand-Up Comedy / Podcast</option>
+                        </select>
+                        <input type="text" name="cast_or_artist" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:none; box-sizing:border-box;" placeholder="Featured Artists / Cast & Director">
+                        <input type="text" name="duration" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:none; box-sizing:border-box;" placeholder="Duration (e.g., 3:45 or 1h 50m)">
+                        <label style="font-size:13px; font-weight:bold; color:#2ecc71; display:block; margin-top:5px;">Free 30s Audio Hook / 60s Video Trailer (Optional — Boosts Sales 3x):</label>
+                        <input type="file" name="trailer_file" accept=".mp3,.mp4,.wav,.m4a,.mov,audio/*,video/*" style="width:100%; padding:8px 0; color:white;">
                     </div>
                     
-                    <input type="number" name="price" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Price (TZS)">
+                    <input type="number" name="price" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Standard Price (TZS)">
                     
-                    <label style="font-size:14px; font-weight:bold;">Upload Cover Image:</label>
-                    <input type="file" name="cover" accept="image/*" required style="width:100%; padding:10px; margin:10px 0;">
+                    <label style="font-size:14px; font-weight:bold; display:block; margin-top:10px;">Upload Cover Image / Poster:</label>
+                    <input type="file" name="cover" accept="image/*" required style="width:100%; padding:10px 0;">
                     
-                    <label id="fileLabel" style="font-size:14px; font-weight:bold;">Upload PDF / Document:</label>
-                    <input type="file" id="fileInput" name="pdf_file" accept=".pdf" style="width:100%; padding:10px; margin:10px 0;">
+                    <label id="fileLabel" style="font-size:14px; font-weight:bold; display:block; margin-top:10px;">Upload PDF / Document:</label>
+                    <input type="file" id="fileInput" name="pdf_file" accept=".pdf,.doc,.docx" style="width:100%; padding:10px 0;">
                     
                     <div style="margin: 15px 0; display: flex; align-items: flex-start; gap: 10px;">
-                        <input type="checkbox" name="agree_terms" value="yes" required style="margin-top: 5px; transform: scale(1.5);">
-                        <label style="font-size: 14px; color: #555;">
+                        <input type="checkbox" name="agree_terms" value="yes" required style="margin-top: 5px; transform: scale(1.4);">
+                        <label style="font-size: 13px; color: #555;">
                             I declare that I am the copyright owner of this work and I agree to the
                             <a href="/terms" target="_blank" style="color: #3498db;">Gophigo Terms & Conditions</a>.
                         </label>
                     </div>
                     
-                    <button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px; font-size:16px; font-weight:bold; cursor:pointer;">Submit Product</button>
+                    <button type="submit" style="background:#2ecc71; color:white; padding:14px; border:none; width:100%; border-radius:6px; font-size:16px; font-weight:bold; cursor:pointer;">Publish to Gophigo</button>
                 </form>
             </div>
         </div>
         {FOOTER}
-        
-                <script>
+        <script>
             document.getElementById('categorySelect').addEventListener('change', function() {{
                 var uniFields = document.getElementById('universityFields');
+                var mediaFields = document.getElementById('mediaFields');
                 var fileInput = document.getElementById('fileInput');
                 var fileLabel = document.getElementById('fileLabel');
                 
-                if (this.value === 'Manual') {{
-                    uniFields.style.display = 'block';
-                }} else {{
-                    uniFields.style.display = 'none';
-                }}
+                uniFields.style.display = (this.value === 'Manual') ? 'block' : 'none';
+                mediaFields.style.display = (this.value === 'Media') ? 'block' : 'none';
                 
                 if (this.value === 'Media') {{
-                    fileInput.accept = ".mp3, .mp4, .wav, .m4a, .mov, audio/*, video/*";
-                    fileLabel.innerText = "Upload Audio/Video File:";
+                    fileInput.accept = ".mp3,.mp4,.wav,.m4a,.mov,audio/*,video/*";
+                    fileLabel.innerText = "Upload Full Master Audio/Video File:";
                 }} else {{
-                    fileInput.accept = ".pdf, .doc, .docx";
+                    fileInput.accept = ".pdf,.doc,.docx";
                     fileLabel.innerText = "Upload PDF / Document:";
                 }}
             }});
         </script>
     </body></html>'''
+
+
+@app.post("/register", response_class=HTMLResponse)
+def process_registration(
+    request: Request,
+    fullname: str = Form(None),
+    email: str = Form(None),
+    password: str = Form(None),
+    book_title: str = Form(...),
+    category: str = Form(...),
+    institution: str = Form(None),
+    course_code: str = Form(None),
+    media_type: str = Form(None),
+    cast_or_artist: str = Form(None),
+    duration: str = Form(None),
+    price: float = Form(...),
+    cover: UploadFile = File(...),
+    pdf_file: UploadFile = File(None),
+    trailer_file: UploadFile = File(None),
+    agree_terms: str = Form(None)
+):
+    if not agree_terms:
+        return HTMLResponse(content="<h1>Error</h1><p>You must agree to the Terms and Conditions.</p>", status_code=400)
+
+    author_email = request.cookies.get("author_email")
+
+    # 1. Upload cover, master file, and optional trailer to Cloudinary
+    cover_url = cloudinary.uploader.upload(cover.file, folder="gophigo_covers", resource_type="image").get("secure_url")
+    
+    file_url = None
+    if pdf_file and pdf_file.filename:
+        if category == "Media":
+            file_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_media", resource_type="video").get("secure_url")
+        else:
+            file_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw", access_mode="public").get("secure_url")
+
+    trailer_url = None
+    if trailer_file and trailer_file.filename:
+        trailer_url = cloudinary.uploader.upload(trailer_file.file, folder="gophigo_trailers", resource_type="video").get("secure_url")
+
+    # 2. Generate Predictable Item ID
+    current_year = datetime.now().year
+    with Session(engine) as session:
+        total_products = len(session.exec(select(Product)).all())
+    new_book_id = f"GOP-{current_year}-{total_products + 1:04d}"
+
+    with Session(engine) as session:
+        if author_email:
+            author = session.exec(select(Author).where(Author.email == author_email)).first()
+            if not author:
+                return HTMLResponse(content="<h1>Error: Author session invalid. Please log in again.</h1>", status_code=400)
+        else:
+            author = Author(
+                fullname=fullname,
+                email=email,
+                password=hashlib.sha256(password.encode()).hexdigest(),
+                book_title=book_title,
+                book_format=category,
+                ebook_price=price,
+                cover_image=cover_url,
+                pdf_file=file_url,
+                book_id=new_book_id,
+                membership_status="Pending"
+            )
+            session.add(author)
+            session.commit()
+            session.refresh(author)
+            author_email = email
+
+        new_product = Product(
+            author_id=author.id,
+            title=book_title,
+            category=category,
+            institution=institution if institution else None,
+            course_code=course_code if course_code else None,
+            media_type=media_type if category == "Media" else None,
+            cast_or_artist=cast_or_artist if category == "Media" else None,
+            duration=duration if category == "Media" else None,
+            trailer_url=trailer_url if category == "Media" else None,
+            price=price,
+            cover_image=cover_url,
+            file_url=file_url,
+            product_code=new_book_id,
+            status="Approved"
+        )
+        session.add(new_product)
+        session.commit()
+
+    success_html = '<html><body style="font-family:Arial; text-align:center; padding:60px 15px; background:#f4f4f4; margin:0;">' + get_navbar(request) + f'<div style="text-align:center; padding:50px 30px; background:white; border-radius:10px; max-width:500px; margin:40px auto; box-shadow:0 4px 12px rgba(0,0,0,0.08);"><h1 style="color:#2ecc71;">Published Successfully!</h1><p>Your Item ID is: <strong style="font-size:24px; color:#2c3e50;">{new_book_id}</strong></p><p>Share this direct link with fans on WhatsApp, Instagram & TikTok:<br><code style="background:#eee; padding:6px 10px; display:inline-block; margin-top:8px;">www.gophigo.co.tz/item/{new_book_id}</code></p><br><a href="/author-dashboard" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px; font-weight:bold;">Go to My Dashboard</a></div>' + FOOTER + '</body></html>'
+
+    response = HTMLResponse(content=success_html)
+    response.set_cookie(key="author_email", value=author_email, httponly=True)
+    return response
     
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
@@ -1479,42 +1751,90 @@ def verify_ticket(qr_data: str):
         session.commit()
         
         return f"<html><body style='background:#2ecc71; color:white; text-align:center; padding:100px; font-family:Arial;'><h1>ENTRY ALLOWED!</h1><h2>{purchase.book_title}</h2><p>Ticket ID: {purchase.reference[:8]}</p><a href='/scanner' style='background:white; color:#2ecc71; padding:15px 30px; text-decoration:none; border-radius:5px; font-weight:bold; font-size:20px;'>Scan Next Fan</a></body></html>"
+
 @app.get("/play-media/{purchase_id}", response_class=HTMLResponse)
 def play_media(request: Request, purchase_id: int):
     customer_email = request.cookies.get("customer_email")
     if not customer_email:
         return RedirectResponse(url="/customer-login", status_code=303)
-        
+
     with Session(engine) as session:
+        c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
         p = session.get(Purchase, purchase_id)
-        if not p:
-            return HTMLResponse(content="<h1>Media not found.</h1>", status_code=404)
-            
-        # Get the media URL from the product or the purchase record
-        media_url = p.pdf_file if p.pdf_file else ""
-        
-        # This checks if it's an audio file or video file
-        is_audio = ".mp3" in media_url or ".wav" in media_url or ".m4a" in media_url
-        
+        if not p or not c or p.customer_id != c.id or p.status != "paid":
+            return HTMLResponse(content="<h1 style='text-align:center; padding:50px;'>Unauthorized or unpaid media access.</h1>", status_code=403)
+
+        product = session.exec(select(Product).where(Product.title == p.book_title, Product.author_id == p.author_id)).first()
+        cover = product.cover_image if (product and product.cover_image) else ""
+        artist_info = product.cast_or_artist if (product and product.cast_or_artist) else "Gophigo Exclusive"
+
+        media_url = p.pdf_file or ""
+        # Optimize Cloudinary streaming for mobile data bundles
+        if "res.cloudinary.com" in media_url and "/upload/" in media_url:
+            media_url = media_url.replace("/upload/", "/upload/f_auto,q_auto/", 1)
+
+        is_audio = any(ext in media_url.lower() for ext in [".mp3", ".wav", ".m4a", ".ogg"])
+        watermark_text = f"{c.email} • ID:{(p.reference or '')[:8].upper()}"
+        vip_badge = f"<span style='background:#f1c40f; color:#1a252f; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:bold;'>🏆 {p.supporter_tier}</span>" if p.supporter_tier and p.supporter_tier != "Standard" else ""
+
         if is_audio:
-            player_html = f"<audio controls style='width: 100%; max-width: 600px; margin-top: 20px;'><source src='{media_url}' type='audio/mpeg'>Your browser does not support the audio element.</audio>"
+            player_html = f"""
+            <div style="max-width:420px; margin:20px auto; background:#111827; padding:25px; border-radius:14px; border:1px solid #374151;">
+                <img src="{cover}" style="width:220px; height:220px; object-fit:cover; border-radius:10px; box-shadow:0 8px 25px rgba(0,0,0,0.6); margin-bottom:15px;">
+                <h3 style="margin:5px 0; color:white;">{p.book_title}</h3>
+                <p style="color:#9ca3af; font-size:13px; margin:0 0 15px;">{artist_info}</p>
+                {vip_badge}
+                <audio id="mediaPlayer" controls autoplay controlsList="nodownload" oncontextmenu="return false;" style="width:100%; margin-top:15px;">
+                    <source src="{media_url}">
+                </audio>
+                <p style="font-size:11px; color:#6b7280; margin-top:12px;">Licensed stream: {watermark_text}</p>
+            </div>
+            """
         else:
-            player_html = f"<video controls style='width: 100%; max-width: 800px; border-radius: 8px; margin-top: 20px;'><source src='{media_url}' type='video/mp4'>Your browser does not support the video tag.</video>"
+            player_html = f"""
+            <div id="cinemaStage" oncontextmenu="return false;" style="position:relative; max-width:900px; margin:20px auto; background:black; border-radius:12px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.7);">
+                <video id="mediaPlayer" controls autoplay playsinline controlsList="nodownload noplaybackrate" disablePictureInPicture oncontextmenu="return false;" style="width:100%; max-height:75vh; display:block;">
+                    <source src="{media_url}">
+                </video>
+                <div id="piracyWatermark" style="position:absolute; top:12%; left:8%; color:rgba(255,255,255,0.28); font-size:13px; font-weight:bold; pointer-events:none; user-select:none; text-shadow:1px 1px 2px black; transition:all 1.5s ease;">
+                    {watermark_text}
+                </div>
+            </div>
+            <div style="margin-top:10px;">
+                {vip_badge}
+                <button onclick="setSpeed(1)" style="background:#374151; color:white; border:none; padding:6px 12px; border-radius:5px; cursor:pointer; margin:0 3px;">1x</button>
+                <button onclick="setSpeed(1.25)" style="background:#374151; color:white; border:none; padding:6px 12px; border-radius:5px; cursor:pointer; margin:0 3px;">1.25x</button>
+                <button onclick="setSpeed(1.5)" style="background:#374151; color:white; border:none; padding:6px 12px; border-radius:5px; cursor:pointer; margin:0 3px;">1.5x</button>
+            </div>
+            <script>
+                function setSpeed(rate) {{
+                    document.getElementById('mediaPlayer').playbackRate = rate;
+                }}
+                setInterval(function() {{
+                    var wm = document.getElementById('piracyWatermark');
+                    if (wm) {{
+                        wm.style.top = (10 + Math.floor(Math.random() * 70)) + '%';
+                        wm.style.left = (5 + Math.floor(Math.random() * 65)) + '%';
+                    }}
+                }}, 6000);
+            </script>
+            """
 
         return f"""
-        <html><body style="font-family:Arial; background:#f4f4f4;">
+        <html><body style="font-family:Poppins, Arial, sans-serif; background:#0b0f19; color:white; margin:0;" oncontextmenu="return false;">
             {get_navbar(request)}
-            <div style="padding:50px; text-align:center;">
-                <h2 style="color:#2c3e50;">🎬 Now Playing: {p.book_title}</h2>
-                <div style="background:white; padding:30px; border-radius:8px; max-width:900px; margin:auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                    {player_html}
-                    <br><br>
-                    <a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px; font-weight:bold;">← Back to Library</a>
+            <div style="padding:30px 15px; text-align:center;">
+                <h2 style="color:#f1c40f; margin-bottom:5px;">🎬 Gophigo Premiere Vault</h2>
+                <p style="color:#9ca3af; margin-top:0; font-size:14px;">{p.book_title} • {artist_info}</p>
+                {player_html}
+                <div style="margin-top:25px;">
+                    <a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:6px; font-weight:bold;">← Back to My Library</a>
                 </div>
             </div>
             {FOOTER}
         </body></html>
         """
+
 @app.post("/admin-create-employee", response_class=HTMLResponse)
 def admin_create_employee(request: Request, fullname: str = Form(...), email: str = Form(...), role: str = Form(...)):
     if request.cookies.get("admin_session") != "true":
