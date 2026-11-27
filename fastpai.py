@@ -25,7 +25,7 @@ if database_url:
     sqlite_url = database_url
 else:
     sqlite_url = "sqlite:///gophigo.db"
-    engine = create_engine(sqlite_url)
+engine = create_engine(sqlite_url)
 from sqlalchemy import text
 with engine.connect() as conn:
     try:
