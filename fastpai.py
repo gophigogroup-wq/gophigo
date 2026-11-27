@@ -136,7 +136,22 @@ with engine.connect() as conn:
             conn.execute(text(stmt))
             conn.commit()
         except Exception:
-            pass            
+            pass  
+with engine.connect() as conn:
+    for stmt in [
+        "ALTER TABLE author ADD COLUMN phone_number VARCHAR;",
+        "ALTER TABLE author ADD COLUMN author_reg_no VARCHAR;",
+        "ALTER TABLE author ADD COLUMN nida_number VARCHAR;",
+        "ALTER TABLE author ADD COLUMN nida_doc_url VARCHAR;",
+        "ALTER TABLE author ADD COLUMN tin_number VARCHAR;",
+        "ALTER TABLE author ADD COLUMN tin_doc_url VARCHAR;",
+        "ALTER TABLE author ADD COLUMN kyc_status VARCHAR DEFAULT 'Pending Verification';",
+    ]:
+        try:
+            conn.execute(text(stmt))
+            conn.commit()
+        except Exception:
+            pass
 class Author(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fullname: str; email: str; password: str; book_title: str
@@ -148,7 +163,13 @@ class Author(SQLModel, table=True):
     cover_image: str | None = Field(default=None); pdf_file: str | None = Field(default=None) 
     is_read: bool = Field(default=False)
     is_hidden: bool = Field(default=False) # NEW: For soft delete
-
+    phone_number: str | None = Field(default=None)
+    author_reg_no: str | None = Field(default=None, index=True, unique=True)  # e.g., GOP-AUTH-2026-0001
+    nida_number: str | None = Field(default=None)
+    nida_doc_url: str | None = Field(default=None)
+    tin_number: str | None = Field(default=None)
+    tin_doc_url: str | None = Field(default=None)
+    kyc_status: str = Field(default="Pending Verification")  # Pending Verification, Verified
 class Product(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     author_id: int = Field(foreign_key="author.id") # Links to the Author/Seller
@@ -728,9 +749,21 @@ def register_page(request: Request):
 
     if not is_logged_in:
         login_fields = '''
-            <input type="text" name="fullname" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Creator / Studio / Author Full Name">
-            <input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Email">
-            <input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Password">
+            <input type="text" name="fullname" required style="width:100%; padding:10px; margin:8px 0; box-sizing:border-box;" placeholder="Full Legal Name (Matching NIDA) *">
+            <input type="email" name="email" required style="width:100%; padding:10px; margin:8px 0; box-sizing:border-box;" placeholder="Email Address *">
+            <input type="text" name="phone_number" required style="width:100%; padding:10px; margin:8px 0; box-sizing:border-box;" placeholder="Mobile Money / Phone Number (e.g. 0754123456) *">
+            <input type="password" name="password" required style="width:100%; padding:10px; margin:8px 0; box-sizing:border-box;" placeholder="Create Password *">
+
+            <div style="background:#f8f9fa; border:1px solid #dce1e7; padding:14px; border-radius:8px; margin:12px 0;">
+                <h4 style="margin:0 0 8px 0; color:#2c3e50;">🪪 Creator Verification (KYC)</h4>
+                <input type="text" name="nida_number" required maxlength="20" style="width:100%; padding:10px; margin:6px 0; box-sizing:border-box;" placeholder="NIDA Number (20 Digits) *">
+                <label style="font-size:12px; font-weight:bold; display:block; margin-top:6px;">Upload NIDA ID / Copy (PDF or Photo) *:</label>
+                <input type="file" name="nida_doc" accept=".pdf,image/*" required style="width:100%; padding:6px 0;">
+
+                <input type="text" name="tin_number" style="width:100%; padding:10px; margin:10px 0 6px; box-sizing:border-box;" placeholder="TRA TIN Number (Optional)">
+                <label style="font-size:12px; font-weight:bold; display:block; margin-top:6px; color:#555;">Upload TIN Certificate (Optional — Required Later for Payouts):</label>
+                <input type="file" name="tin_doc" accept=".pdf,image/*" style="width:100%; padding:6px 0;">
+            </div>
         '''
     else:
         login_fields = f'''
@@ -745,11 +778,11 @@ def register_page(request: Request):
         {get_navbar(request)}
         <div style="padding:40px 15px;">
             <div style="background:white; padding:30px; border-radius:10px; max-width:540px; margin:auto; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
-                <h2 style="text-align:center; color:#2c3e50; margin-top:0;">Upload New Product</h2>
+                <h2 style="text-align:center; color:#2c3e50; margin-top:0;">Creator & Author Registration</h2>
                 <form action="/register" method="POST" enctype="multipart/form-data">
                     {login_fields}
                     
-                    <input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Title of Book, Song, Movie, or Event">
+                    <input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Title of Book, Song, Movie, or Event *">
                     
                     <select name="category" id="categorySelect" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;">
                         <option value="Book">📚 General Book</option>
@@ -777,13 +810,13 @@ def register_page(request: Request):
                         </select>
                         <input type="text" name="cast_or_artist" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:none; box-sizing:border-box;" placeholder="Featured Artists / Cast & Director">
                         <input type="text" name="duration" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:none; box-sizing:border-box;" placeholder="Duration (e.g., 3:45 or 1h 50m)">
-                        <label style="font-size:13px; font-weight:bold; color:#2ecc71; display:block; margin-top:5px;">Free 30s Audio Hook / 60s Video Trailer (Optional — Boosts Sales 3x):</label>
+                        <label style="font-size:13px; font-weight:bold; color:#2ecc71; display:block; margin-top:5px;">Free 30s Audio Hook / 60s Video Trailer (Optional):</label>
                         <input type="file" name="trailer_file" accept=".mp3,.mp4,.wav,.m4a,.mov,audio/*,video/*" style="width:100%; padding:8px 0; color:white;">
                     </div>
                     
-                    <input type="number" name="price" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Standard Price (TZS)">
+                    <input type="number" name="price" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Standard Price (TZS) *">
                     
-                    <label style="font-size:14px; font-weight:bold; display:block; margin-top:10px;">Upload Cover Image / Poster:</label>
+                    <label style="font-size:14px; font-weight:bold; display:block; margin-top:10px;">Upload Cover Image / Poster *:</label>
                     <input type="file" name="cover" accept="image/*" required style="width:100%; padding:10px 0;">
                     
                     <label id="fileLabel" style="font-size:14px; font-weight:bold; display:block; margin-top:10px;">Upload PDF / Document:</label>
@@ -797,7 +830,7 @@ def register_page(request: Request):
                         </label>
                     </div>
                     
-                    <button type="submit" style="background:#2ecc71; color:white; padding:14px; border:none; width:100%; border-radius:6px; font-size:16px; font-weight:bold; cursor:pointer;">Publish to Gophigo</button>
+                    <button type="submit" style="background:#2ecc71; color:white; padding:14px; border:none; width:100%; border-radius:6px; font-size:16px; font-weight:bold; cursor:pointer;">Complete Registration & Submit</button>
                 </form>
             </div>
         </div>
@@ -823,6 +856,132 @@ def register_page(request: Request):
         </script>
     </body></html>'''
 
+
+@app.post("/register", response_class=HTMLResponse)
+def process_registration(
+    request: Request,
+    fullname: str = Form(None),
+    email: str = Form(None),
+    phone_number: str = Form(None),
+    password: str = Form(None),
+    nida_number: str = Form(None),
+    tin_number: str = Form(None),
+    nida_doc: UploadFile = File(None),
+    tin_doc: UploadFile = File(None),
+    book_title: str = Form(...),
+    category: str = Form(...),
+    institution: str = Form(None),
+    course_code: str = Form(None),
+    media_type: str = Form(None),
+    cast_or_artist: str = Form(None),
+    duration: str = Form(None),
+    price: float = Form(...),
+    cover: UploadFile = File(...),
+    pdf_file: UploadFile = File(None),
+    trailer_file: UploadFile = File(None),
+    agree_terms: str = Form(None)
+):
+    if not agree_terms:
+        return HTMLResponse(content="<h1>Error</h1><p>You must agree to the Terms and Conditions.</p>", status_code=400)
+
+    author_email = request.cookies.get("author_email")
+    current_year = datetime.now().year
+
+    # 1. Upload cover, master file, and optional trailer
+    cover_url = cloudinary.uploader.upload(cover.file, folder="gophigo_covers", resource_type="image").get("secure_url")
+
+    file_url = None
+    if pdf_file and pdf_file.filename:
+        if category == "Media":
+            file_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_media", resource_type="video").get("secure_url")
+        else:
+            file_url = cloudinary.uploader.upload(pdf_file.file, folder="gophigo_pdfs", resource_type="raw", access_mode="public").get("secure_url")
+
+    trailer_url = None
+    if trailer_file and trailer_file.filename:
+        trailer_url = cloudinary.uploader.upload(trailer_file.file, folder="gophigo_trailers", resource_type="video").get("secure_url")
+
+    with Session(engine) as session:
+        total_products = len(session.exec(select(Product)).all())
+        new_book_id = f"GOP-{current_year}-{total_products + 1:04d}"
+
+        if author_email:
+            author = session.exec(select(Author).where(Author.email == author_email)).first()
+            if not author:
+                return HTMLResponse(content="<h1>Error: Author session invalid. Please log in again.</h1>", status_code=400)
+            reg_no_display = author.author_reg_no or f"GOP-AUTH-{current_year}-{author.id:04d}"
+        else:
+            if not phone_number or not nida_number or not (nida_doc and nida_doc.filename):
+                return HTMLResponse(content="<h1>Error</h1><p>Phone number, NIDA number, and NIDA document are mandatory.</p>", status_code=400)
+
+            existing = session.exec(select(Author).where(Author.email == email)).first()
+            if existing:
+                return HTMLResponse(content="<h1>Email already registered.</h1><a href='/login'>Login here</a>", status_code=400)
+
+            nida_url = cloudinary.uploader.upload(nida_doc.file, folder="gophigo_kyc", resource_type="auto").get("secure_url")
+            tin_url = cloudinary.uploader.upload(tin_doc.file, folder="gophigo_kyc", resource_type="auto").get("secure_url") if (tin_doc and tin_doc.filename) else None
+
+            total_authors = len(session.exec(select(Author)).all())
+            reg_no_display = f"GOP-AUTH-{current_year}-{total_authors + 1:04d}"
+
+            author = Author(
+                fullname=fullname,
+                email=email,
+                phone_number=phone_number.strip(),
+                password=hashlib.sha256(password.encode()).hexdigest(),
+                author_reg_no=reg_no_display,
+                nida_number=nida_number.strip(),
+                nida_doc_url=nida_url,
+                tin_number=tin_number.strip() if tin_number else None,
+                tin_doc_url=tin_url,
+                kyc_status="Pending Verification",
+                book_title=book_title,
+                book_format=category,
+                ebook_price=price,
+                cover_image=cover_url,
+                pdf_file=file_url,
+                book_id=new_book_id,
+                membership_status="Pending"
+            )
+            session.add(author)
+            session.commit()
+            session.refresh(author)
+            author_email = email
+
+        product_status = "Approved" if author.kyc_status == "Verified" else "Pending KYC"
+
+        new_product = Product(
+            author_id=author.id,
+            title=book_title,
+            category=category,
+            institution=institution if institution else None,
+            course_code=course_code if course_code else None,
+            media_type=media_type if category == "Media" else None,
+            cast_or_artist=cast_or_artist if category == "Media" else None,
+            duration=duration if category == "Media" else None,
+            trailer_url=trailer_url if category == "Media" else None,
+            price=price,
+            cover_image=cover_url,
+            file_url=file_url,
+            product_code=new_book_id,
+            status=product_status
+        )
+        session.add(new_product)
+        session.commit()
+
+    success_html = '<html><body style="font-family:Arial; text-align:center; padding:60px 15px; background:#f4f4f4; margin:0;">' + get_navbar(request) + f'''
+    <div style="text-align:center; padding:45px 30px; background:white; border-radius:10px; max-width:520px; margin:40px auto; box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+        <h1 style="color:#2ecc71; margin-top:0;">Registration Complete!</h1>
+        <p style="margin:8px 0;">Official Author Registration Number:</p>
+        <div style="background:#2c3e50; color:#f1c40f; font-size:22px; font-weight:bold; padding:10px 18px; border-radius:6px; display:inline-block; margin-bottom:12px;">{reg_no_display}</div>
+        <p style="color:#e67e22; font-size:14px;"><strong>KYC Status:</strong> {author.kyc_status} (Your item <code>{new_book_id}</code> will go live on the storefront immediately once our compliance team verifies your NIDA details.)</p>
+        <br>
+        <a href="/author-dashboard" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px; font-weight:bold;">Go to My Dashboard</a>
+    </div>''' + FOOTER + '</body></html>'
+
+    response = HTMLResponse(content=success_html)
+    response.set_cookie(key="author_email", value=author_email, httponly=True)
+    return response
 
 @app.post("/register", response_class=HTMLResponse)
 def process_registration(
@@ -1033,6 +1192,16 @@ def author_dashboard(request: Request):
             <h4 style="margin: 0; color: #2c3e50;">Your Item Link</h4>
             <p style="word-break: break-all; color: #3498db; font-weight: bold; margin: 10px 0;">www.gophigo.co.tz/item/{author.book_id}</p>
             <button onclick="navigator.clipboard.writeText('www.gophigo.co.tz/item/{author.book_id}'); alert('Link copied to clipboard!');" style="background: #2ecc71; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Copy Link</button>
+        </div>
+        """
+        reg_no = author.author_reg_no or f"GOP-AUTH-2026-{author.id:04d}"
+        kyc_badge_color = "#2ecc71" if author.kyc_status == "Verified" else "#e67e22"
+        kyc_box = f"""
+        <div style="background:#f8f9fa; border:1px solid #dce1e7; padding:15px; border-radius:8px; margin-bottom:18px; text-align:left;">
+            <p style="margin:4px 0;"><strong>Author Reg No:</strong> <span style="background:#2c3e50; color:#f1c40f; padding:3px 10px; border-radius:4px; font-weight:bold;">{reg_no}</span></p>
+            <p style="margin:4px 0;"><strong>Phone:</strong> {author.phone_number or 'Not provided'}</p>
+            <p style="margin:4px 0;"><strong>NIDA:</strong> {author.nida_number or 'Pending'} | <strong>TIN:</strong> {author.tin_number or 'Not submitted (Optional)'}</p>
+            <p style="margin:4px 0;"><strong>KYC Due Diligence Status:</strong> <span style="color:{kyc_badge_color}; font-weight:bold;">{author.kyc_status}</span></p>
         </div>
         """
 
