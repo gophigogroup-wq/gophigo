@@ -3,6 +3,7 @@ uvicorn
 sqlmodel
 python-multipart
 psycopg[binary]
+psycopg2-binary
 cloudinary
 requests
 qrcode
