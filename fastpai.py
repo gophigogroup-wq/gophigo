@@ -1604,12 +1604,12 @@ def admin_dashboard(request: Request):
                     <div style="background: #2c3e50; color: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;">
                         <h4 style="margin: 0;">Gophigo Revenue (50%)</h4>
                         <h2 style="margin: 10px 0 0 0;">{gophigo_revenue:,.2f} TZS</h2>
-                    </div>
+                     </div>
                     <div style="background: #2ecc71; color: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;">
                         <h4 style="margin: 0;">Author Payouts (50%)</h4>
                         <h2 style="margin: 10px 0 0 0;">{author_payouts:,.2f} TZS</h2>
                     </div>
-                </div>
+                    </div>
 
                 <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 30px;">
                     <h3 style="margin-top: 0; color: #2c3e50;">Add New Employee</h3>
