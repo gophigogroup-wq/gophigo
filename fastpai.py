@@ -1128,7 +1128,21 @@ function togglePwd(inputId, btn) {
             }});
         </script>
     </body></html>'''
-
+PASSWORD_TOGGLE_SCRIPT = """
+<script>
+function togglePwd(inputId, btn) {
+    var inp = document.getElementById(inputId);
+    if (!inp) return;
+    if (inp.type === "password") {
+        inp.type = "text";
+        btn.innerText = "🙈 Hide";
+    } else {
+        inp.type = "password";
+        btn.innerText = "👁️ Show";
+    }
+}
+</script>
+"""
 
 @app.post("/register", response_class=HTMLResponse)
 def process_registration(
