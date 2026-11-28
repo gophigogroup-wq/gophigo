@@ -337,6 +337,7 @@ with Session(engine) as session:
             session.add(new_product)
         session.commit()
         
+
 def get_navbar(request: Request):
     a = request.cookies.get("author_email")
     c = request.cookies.get("customer_email")
@@ -889,7 +890,67 @@ def register_page(request: Request):
                 <strong>Logged in as:</strong> {author_name} ({author_email_val})
             </div>
         '''
+        <div style="position:relative; margin:10px 0;">
+            <input type="password" id="userPassword" name="password" required style="width:100%; padding:10px 75px 10px 10px; box-sizing:border-box;" placeholder="Password">
+            <button type="button" onclick="togglePwd('userPassword', this)" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#eef2f7; border:1px solid #ccc; border-radius:4px; padding:4px 8px; font-size:12px; cursor:pointer; color:#2c3e50;">👁️ Show</button>
+            </div>
+document.getElementById('categorySelect').addEventListener('change', function() {
+    var uniFields = document.getElementById('universityFields');
+    var mediaFields = document.getElementById('mediaFields');
+    var hotelFields = document.getElementById('hotelFields');
+    var fileInput = document.getElementById('fileInput');
+    var fileLabel = document.getElementById('fileLabel');
+    var titleInput = document.querySelector('input[name="book_title"]');
+    var priceInput = document.querySelector('input[name="price"]');
+    var coverLabel = document.getElementById('coverLabel');
 
+    uniFields.style.display = (this.value === 'Manual') ? 'block' : 'none';
+    mediaFields.style.display = (this.value === 'Media') ? 'block' : 'none';
+    if (hotelFields) hotelFields.style.display = (this.value === 'Hotel') ? 'block' : 'none';
+
+    if (this.value === 'Hotel') {
+        titleInput.placeholder = "Official Hotel or Restaurant Name *";
+        priceInput.placeholder = "Starting Room Rate per Night (TZS) *";
+        if (coverLabel) coverLabel.innerText = "Upload Hotel / Restaurant Main Photo *:";
+        fileInput.style.display = "none";
+        fileLabel.style.display = "none";
+    } else if (this.value === 'Media') {
+        titleInput.placeholder = "Song, Album, Movie, or Show Title *";
+        priceInput.placeholder = "Standard Access Price (TZS) *";
+        fileInput.style.display = "block";
+        fileLabel.style.display = "block";
+        fileInput.accept = ".mp3,.mp4,.wav,.m4a,.mov,audio/*,video/*";
+        fileLabel.innerText = "Upload Full Master Audio/Video File:";
+    } else {
+        titleInput.placeholder = "Title of Book, Manual, or Event *";
+        priceInput.placeholder = "Price (TZS) *";
+        fileInput.style.display = "block";
+        fileLabel.style.display = "block";
+        fileInput.accept = ".pdf,.doc,.docx";
+        fileLabel.innerText = "Upload PDF / Document:";
+    }
+});
+<div style="margin: 15px 0; display: flex; align-items: flex-start; gap: 10px; background:#fff8e1; padding:12px; border-radius:6px; border:1px solid #f1c40f;">
+    <input type="checkbox" name="agree_terms" value="yes" required style="margin-top: 4px; transform: scale(1.3);">
+    <label style="font-size: 12.5px; color: #333; line-height:1.4;">
+        <strong>Owner Declaration & Responsibility:</strong> I declare that I am the lawful owner/authorized operator of this work or hospitality property, all information and rates entered are accurate, and I bear full legal and operational responsibility to customers. I agree to the <a href="/terms" target="_blank" style="color: #3498db;">Gophigo Terms & Conditions</a>.
+    </label>
+</div>            
+        PASSWORD_TOGGLE_SCRIPT = """
+<script>
+function togglePwd(inputId, btn) {
+    var inp = document.getElementById(inputId);
+    if (!inp) return;
+    if (inp.type === "password") {
+        inp.type = "text";
+        btn.innerText = "🙈 Hide";
+    } else {
+        inp.type = "password";
+        btn.innerText = "👁️ Show";
+    }
+}
+</script>
+"""
     return f'''<html><body style="font-family:Poppins, Arial, sans-serif; background:#f4f4f4; margin:0;">
         {get_navbar(request)}
         <div style="padding:40px 15px;">
@@ -1292,6 +1353,25 @@ def add_product_track(
     
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
+<div style="position:relative; margin:10px 0;">
+    <input type="password" id="userPassword" name="password" required style="width:100%; padding:10px 75px 10px 10px; box-sizing:border-box;" placeholder="Password">
+    <button type="button" onclick="togglePwd('userPassword', this)" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#eef2f7; border:1px solid #ccc; border-radius:4px; padding:4px 8px; font-size:12px; cursor:pointer; color:#2c3e50;">👁️ Show</button>
+</div>
+PASSWORD_TOGGLE_SCRIPT = """
+<script>
+function togglePwd(inputId, btn) {
+    var inp = document.getElementById(inputId);
+    if (!inp) return;
+    if (inp.type === "password") {
+        inp.type = "text";
+        btn.innerText = "🙈 Hide";
+    } else {
+        inp.type = "password";
+        btn.innerText = "👁️ Show";
+    }
+}
+</script>
+"""
     return '<html><body style="font-family:Arial; background:#f4f4f4;">' + get_navbar(request) + '<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center;">Author Login</h2><form action="/login" method="POST"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#3498db; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button></form><div style="text-align:center; margin-top:15px;"><a href="/forgot-password">Forgot Password?</a></div></div></div>' + FOOTER + '</body></html>'
 
 @app.post("/login")
@@ -1375,6 +1455,25 @@ def customer_gateway(request: Request, next: str = "/"):
 
 @app.get("/customer-register", response_class=HTMLResponse)
 def customer_register_page(request: Request, next: str = "/"):
+<div style="position:relative; margin:10px 0;">
+    <input type="password" id="userPassword" name="password" required style="width:100%; padding:10px 75px 10px 10px; box-sizing:border-box;" placeholder="Password">
+    <button type="button" onclick="togglePwd('userPassword', this)" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#eef2f7; border:1px solid #ccc; border-radius:4px; padding:4px 8px; font-size:12px; cursor:pointer; color:#2c3e50;">👁️ Show</button>
+</div>
+PASSWORD_TOGGLE_SCRIPT = """
+<script>
+function togglePwd(inputId, btn) {
+    var inp = document.getElementById(inputId);
+    if (!inp) return;
+    if (inp.type === "password") {
+        inp.type = "text";
+        btn.innerText = "🙈 Hide";
+    } else {
+        inp.type = "password";
+        btn.innerText = "👁️ Show";
+    }
+}
+</script>
+"""
     return f'<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center;">Create Account</h2><form action="/customer-register?next={next}" method="POST"><label>Full Name:</label><br><input type="text" name="fullname" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Email:</label><br><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Password:</label><br><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;"><br><button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Register</button></form></div></div>{FOOTER}</body></html>'
 
 @app.post("/customer-register")
@@ -1888,7 +1987,27 @@ def run_migration_v2():
 
 @app.get("/customer-login", response_class=HTMLResponse)
 def customer_login_page(request: Request, next: str = "/"):
+<div style="position:relative; margin:10px 0;">
+    <input type="password" id="userPassword" name="password" required style="width:100%; padding:10px 75px 10px 10px; box-sizing:border-box;" placeholder="Password">
+    <button type="button" onclick="togglePwd('userPassword', this)" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#eef2f7; border:1px solid #ccc; border-radius:4px; padding:4px 8px; font-size:12px; cursor:pointer; color:#2c3e50;">👁️ Show</button>
+</div> 
+PASSWORD_TOGGLE_SCRIPT = """
+<script>
+function togglePwd(inputId, btn) {
+    var inp = document.getElementById(inputId);
+    if (!inp) return;
+    if (inp.type === "password") {
+        inp.type = "text";
+        btn.innerText = "🙈 Hide";
+    } else {
+        inp.type = "password";
+        btn.innerText = "👁️ Show";
+    }
+}
+</script>
+"""
     return '<html><body style="font-family:Arial; background:#f4f4f4;">' + get_navbar(request) + f'<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center;">Customer Login</h2><form action="/customer-login?next={next}" method="POST"><input type="hidden" name="next" value="{next}"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button></form><div style="text-align:center; margin-top:15px;"><p style="margin-bottom: 5px;"><a href="/customer-register?next={next}">Register here</a></p><p style="margin-top: 5px;"><a href="/forgot-password" style="color: #e74c3c;">Forgot Password?</a></p></div></div></div>' + FOOTER + '</body></html>'
+
 @app.post("/customer-login")
 def process_customer_login(response: Response, email: str = Form(...), password: str = Form(...), next: str = Form("/")):
     with Session(engine) as session:
@@ -2664,4 +2783,185 @@ def process_room_booking(
             return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
         except Exception as e:
             return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)       
-                    
+@app.get("/edit-hotel/{product_id}", response_class=HTMLResponse)
+def edit_hotel_page(request: Request, product_id: int):
+    author_email = request.cookies.get("author_email")
+    if not author_email:
+        return RedirectResponse(url="/login", status_code=303)
+
+    with Session(engine) as session:
+        author = session.exec(select(Author).where(Author.email == author_email)).first()
+        p = session.get(Product, product_id)
+        if not p or not author or p.author_id != author.id or p.category != "Hotel":
+            return HTMLResponse(content="<h1>Unauthorized</h1>", status_code=403)
+
+        reg_opts = "".join(
+            f'<option value="{r}" {"selected" if p.region == r else ""}>{r}</option>'
+            for r in sorted(TZ_REGIONS_DISTRICTS.keys())
+        )
+        dist_opts = ""
+        if p.region and p.region in TZ_REGIONS_DISTRICTS:
+            dist_opts = "".join(
+                f'<option value="{d}" {"selected" if p.district == d else ""}>{d}</option>'
+                for d in TZ_REGIONS_DISTRICTS[p.region]
+            )
+
+        return f"""
+        <html><body style="font-family:Poppins, Arial, sans-serif; background:#f4f4f4; margin:0;">
+            {get_navbar(request)}
+            <div style="padding:40px 15px; max-width:560px; margin:auto;">
+                <div style="background:white; padding:28px; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+                    <h2 style="margin-top:0; color:#2c3e50;">🏨 Update Hotel / Restaurant Details</h2>
+                    <form action="/edit-hotel/{p.id}" method="POST" enctype="multipart/form-data">
+                        <label style="font-size:13px; font-weight:bold;">Property Name:</label>
+                        <input type="text" name="title" value="{p.title}" required style="width:100%; padding:10px; margin:6px 0 12px; box-sizing:border-box;">
+
+                        <label style="font-size:13px; font-weight:bold;">Venue Type:</label>
+                        <select name="venue_type" style="width:100%; padding:10px; margin:6px 0 12px; box-sizing:border-box;">
+                            <option value="Hotel" {"selected" if p.venue_type == "Hotel" else ""}>🏨 Hotel</option>
+                            <option value="Lodge & Apartments" {"selected" if p.venue_type == "Lodge & Apartments" else ""}>🏡 Lodge & Serviced Apartments</option>
+                            <option value="Restaurant" {"selected" if p.venue_type == "Restaurant" else ""}>🍽️ Restaurant & Lounge</option>
+                        </select>
+
+                        <label style="font-size:13px; font-weight:bold;">Region:</label>
+                        <select name="region" id="editRegion" onchange="loadEditDistricts()" required style="width:100%; padding:10px; margin:6px 0 12px; box-sizing:border-box;">
+                            {reg_opts}
+                        </select>
+
+                        <label style="font-size:13px; font-weight:bold;">District:</label>
+                        <select name="district" id="editDistrict" required style="width:100%; padding:10px; margin:6px 0 12px; box-sizing:border-box;">
+                            {dist_opts}
+                        </select>
+
+                        <label style="font-size:13px; font-weight:bold;">Street / Landmark Address:</label>
+                        <input type="text" name="address" value="{p.address or ''}" style="width:100%; padding:10px; margin:6px 0 12px; box-sizing:border-box;">
+
+                        <label style="font-size:13px; font-weight:bold;">Starting Rate (TZS):</label>
+                        <input type="number" name="price" value="{p.price:.0f}" required style="width:100%; padding:10px; margin:6px 0 12px; box-sizing:border-box;">
+
+                        <label style="font-size:13px; font-weight:bold;">Replace Main Photo (Optional):</label>
+                        <input type="file" name="cover" accept="image/*" style="width:100%; padding:8px 0 14px;">
+
+                        <div style="margin: 12px 0; display: flex; align-items: flex-start; gap: 10px; background:#fff8e1; padding:10px; border-radius:6px;">
+                            <input type="checkbox" name="confirm_owner" value="yes" required style="margin-top:4px;">
+                            <label style="font-size:12px; color:#333;">I confirm these updates are accurate and I take full responsibility as the property operator.</label>
+                        </div>
+
+                        <button type="submit" style="background:#2ecc71; color:white; border:none; padding:13px; width:100%; border-radius:6px; font-weight:bold; cursor:pointer;">Save Property Updates</button>
+                    </form>
+                    <br>
+                    <a href="/manage-rooms/{p.id}" style="color:#3498db; font-weight:bold; text-decoration:none;">🛏️ Manage Suite / Executive / Normal Rooms →</a>
+                </div>
+            </div>
+            <script>
+                const tzEditData = {json.dumps(TZ_REGIONS_DISTRICTS)};
+                function loadEditDistricts() {{
+                    var reg = document.getElementById('editRegion').value;
+                    var distSel = document.getElementById('editDistrict');
+                    distSel.innerHTML = '';
+                    (tzEditData[reg] || []).forEach(function(d) {{
+                        var opt = document.createElement('option');
+                        opt.value = d; opt.text = d;
+                        distSel.appendChild(opt);
+                    }});
+                }}
+            </script>
+            {FOOTER}
+        </body></html>
+        """
+
+
+@app.post("/edit-hotel/{product_id}")
+def save_hotel_updates(
+    request: Request,
+    product_id: int,
+    title: str = Form(...),
+    venue_type: str = Form(...),
+    region: str = Form(...),
+    district: str = Form(...),
+    address: str = Form(None),
+    price: float = Form(...),
+    cover: UploadFile = File(None),
+    confirm_owner: str = Form(None)
+):
+    author_email = request.cookies.get("author_email")
+    if not author_email or not confirm_owner:
+        return RedirectResponse(url="/login", status_code=303)
+
+    with Session(engine) as session:
+        author = session.exec(select(Author).where(Author.email == author_email)).first()
+        p = session.get(Product, product_id)
+        if not p or not author or p.author_id != author.id:
+            return HTMLResponse(content="<h1>Unauthorized</h1>", status_code=403)
+
+        p.title = title.strip()
+        p.venue_type = venue_type
+        p.region = region
+        p.district = district
+        p.address = address.strip() if address else None
+        p.price = price
+        if cover and cover.filename:
+            p.cover_image = cloudinary.uploader.upload(cover.file, folder="gophigo_covers", resource_type="image").get("secure_url")
+
+        session.add(p)
+        session.commit()
+
+    return RedirectResponse(url="/author-dashboard", status_code=303)                    
+@app.get("/admin-decision/{entity}/{item_id}/{action}")
+def admin_governance_decision(request: Request, entity: str, item_id: int, action: str):
+    if request.cookies.get("admin_session") != "true":
+        return RedirectResponse(url="/admin-login", status_code=303)
+
+    with Session(engine) as session:
+        if entity == "author":
+            au = session.get(Author, item_id)
+            if au:
+                if action == "approve":
+                    au.kyc_status = "Verified"
+                    if not au.author_reg_no:
+                        au.author_reg_no = f"GOP-AUTH-{datetime.now().year}-{au.id:04d}"
+                    session.add(au)
+                    for prod in session.exec(select(Product).where(Product.author_id == au.id)).all():
+                        if prod.status in ["Pending KYC", "Suspended"]:
+                            prod.status = "Approved"
+                            session.add(prod)
+                elif action == "suspend":
+                    au.kyc_status = "Suspended"
+                    session.add(au)
+                    for prod in session.exec(select(Product).where(Product.author_id == au.id)).all():
+                        prod.status = "Suspended"
+                        session.add(prod)
+                elif action == "delete":
+                    for prod in session.exec(select(Product).where(Product.author_id == au.id)).all():
+                        session.delete(prod)
+                    session.delete(au)
+                session.commit()
+
+        elif entity == "product":
+            prod = session.get(Product, item_id)
+            if prod:
+                if action == "approve":
+                    prod.status = "Approved"
+                    prod.is_hidden = False
+                    session.add(prod)
+                elif action == "suspend":
+                    prod.status = "Suspended"
+                    prod.is_hidden = True
+                    session.add(prod)
+                elif action == "delete":
+                    session.delete(prod)
+                session.commit()
+
+        elif entity == "purchase":
+            pur = session.get(Purchase, item_id)
+            if pur and action == "cancel":
+                pur.status = "cancelled"
+                if pur.room_id:
+                    rm = session.get(HotelRoom, pur.room_id)
+                    if rm:
+                        rm.available_rooms = min(rm.total_rooms, rm.available_rooms + (pur.rooms_booked or 1))
+                        session.add(rm)
+                session.add(pur)
+                session.commit()
+
+    return RedirectResponse(url="/admin", status_code=303)
