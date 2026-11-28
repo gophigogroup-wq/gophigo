@@ -1569,114 +1569,265 @@ def admin_login(response: Response, username: str = Form(...), password: str = F
 
 @app.get("/admin", response_class=HTMLResponse)
 def admin_dashboard(request: Request):
-    try:
-        if request.cookies.get("admin_session") != "true": 
-            return RedirectResponse(url="/admin-login", status_code=303)
-            
-        with Session(engine) as session:
-            products = session.exec(select(Product)).all()
-            purchases = session.exec(select(Purchase).where(Purchase.status == "paid")).all()
-            
-            total_sales_count = len(purchases)
-            gophigo_revenue = 0.0
-            author_payouts = 0.0
-            
-            for p in purchases:
-                author = session.get(Author, p.author_id)
-                if author:
-                    price = author.ebook_price if p.format_bought == "Ebook" else author.paperback_price
-                    gophigo_revenue += price * 0.5
-                    author_payouts += price * 0.5
+    if request.cookies.get("admin_session") != "true":
+        return RedirectResponse(url="/admin-login", status_code=303)
 
-            html = f'''<html><body style="font-family:Arial; background:#f4f4f4;">
+    with Session(engine) as session:
+        authors = session.exec(select(Author)).all()
+        products = session.exec(select(Product)).all()
+        purchases = session.exec(select(Purchase)).all()
+
+        author_map = {a.id: a for a in authors}
+        product_map = {p.id: p for p in products}
+
+        paid_purchases = [
+            p for p in purchases
+            if str(getattr(p, "status", "")).lower() in ["paid", "completed", "success"]
+        ]
+
+        total_sales_count = len(paid_purchases)
+        gross_revenue = 0.0
+        gophigo_revenue = 0.0
+        author_payouts = 0.0
+        affiliate_payouts = 0.0
+
+        for p in paid_purchases:
+            amt = float(getattr(p, "amount_paid", 0) or 0)
+            if amt <= 0:
+                au = author_map.get(getattr(p, "author_id", None))
+                if au:
+                    fmt = getattr(p, "format_bought", "Ebook")
+                    amt = float(getattr(au, "ebook_price", 0) or 0) if fmt == "Ebook" else float(getattr(au, "paperback_price", 0) or 0)
+            ref_comm = float(getattr(p, "referral_commission", 0) or 0)
+            gross_revenue += amt
+            affiliate_payouts += ref_comm
+            net_after_ref = max(0.0, amt - ref_comm)
+            gophigo_revenue += net_after_ref * 0.5
+            author_payouts += net_after_ref * 0.5
+
+        pending_kyc_count = sum(
+            1 for a in authors if "pending" in str(getattr(a, "kyc_status", "")).lower()
+        )
+        active_listings_count = sum(
+            1 for pr in products if str(getattr(pr, "status", "")).lower() == "approved"
+        )
+
+        # Build Creator & Hotel Owner Governance Rows
+        author_rows = ""
+        for a in authors:
+            a_name = getattr(a, "fullname", None) or getattr(a, "name", "N/A")
+            a_email = getattr(a, "email", "N/A")
+            a_phone = getattr(a, "phone", None) or getattr(a, "mobile_money_number", "N/A")
+            a_nida = getattr(a, "nida_number", "Not Provided")
+            a_reg = getattr(a, "author_reg_no", "Unassigned")
+            k_status = getattr(a, "kyc_status", "Pending Verification")
+            badge_bg = "#2ecc71" if str(k_status).lower() == "verified" else ("#e74c3c" if str(k_status).lower() == "suspended" else "#f39c12")
+
+            author_rows += (
+                f"<tr>"
+                f"<td style='padding:10px; border-bottom:1px solid #eee;'><strong>{a_name}</strong><br><small style='color:#666;'>{a_email} | {a_phone}</small></td>"
+                f"<td style='padding:10px; border-bottom:1px solid #eee;'>{a_nida}<br><small style='color:#2c3e50;'>{a_reg}</small></td>"
+                f"<td style='padding:10px; border-bottom:1px solid #eee;'><span style='background:{badge_bg}; color:white; padding:4px 8px; border-radius:4px; font-size:12px;'>{k_status}</span></td>"
+                f"<td style='padding:10px; border-bottom:1px solid #eee;'>"
+                f"<a href='/admin-decision/author/{a.id}/approve' style='background:#2ecc71; color:white; padding:5px 9px; text-decoration:none; border-radius:4px; font-size:12px; margin-right:4px;'>Approve</a>"
+                f"<a href='/admin-decision/author/{a.id}/suspend' style='background:#f39c12; color:white; padding:5px 9px; text-decoration:none; border-radius:4px; font-size:12px; margin-right:4px;'>Suspend</a>"
+                f"<a href='/admin-decision/author/{a.id}/delete' onclick=\"return confirm('Delete this owner and all their listings?')\" style='background:#e74c3c; color:white; padding:5px 9px; text-decoration:none; border-radius:4px; font-size:12px;'>Delete</a>"
+                f"</td></tr>"
+            )
+
+        # Build Product & Hotel Listing Governance Rows
+        product_rows = ""
+        for pr in products:
+            owner = author_map.get(getattr(pr, "author_id", None))
+            owner_name = (getattr(owner, "fullname", None) or getattr(owner, "name", "Unknown")) if owner else "Unknown"
+            cat = getattr(pr, "category", "Book")
+            loc_info = f" ({pr.region} - {pr.district})" if cat == "Hotel" and getattr(pr, "region", None) else ""
+            p_status = getattr(pr, "status", "Pending KYC")
+            p_bg = "#2ecc71" if str(p_status).lower() == "approved" else ("#e74c3c" if str(p_status).lower() == "suspended" else "#f39c12")
+
+            product_rows += (
+                f"<tr>"
+                f"<td style='padding:10px; border-bottom:1px solid #eee;'><strong>{pr.title}</strong><br><small style='color:#666;'>{cat}{loc_info}</small></td>"
+                f"<td style='padding:10px; border-bottom:1px solid #eee;'>{owner_name}</td>"
+                f"<td style='padding:10px; border-bottom:1px solid #eee;'>{float(pr.price or 0):,.0f} TZS</td>"
+                f"<td style='padding:10px; border-bottom:1px solid #eee;'><span style='background:{p_bg}; color:white; padding:4px 8px; border-radius:4px; font-size:12px;'>{p_status}</span></td>"
+                f"<td style='padding:10px; border-bottom:1px solid #eee;'>"
+                f"<a href='/admin-decision/product/{pr.id}/approve' style='background:#2ecc71; color:white; padding:5px 9px; text-decoration:none; border-radius:4px; font-size:12px; margin-right:4px;'>Approve</a>"
+                f"<a href='/admin-decision/product/{pr.id}/suspend' style='background:#f39c12; color:white; padding:5px 9px; text-decoration:none; border-radius:4px; font-size:12px; margin-right:4px;'>Suspend</a>"
+                f"<a href='/admin-decision/product/{pr.id}/delete' onclick=\"return confirm('Delete this listing permanently?')\" style='background:#e74c3c; color:white; padding:5px 9px; text-decoration:none; border-radius:4px; font-size:12px;'>Delete</a>"
+                f"</td></tr>"
+            )
+
+        # Build Orders & Bookings Decision Rows
+        purchase_rows = ""
+        for pur in reversed(purchases[-30:]):
+            pid = getattr(pur, "product_id", None) or getattr(pur, "book_id", None)
+            prod_obj = product_map.get(pid)
+            item_title = prod_obj.title if prod_obj else f"Item #{pid or pur.id}"
+            buyer = getattr(pur, "buyer_name", None) or getattr(pur, "customer_email", "Guest")
+            amt = float(getattr(pur, "amount_paid", 0) or 0)
+            st = getattr(pur, "status", "pending")
+            cancel_btn = (
+                f"<a href='/admin-decision/purchase/{pur.id}/cancel' onclick=\"return confirm('Cancel this order/booking?')\" style='background:#e74c3c; color:white; padding:5px 9px; text-decoration:none; border-radius:4px; font-size:12px;'>Cancel</a>"
+                if str(st).lower() != "cancelled" else "<span style='color:#999; font-size:12px;'>Cancelled</span>"
+            )
+            purchase_rows += (
+                f"<tr>"
+                f"<td style='padding:10px; border-bottom:1px solid #eee;'>#{pur.id} - {item_title}</td>"
+                f"<td style='padding:10px; border-bottom:1px solid #eee;'>{buyer}</td>"
+                f"<td style='padding:10px; border-bottom:1px solid #eee;'>{amt:,.0f} TZS</td>"
+                f"<td style='padding:10px; border-bottom:1px solid #eee;'>{st}</td>"
+                f"<td style='padding:10px; border-bottom:1px solid #eee;'>{cancel_btn}</td>"
+                f"</tr>"
+            )
+
+        return f"""
+        <html>
+        <body style="font-family:Poppins, Arial, sans-serif; background:#f4f4f4; margin:0;">
             {get_navbar(request)}
-            <div style="padding:50px; max-width: 1000px; margin: auto;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h1 style="color:#2c3e50;">Admin Dashboard</h1>
-                    <a href="/admin-reports" style="background: #9b59b6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Full Reports</a>
-                </div>
-                
-                <div style="display: flex; gap: 20px; margin-bottom: 30px; margin-top: 20px;">
-                    <div style="background: #3498db; color: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;">
-                        <h4 style="margin: 0;">Total Books Sold</h4>
-                        <h2 style="margin: 10px 0 0 0;">{total_sales_count}</h2>
+            <div style="padding:35px 20px; max-width:1150px; margin:auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <h1 style="color:#2c3e50; margin:0;">Executive Decision &amp; Report Center</h1>
+                    <div>
+                        <a href="/admin-reports" style="background:#9b59b6; color:white; padding:10px 18px; text-decoration:none; border-radius:6px; font-weight:bold; margin-right:8px;">Financial Reports</a>
+                        <a href="/admin-logout" style="background:#e74c3c; color:white; padding:10px 18px; text-decoration:none; border-radius:6px; font-weight:bold;">Logout</a>
                     </div>
-                <div style="background: #2c3e50; color: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;">
-                    <h4 style="margin: 0;">Gophigo Revenue (50%)</h4>
-                    <h2 style="margin: 10px 0 0 0;">{gophigo_revenue:,.2f} TZS</h2>
-                </div>
-                <div style="background: #2ecc71; color: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;">
-                        <h4 style="margin: 0;">Author Payouts (50%)</h4>
-                        <h2 style="margin: 10px 0 0 0;">{author_payouts:,.2f} TZS</h2>
-                </div>
                 </div>
 
-                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 30px;">
-                    <h3 style="margin-top: 0; color: #2c3e50;">Add New Employee</h3>
-                    <form action="/admin-create-employee" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <input type="text" name="fullname" placeholder="Full Name" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
-                        <input type="email" name="email" placeholder="Email Address" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
-                        <select name="role" required style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                <div style="display:flex; gap:15px; margin:25px 0; flex-wrap:wrap;">
+                    <div style="background:#3498db; color:white; padding:18px; border-radius:8px; flex:1; min-width:180px; text-align:center;">
+                        <h4 style="margin:0; font-size:13px;">Paid Orders / Bookings</h4>
+                        <h2 style="margin:8px 0 0;">{total_sales_count}</h2>
+                    </div>
+                    <div style="background:#2c3e50; color:white; padding:18px; border-radius:8px; flex:1; min-width:180px; text-align:center;">
+                        <h4 style="margin:0; font-size:13px;">Gophigo Net Revenue</h4>
+                        <h2 style="margin:8px 0 0;">{gophigo_revenue:,.0f} TZS</h2>
+                    </div>
+                    <div style="background:#2ecc71; color:white; padding:18px; border-radius:8px; flex:1; min-width:180px; text-align:center;">
+                        <h4 style="margin:0; font-size:13px;">Creator / Owner Payouts</h4>
+                        <h2 style="margin:8px 0 0;">{author_payouts:,.0f} TZS</h2>
+                    </div>
+                    <div style="background:#8e44ad; color:white; padding:18px; border-radius:8px; flex:1; min-width:180px; text-align:center;">
+                        <h4 style="margin:0; font-size:13px;">Affiliate Commissions</h4>
+                        <h2 style="margin:8px 0 0;">{affiliate_payouts:,.0f} TZS</h2>
+                    </div>
+                    <div style="background:#e67e22; color:white; padding:18px; border-radius:8px; flex:1; min-width:180px; text-align:center;">
+                        <h4 style="margin:0; font-size:13px;">Pending KYC / Active Items</h4>
+                        <h2 style="margin:8px 0 0;">{pending_kyc_count} / {active_listings_count}</h2>
+                    </div>
+                </div>
+
+                <div style="background:white; padding:20px; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.06); margin-bottom:25px;">
+                    <h3 style="margin-top:0; color:#2c3e50;">Add New Staff / Reviewer</h3>
+                    <form action="/admin-create-employee" method="POST" style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <input type="text" name="fullname" placeholder="Full Name" required style="flex:1; padding:10px; border:1px solid #ccc; border-radius:5px;">
+                        <input type="email" name="email" placeholder="Email Address" required style="flex:1; padding:10px; border:1px solid #ccc; border-radius:5px;">
+                        <select name="role" required style="flex:1; padding:10px; border:1px solid #ccc; border-radius:5px;">
                             <option value="Reviewer">Reviewer</option>
                             <option value="Supervisor">Supervisor</option>
                             <option value="Approver">Approver</option>
                         </select>
-                        <button type="submit" style="background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Create Employee</button>
+                        <button type="submit" style="background:#3498db; color:white; padding:10px 20px; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">Add Staff</button>
                     </form>
                 </div>
-            authors_list = session.exec(select(Author).order_by(Author.id.desc())).all()
-            kyc_rows = ""
-            for au in authors_list:
-                r_no = au.author_reg_no or f"GOP-AUTH-2026-{au.id:04d}"
-                nida_link = f"<a href='{au.nida_doc_url}' target='_blank' style='color:#3498db;'>View NIDA</a>" if au.nida_doc_url else "No Doc"
-                tin_link = f"<a href='{au.tin_doc_url}' target='_blank' style='color:#3498db;'>View TIN</a>" if au.tin_doc_url else "Optional/None"
-                if au.kyc_status == "Verified":
-                    k_btn = "<span style='color:green; font-weight:bold;'>✅ Verified</span>"
-                else:
-                    k_btn = f"<a href='/admin-verify-author/{au.id}' style='background:#2ecc71; color:white; padding:5px 10px; text-decoration:none; border-radius:3px; font-weight:bold;'>Verify & Publish</a>"
-                kyc_rows += f"<tr><td>{r_no}</td><td>{au.fullname}</td><td>{au.phone_number or '-'}</td><td>{au.nida_number or '-'} ({nida_link})</td><td>{au.tin_number or '-'} ({tin_link})</td><td>{k_btn}</td></tr>"
-                else:
-                    k_btn = f"<a href='/admin-verify-author/{au.id}' style='background:#2ecc71; color:white; padding:5px 10px; text-decoration:none; border-radius:3px; font-weight:bold;'>Verify & Publish</a>"
-                kyc_rows += f"<tr><td>{r_no}</td><td>{au.fullname}</td><td>{au.phone_number or '-'}</td><td>{au.nida_number or '-'} ({nida_link})</td><td>{au.tin_number or '-'} ({tin_link})</td><td>{k_btn}</td></tr>"
 
-            html = f"""
-            <h3>Creator Due Diligence (KYC Verification)</h3>
-            <table border="1" style="width:100%; background:white; border-collapse:collapse; margin-bottom:35px;">
-                <tr style="background:#2c3e50; color:white;">
-                    <th>Reg No</th><th>Full Name</th><th>Phone</th><th>NIDA</th><th>TIN (Optional)</th><th>KYC Action</th>
-                </tr>
-                {kyc_rows}
-            </table>
-            """
-                <h3>All Products</h3>
-                <table border="1" style="width:100%; background:white; border-collapse:collapse; margin-bottom: 40px;">
-                    <tr style="background:#34495e; color:white;">
-                        <th>ID</th><th>Title</th><th>Category</th><th>Price</th><th>Status</th><th>Action</th>
-                    </tr>
-            ''' 
-            
-            for p in products:
-                if p.status == "Flagged & Removed" or p.is_hidden:
-                    btn = f"<a href='/admin-toggle-product/{p.id}?action=unhide' style='background:#3498db; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Unhide</a>"
-                    status_display = "<span style='color:red;'>Hidden</span>"
-                else:
-                    btn = f"<a href='/admin-toggle-product/{p.id}?action=hide' style='background:#e74c3c; color:white; padding:5px 10px; text-decoration:none; border-radius:3px;'>Hide / Delete</a>"
-                    status_display = "<span style='color:green;'>Active</span>"
-                    
-                html += f"<tr><td>{p.id}</td><td>{p.title}</td><td>{p.category}</td><td>{p.price} TZS</td><td>{status_display}</td><td>{btn}</td></tr>"
-                
-            html += f'''</table>
+                <div style="background:white; padding:20px; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.06); margin-bottom:25px; overflow-x:auto;">
+                    <h3 style="margin-top:0; color:#2c3e50;">1. Creator &amp; Hotel Owner KYC Decisions</h3>
+                    <table style="width:100%; border-collapse:collapse; text-align:left; font-size:14px;">
+                        <tr style="background:#ecf0f1;">
+                            <th style="padding:10px;">Owner / Creator</th>
+                            <th style="padding:10px;">NIDA &amp; Reg No.</th>
+                            <th style="padding:10px;">KYC Status</th>
+                            <th style="padding:10px;">Executive Decision</th>
+                        </tr>
+                        {author_rows or "<tr><td colspan='4' style='padding:15px; color:#777;'>No registered creators or hotel owners yet.</td></tr>"}
+                    </table>
+                </div>
+
+                <div style="background:white; padding:20px; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.06); margin-bottom:25px; overflow-x:auto;">
+                    <h3 style="margin-top:0; color:#2c3e50;">2. Listings Governance (Books, Media, Tickets &amp; Hotels)</h3>
+                    <table style="width:100%; border-collapse:collapse; text-align:left; font-size:14px;">
+                        <tr style="background:#ecf0f1;">
+                            <th style="padding:10px;">Listing Title &amp; Category</th>
+                            <th style="padding:10px;">Registered By</th>
+                            <th style="padding:10px;">Rate / Price</th>
+                            <th style="padding:10px;">Status</th>
+                            <th style="padding:10px;">Decision</th>
+                        </tr>
+                        {product_rows or "<tr><td colspan='5' style='padding:15px; color:#777;'>No listings submitted yet.</td></tr>"}
+                    </table>
+                </div>
+
+                <div style="background:white; padding:20px; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.06); overflow-x:auto;">
+                    <h3 style="margin-top:0; color:#2c3e50;">3. Recent Orders &amp; Hotel Room Bookings</h3>
+                    <table style="width:100%; border-collapse:collapse; text-align:left; font-size:14px;">
+                        <tr style="background:#ecf0f1;">
+                            <th style="padding:10px;">Order / Booking</th>
+                            <th style="padding:10px;">Customer</th>
+                            <th style="padding:10px;">Amount</th>
+                            <th style="padding:10px;">Status</th>
+                            <th style="padding:10px;">Action</th>
+                        </tr>
+                        {purchase_rows or "<tr><td colspan='5' style='padding:15px; color:#777;'>No orders or bookings recorded yet.</td></tr>"}
+                    </table>
+                </div>
             </div>
             {FOOTER}
-            </body></html>'''
-            
-            return html
-            
-    except Exception as e:
-        import traceback
-        error_details = traceback.format_exc()
-        return HTMLResponse(content=f"<h1>Dashboard Debug Error</h1><p>{str(e)}</p><pre style='background:#eee; padding:20px;'>{error_details}</pre>", status_code=500)            
-            
+        </body>
+        </html>
+        """
+
+
+@app.get("/admin-decision/{entity}/{item_id}/{action}")
+def admin_governance_decision(request: Request, entity: str, item_id: int, action: str):
+    if request.cookies.get("admin_session") != "true":
+        return RedirectResponse(url="/admin-login", status_code=303)
+
+    with Session(engine) as session:
+        if entity == "author":
+            au = session.get(Author, item_id)
+            if au:
+                if action == "approve":
+                    au.kyc_status = "Verified"
+                    if not getattr(au, "author_reg_no", None):
+                        au.author_reg_no = f"GOP-AUTH-{datetime.now().year}-{au.id:04d}"
+                    session.add(au)
+                    for prod in session.exec(select(Product).where(Product.author_id == au.id)).all():
+                        if str(getattr(prod, "status", "")).lower() in ["pending kyc", "suspended"]:
+                            prod.status = "Approved"
+                            session.add(prod)
+                elif action == "suspend":
+                    au.kyc_status = "Suspended"
+                    session.add(au)
+                    for prod in session.exec(select(Product).where(Product.author_id == au.id)).all():
+                        prod.status = "Suspended"
+                        session.add(prod)
+                elif action == "delete":
+                    for prod in session.exec(select(Product).where(Product.author_id == au.id)).all():
+                        session.delete(prod)
+                    session.delete(au)
+                session.commit()
+
+        elif entity == "product":
+            prod = session.get(Product, item_id)
+            if prod:
+                if action == "approve":
+                    prod.status = "Approved"
+                    if hasattr(prod, "is_hidden"):
+                        prod.is_hidden = False
+                    session.add(prod)
+                elif action == "suspend":
+                    prod.status = "Suspended"
+                    if hasattr(prod, "is_hidden"):
+                        prod.is_hidden = True
+                    session.add(prod)
+                elif action == "delete":
+                    session.delete(prod)
+                session.commit()
+
+        elif entity == "purchase":
+            pur = session.get(Purchase, item_id)
+            if pur and action == "cancel":            
   
 @app.get("/admin-logout")
 def admin_logout():
