@@ -2117,10 +2117,14 @@ async def snippe_webhook(request: Request):
             purchase = session.exec(select(Purchase).where(
                 (Purchase.reference == purchase_ref) | (Purchase.snippe_ref == snippe_ref_from_payload)
             )).first()
-            
             if purchase and purchase.status != "paid":
                 purchase.status = "paid"
                 session.add(purchase)
+                if purchase.room_id:
+                    booked_room = session.get(HotelRoom, purchase.room_id)
+                    if booked_room:
+                        booked_room.available_rooms = max(0, booked_room.available_rooms - (purchase.rooms_booked or 1))
+                        session.add(booked_room)
                 session.commit()
                 
     return {"status": "success"}
@@ -2441,3 +2445,199 @@ def update_room_stock(request: Request, room_id: int, delta: int):
             session.commit()
             return RedirectResponse(url=f"/manage-rooms/{room.product_id}", status_code=303)
     return RedirectResponse(url="/author-dashboard", status_code=303)
+@app.get("/hotel/{product_id}", response_class=HTMLResponse)
+def hotel_detail_page(request: Request, product_id: int, ref: int = None):
+    with Session(engine) as session:
+        p = session.get(Product, product_id)
+        if not p or p.category != "Hotel":
+            return HTMLResponse(content="<h1>Hotel or Restaurant not found.</h1>", status_code=404)
+
+        rooms = session.exec(select(HotelRoom).where(HotelRoom.product_id == p.id)).all()
+        customer_email = request.cookies.get("customer_email")
+        share_ref_param = ""
+        if customer_email:
+            cust = session.exec(select(Customer).where(Customer.email == customer_email)).first()
+            if cust:
+                share_ref_param = f"?ref={cust.id}"
+
+        room_cards = ""
+        for r in rooms:
+            if r.available_rooms > 0:
+                status_html = f"<span style='background:#d4edda; color:#155724; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:bold;'>🟢 Room Available ({r.available_rooms} left)</span>"
+                action_btn = f"<a href='/book-room/{r.id}' style='background:#2ecc71; color:white; padding:10px 18px; border-radius:6px; text-decoration:none; font-weight:bold; display:inline-block;'>Book Now</a>"
+            else:
+                status_html = "<span style='background:#f8d7da; color:#721c24; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:bold;'>🔴 Sold Out</span>"
+                action_btn = "<button disabled style='background:#95a5a6; color:white; padding:10px 18px; border:none; border-radius:6px; font-weight:bold; cursor:not-allowed;'>Sold Out</button>"
+
+            room_cards += f"""
+            <div style="background:white; padding:20px; border-radius:10px; margin-bottom:15px; box-shadow:0 3px 10px rgba(0,0,0,0.06); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
+                <div style="text-align:left;">
+                    <h3 style="margin:0 0 5px 0; color:#2c3e50;">{r.room_type}</h3>
+                    <p style="margin:0 0 8px 0; color:#7f8c8d; font-size:13px;">{r.amenities or 'Standard Hospitality Package'}</p>
+                    {status_html}
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:20px; font-weight:bold; color:#2c3e50; margin-bottom:8px;">{r.rate_per_night:,.0f} TZS <small style="font-size:12px; color:#7f8c8d;">/ night</small></div>
+                    {action_btn}
+                </div>
+            </div>
+            """
+
+        if not room_cards:
+            room_cards = "<p style='text-align:center; color:#7f8c8d; background:white; padding:30px; border-radius:8px;'>Room types are being updated by the hotel management.</p>"
+
+        html_content = f"""
+        <html><body style="font-family:Poppins, Arial, sans-serif; background:#f4f4f4; margin:0;">
+            {get_navbar(request)}
+            <div style="max-width:850px; margin:30px auto; padding:0 15px;">
+                <div style="background:white; padding:25px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.08); margin-bottom:25px; display:flex; gap:20px; flex-wrap:wrap; align-items:center;">
+                    <img src="{p.cover_image}" style="width:220px; height:160px; object-fit:cover; border-radius:8px;">
+                    <div style="flex:1; min-width:220px;">
+                        <span style="background:#eafaf1; color:#1e8449; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:bold;">{p.venue_type or 'Hotel & Restaurant'}</span>
+                        <h1 style="margin:8px 0 4px 0; color:#2c3e50; font-size:24px;">{p.title}</h1>
+                        <p style="margin:0 0 10px 0; color:#7f8c8d;">📍 {p.district or ''}, {p.region or ''} {('• ' + p.address) if p.address else ''}</p>
+                        <button onclick="navigator.clipboard.writeText(window.location.origin + '/hotel/{p.id}{share_ref_param}'); alert('Affiliate link copied! Earn 5% commission when a guest books.');" style="background:#f39c12; color:white; border:none; padding:8px 14px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:13px;">🔗 Share & Earn 5% Commission</button>
+                    </div>
+                </div>
+                <h2 style="color:#2c3e50; margin-bottom:15px;">Available Room Types & Rates</h2>
+                {room_cards}
+                <div style="margin-top:20px;">
+                    <a href="/?category=Hotel&region={p.region or ''}&district={p.district or ''}" style="color:#3498db; text-decoration:none; font-weight:bold;">← Back to {p.district or 'Hotels'}</a>
+                </div>
+            </div>
+            {FOOTER}
+        </body></html>
+        """
+        res = HTMLResponse(content=html_content)
+        if ref:
+            res.set_cookie(key="gophigo_ref", value=str(ref), max_age=86400 * 7)
+        return res
+ @app.get("/book-room/{room_id}", response_class=HTMLResponse)
+def book_room_page(request: Request, room_id: int):
+    customer_email = request.cookies.get("customer_email")
+    if not customer_email:
+        return RedirectResponse(url=f"/customer-login?next=/book-room/{room_id}", status_code=303)
+
+    with Session(engine) as session:
+        room = session.get(HotelRoom, room_id)
+        if not room or room.available_rooms <= 0:
+            return HTMLResponse(content="<h1>Sorry, this room type is currently Sold Out.</h1><a href='/?category=Hotel'>Browse other hotels</a>", status_code=400)
+        p = session.get(Product, room.product_id)
+
+        return f"""
+        <html><body style="font-family:Poppins, Arial, sans-serif; background:#f4f4f4; margin:0;">
+            {get_navbar(request)}
+            <div style="padding:40px 15px;">
+                <div style="background:white; padding:30px; border-radius:10px; max-width:450px; margin:auto; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
+                    <h2 style="margin-top:0; color:#2c3e50; text-align:center;">Confirm Room Reservation</h2>
+                    <p style="text-align:center; color:#7f8c8d;"><strong>{p.title}</strong> — {room.room_type}</p>
+                    <p style="text-align:center; color:#2ecc71; font-weight:bold; font-size:18px;">{room.rate_per_night:,.0f} TZS / night ({room.available_rooms} left)</p>
+
+                    <form action="/book-room/{room.id}" method="POST">
+                        <label style="font-weight:bold; font-size:13px;">Check-In Date:</label>
+                        <input type="date" name="check_in_date" required style="width:100%; padding:10px; margin:6px 0 12px; box-sizing:border-box;">
+
+                        <label style="font-weight:bold; font-size:13px;">Number of Nights:</label>
+                        <input type="number" name="nights" id="nightsInput" value="1" min="1" max="30" onchange="calcRoomTotal()" required style="width:100%; padding:10px; margin:6px 0 12px; box-sizing:border-box;">
+
+                        <label style="font-weight:bold; font-size:13px;">Number of Rooms:</label>
+                        <input type="number" name="rooms_booked" id="roomsInput" value="1" min="1" max="{room.available_rooms}" onchange="calcRoomTotal()" required style="width:100%; padding:10px; margin:6px 0 12px; box-sizing:border-box;">
+
+                        <label style="font-weight:bold; font-size:13px;">Guest Mobile Money Number:</label>
+                        <input type="text" name="phone" placeholder="e.g. 0754123456" required style="width:100%; padding:10px; margin:6px 0 15px; box-sizing:border-box;">
+
+                        <button id="bookBtn" type="submit" style="background:#2ecc71; color:white; padding:14px; border:none; border-radius:6px; width:100%; font-size:16px; font-weight:bold; cursor:pointer;">Pay {room.rate_per_night:,.0f} TZS</button>
+                    </form>
+                </div>
+            </div>
+            <script>
+                function calcRoomTotal() {{
+                    var rate = {room.rate_per_night};
+                    var n = Number(document.getElementById('nightsInput').value || 1);
+                    var r = Number(document.getElementById('roomsInput').value || 1);
+                    document.getElementById('bookBtn').innerText = 'Pay ' + (rate * n * r).toLocaleString() + ' TZS';
+                }}
+            </script>
+            {FOOTER}
+        </body></html>
+        """
+
+
+@app.post("/book-room/{room_id}")
+def process_room_booking(
+    request: Request,
+    room_id: int,
+    check_in_date: str = Form(...),
+    nights: int = Form(1),
+    rooms_booked: int = Form(1),
+    phone: str = Form(...)
+):
+    customer_email = request.cookies.get("customer_email")
+    if not customer_email:
+        return RedirectResponse(url="/customer-login", status_code=303)
+
+    with Session(engine) as session:
+        c = session.exec(select(Customer).where(Customer.email == customer_email)).first()
+        room = session.get(HotelRoom, room_id)
+        if not c or not room or room.available_rooms < rooms_booked:
+            return HTMLResponse(content="<h1>Selected rooms are no longer available.</h1>", status_code=400)
+
+        p = session.get(Product, room.product_id)
+        final_amount = float(room.rate_per_night) * nights * rooms_booked
+        purchase_ref = str(uuid.uuid4())
+
+        # 5% referral commission for Hospitality links
+        ref_cookie = request.cookies.get("gophigo_ref")
+        referrer_id = int(ref_cookie) if (ref_cookie and ref_cookie.isdigit() and int(ref_cookie) != c.id) else None
+        commission = round(final_amount * 0.05, 2) if referrer_id else 0.0
+
+        purchase = Purchase(
+            customer_id=c.id,
+            author_id=p.author_id,
+            book_title=f"{p.title} ({room.room_type})",
+            format_bought="Hotel",
+            room_id=room.id,
+            check_in_date=check_in_date,
+            nights=nights,
+            rooms_booked=rooms_booked,
+            phone_number=phone,
+            reference=purchase_ref,
+            amount_paid=final_amount,
+            referrer_id=referrer_id,
+            referral_commission=commission,
+            status="pending",
+        )
+        session.add(purchase)
+        session.commit()
+
+        api_key = os.environ.get("SNIPPE_API_KEY")
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        name_parts = c.fullname.split(" ", 1)
+        clean_phone = ("255" + phone.strip()[1:]) if phone.strip().startswith("0") else phone.strip()
+
+        payload = {
+            "phone_number": clean_phone,
+            "webhook_url": "https://www.gophigo.co.tz/snippe-webhook",
+            "customer": {"firstname": name_parts[0], "lastname": name_parts[1] if len(name_parts) > 1 else "Guest", "email": c.email},
+            "business_name": "Gophigo Hospitality",
+            "details": {"amount": int(final_amount), "currency": "TZS", "description": f"Booking: {p.title} - {room.room_type}"},
+            "metadata": {"purchase_reference": purchase_ref}
+        }
+
+        try:
+            response = requests.post("https://api.snippe.sh/v1/payments", json=payload, headers=headers, timeout=15)
+            if response.status_code in [200, 201]:
+                data = response.json()
+                snippe_ref = data.get("data", {}).get("reference")
+                if snippe_ref:
+                    purchase.snippe_ref = snippe_ref
+                    session.add(purchase)
+                    session.commit()
+                payment_url = data.get("data", {}).get("checkout_url") or data.get("data", {}).get("payment_url")
+                if payment_url:
+                    return RedirectResponse(url=payment_url, status_code=303)
+                return HTMLResponse(content=f'<html><body style="font-family:Arial; text-align:center; padding:50px;"><h1 style="color:#2ecc71;">Booking Prompt Sent!</h1><p>Approve the <strong>{final_amount:,.0f} TZS</strong> mobile money prompt on <strong>{phone}</strong>.</p><p>Check-In: {check_in_date} ({nights} night(s), {rooms_booked} room(s))</p><a href="/my-library" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px;">View QR Voucher in My Library</a></body></html>')
+            return HTMLResponse(content=f"<h1>Snippe Error</h1><p>{response.text}</p>", status_code=400)
+        except Exception as e:
+            return HTMLResponse(content=f"<h1>Connection Error</h1><p>{str(e)}</p>", status_code=500)       
+                    
