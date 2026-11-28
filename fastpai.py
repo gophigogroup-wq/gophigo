@@ -374,7 +374,33 @@ def store(request: Request, search: str = None, category: str = "Book"):
             query = query.where(Product.title.contains(search))
 
         products = session.exec(query).all()
-
+hotel_filter_bar = ""
+        if category == "Hotel":
+            reg_opts = "".join(
+                f'<option value="{r}" {"selected" if region == r else ""}>{r}</option>'
+                for r in sorted(TZ_REGIONS_DISTRICTS.keys())
+            )
+            dist_opts = ""
+            if region and region in TZ_REGIONS_DISTRICTS:
+                dist_opts = "".join(
+                    f'<option value="{d}" {"selected" if district == d else ""}>{d}</option>'
+                    for d in TZ_REGIONS_DISTRICTS[region]
+                )
+            hotel_filter_bar = f"""
+            <div style="max-width:720px; margin:0 auto 20px; background:white; padding:16px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06); display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+                <form action="/" method="GET" id="hotelFilterForm" style="display:flex; gap:10px; flex-wrap:wrap; width:100%;">
+                    <input type="hidden" name="category" value="Hotel">
+                    <select name="region" id="storeRegion" onchange="this.form.district.value=''; this.form.submit();" style="flex:1; min-width:180px; padding:11px; border:1px solid #ccc; border-radius:6px; font-weight:bold;">
+                        <option value="">📍 All 31 Regions (Select Region)</option>
+                        {reg_opts}
+                    </select>
+                    <select name="district" id="storeDistrict" onchange="this.form.submit();" style="flex:1; min-width:180px; padding:11px; border:1px solid #ccc; border-radius:6px; font-weight:bold;">
+                        <option value="">🏘️ All Districts (Select District)</option>
+                        {dist_opts}
+                    </select>
+                </form>
+            </div>
+            """
         html = """
         <html><head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -419,6 +445,7 @@ def store(request: Request, search: str = None, category: str = "Book"):
             <a href="/?category=Ticket" class="cat-btn {'active' if category == 'Ticket' else 'inactive'}">🎟️ Tickets</a>
             <a href="/?category=Newspaper" class="cat-btn {'active' if category == 'Newspaper' else 'inactive'}">📰 News & Articles</a>
             <a href="/?category=Religious" class="cat-btn {'active' if category == 'Religious' else 'inactive'}">🙏 Religious</a>
+            <a href="/?category=Hotel" class="cat-btn {'active' if category == 'Hotel' else 'inactive'}">🏨 Hotel & Restaurant</a>
         </div>
 
         <div class="book-grid">
