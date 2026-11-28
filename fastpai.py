@@ -895,7 +895,7 @@ def register_page(request: Request):
             <button type="button" onclick="togglePwd('userPassword', this)" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#eef2f7; border:1px solid #ccc; border-radius:4px; padding:4px 8px; font-size:12px; cursor:pointer; color:#2c3e50;">👁️ Show</button>
             </div>
         ...
-document.getElementById('categorySelect').addEventListener('change', function() {
+  document.getElementById('categorySelect').addEventListener('change', function() {
     var uniFields = document.getElementById('universityFields');
     var mediaFields = document.getElementById('mediaFields');
     var hotelFields = document.getElementById('hotelFields');
