@@ -317,6 +317,21 @@ with Session(engine) as session:
             session.add(new_product)
         session.commit()
 FOOTER = '<footer style="background-color: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px; font-family: Arial;"><p>&copy; 2026 Gophigo store. All rights reserved.</p></footer>'
+PASSWORD_TOGGLE_SCRIPT = """
+<script>
+function togglePwd(inputId, btn) {
+    var inp = document.getElementById(inputId);
+    if (!inp) return;
+    if (inp.type === "password") {
+        inp.type = "text";
+        btn.innerText = "🙈 Hide";
+    } else {
+        inp.type = "password";
+        btn.innerText = "👁️ Show";
+    }
+}
+</script>
+"""
 
 with Session(engine) as session:
     # Check if this is the first time we are migrating
@@ -1015,22 +1030,7 @@ document.getElementById('categorySelect').addEventListener('change', function() 
         <strong>Owner Declaration & Responsibility:</strong> I declare that I am the lawful owner/authorized operator of this work or hospitality property, all information and rates entered are accurate, and I bear full legal and operational responsibility to customers. I agree to the <a href="/terms" target="_blank" style="color: #3498db;">Gophigo Terms & Conditions</a>.
     </label>
 </div>            
-        PASSWORD_TOGGLE_SCRIPT = """
-<script>
-function togglePwd(inputId, btn) {
-    var inp = document.getElementById(inputId);
-    if (!inp) return;
-    if (inp.type === "password") {
-        inp.type = "text";
-        btn.innerText = "🙈 Hide";
-    } else {
-        inp.type = "password";
-        btn.innerText = "👁️ Show";
-    }
-}
-</script>
-"""
-    
+          
 @app.post("/register", response_class=HTMLResponse)
 def process_registration(
     request: Request,
@@ -1143,35 +1143,19 @@ def process_registration(
         session.add(new_product)
         session.commit()
 
-    success_html = '<html><body style="font-family:Arial; text-align:center; padding:60px 15px; background:#f4f4f4; margin:0;">' + get_navbar(request) + f'''
-    <div style="text-align:center; padding:45px 30px; background:white; border-radius:10px; max-width:520px; margin:40px auto; box-shadow:0 4px 12px rgba(0,0,0,0.08);">
-        <h1 style="color:#2ecc71; margin-top:0;">Registration Complete!</h1>
-        <p style="margin:8px 0;">Official Author Registration Number:</p>
-        <div style="background:#2c3e50; color:#f1c40f; font-size:22px; font-weight:bold; padding:10px 18px; border-radius:6px; display:inline-block; margin-bottom:12px;">{reg_no_display}</div>
-        <p style="color:#e67e22; font-size:14px;"><strong>KYC Status:</strong> {author.kyc_status} (Your item <code>{new_book_id}</code> will go live on the storefront immediately once our compliance team verifies your NIDA details.)</p>
-        <br>
-        <a href="/author-dashboard" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px; font-weight:bold;">Go to My Dashboard</a>
-      </div>
-''' + FOOTER + '</body></html>'
-
+    success_html = f'''<html><body style="font-family:Arial; text-align:center; padding:60px 15px; background:#f4f4f4; margin:0;">
+            <div style="text-align:center; padding:45px 30px; background:white; border-radius:10px; max-width:520px; margin:40px auto; box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+                <h1 style="color:#2ecc71; margin-top:0;">Registration Complete!</h1>
+                <p style="margin:8px 0;">Official Author Registration Number:</p>
+                <div style="background:#2c3e50; color:#f1c40f; font-size:22px; font-weight:bold; padding:10px 18px; border-radius:6px; display:inline-block; margin-bottom:15px;">{reg_no}</div>
+                <p style="color:#e67e22; font-size:14px;"><strong>KYC Status:</strong> {author.kyc_status} (Your item <code>{new_book.title}</code> will go live automatically once KYC is verified.)</p>
+                <br>
+                <a href="/author-dashboard" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px; font-weight:bold;">Go to My Dashboard</a>
+            </div>
+        ''' + FOOTER + '</body></html>'
     response = HTMLResponse(content=success_html)
     response.set_cookie(key="author_email", value=author_email, httponly=True)
     return response
-PASSWORD_TOGGLE_SCRIPT = """
-<script>
-function togglePwd(inputId, btn) {
-    var inp = document.getElementById(inputId);
-    if (!inp) return;
-    if (inp.type === "password") {
-        inp.type = "text";
-        btn.innerText = "🙈 Hide";
-    } else {
-        inp.type = "password";
-        btn.innerText = "👁️ Show";
-    }
-}
-</script>
-"""
 
 @app.post("/register", response_class=HTMLResponse)
 def process_registration(
@@ -1353,21 +1337,6 @@ def login_page(request: Request):
     <input type="password" id="userPassword" name="password" required style="width:100%; padding:10px 75px 10px 10px; box-sizing:border-box;" placeholder="Password">
     <button type="button" onclick="togglePwd('userPassword', this)" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#eef2f7; border:1px solid #ccc; border-radius:4px; padding:4px 8px; font-size:12px; cursor:pointer; color:#2c3e50;">👁️ Show</button>
 </div>
-PASSWORD_TOGGLE_SCRIPT = """
-<script>
-function togglePwd(inputId, btn) {
-    var inp = document.getElementById(inputId);
-    if (!inp) return;
-    if (inp.type === "password") {
-        inp.type = "text";
-        btn.innerText = "🙈 Hide";
-    } else {
-        inp.type = "password";
-        btn.innerText = "👁️ Show";
-    }
-}
-</script>
-"""
     return '<html><body style="font-family:Arial; background:#f4f4f4;">' + get_navbar(request) + '<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center;">Author Login</h2><form action="/login" method="POST"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#3498db; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button></form><div style="text-align:center; margin-top:15px;"><a href="/forgot-password">Forgot Password?</a></div></div></div>' + FOOTER + '</body></html>'
 
 @app.post("/login")
@@ -1455,21 +1424,6 @@ def customer_register_page(request: Request, next: str = "/"):
     <input type="password" id="userPassword" name="password" required style="width:100%; padding:10px 75px 10px 10px; box-sizing:border-box;" placeholder="Password">
     <button type="button" onclick="togglePwd('userPassword', this)" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#eef2f7; border:1px solid #ccc; border-radius:4px; padding:4px 8px; font-size:12px; cursor:pointer; color:#2c3e50;">👁️ Show</button>
 </div>
-PASSWORD_TOGGLE_SCRIPT = """
-<script>
-function togglePwd(inputId, btn) {
-    var inp = document.getElementById(inputId);
-    if (!inp) return;
-    if (inp.type === "password") {
-        inp.type = "text";
-        btn.innerText = "🙈 Hide";
-    } else {
-        inp.type = "password";
-        btn.innerText = "👁️ Show";
-    }
-}
-</script>
-"""
     return f'<html><body style="font-family:Arial; background:#f4f4f4;">{get_navbar(request)}<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center;">Create Account</h2><form action="/customer-register?next={next}" method="POST"><label>Full Name:</label><br><input type="text" name="fullname" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Email:</label><br><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;"><br><label>Password:</label><br><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;"><br><button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Register</button></form></div></div>{FOOTER}</body></html>'
 
 @app.post("/customer-register")
@@ -1987,21 +1941,6 @@ def customer_login_page(request: Request, next: str = "/"):
     <input type="password" id="userPassword" name="password" required style="width:100%; padding:10px 75px 10px 10px; box-sizing:border-box;" placeholder="Password">
     <button type="button" onclick="togglePwd('userPassword', this)" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#eef2f7; border:1px solid #ccc; border-radius:4px; padding:4px 8px; font-size:12px; cursor:pointer; color:#2c3e50;">👁️ Show</button>
 </div> 
-PASSWORD_TOGGLE_SCRIPT = """
-<script>
-function togglePwd(inputId, btn) {
-    var inp = document.getElementById(inputId);
-    if (!inp) return;
-    if (inp.type === "password") {
-        inp.type = "text";
-        btn.innerText = "🙈 Hide";
-    } else {
-        inp.type = "password";
-        btn.innerText = "👁️ Show";
-    }
-}
-</script>
-"""
     return '<html><body style="font-family:Arial; background:#f4f4f4;">' + get_navbar(request) + f'<div style="padding:50px;"><div style="background:white; padding:30px; border-radius:8px; max-width:400px; margin:auto;"><h2 style="text-align:center;">Customer Login</h2><form action="/customer-login?next={next}" method="POST"><input type="hidden" name="next" value="{next}"><input type="email" name="email" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Email"><input type="password" name="password" required style="width:100%; padding:10px; margin:10px 0;" placeholder="Password"><button type="submit" style="background:#2ecc71; color:white; padding:12px; border:none; width:100%; border-radius:5px;">Login</button></form><div style="text-align:center; margin-top:15px;"><p style="margin-bottom: 5px;"><a href="/customer-register?next={next}">Register here</a></p><p style="margin-top: 5px;"><a href="/forgot-password" style="color: #e74c3c;">Forgot Password?</a></p></div></div></div>' + FOOTER + '</body></html>'
 
 @app.post("/customer-login")
