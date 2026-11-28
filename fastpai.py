@@ -892,6 +892,87 @@ def register_page(request: Request):
                 <strong>Logged in as:</strong> {author_name} ({author_email_val})
             </div>
         '''
+'''
+
+    return f"""
+    <html><body style="font-family:Poppins, Arial, sans-serif; background:#f4f4f4; margin:0;">
+        {get_navbar(request)}
+        <div style="padding:40px 15px;">
+            <div style="background:white; padding:30px; border-radius:10px; max-width:520px; margin:auto; box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+                <h2 style="margin-top:0; color:#2c3e50; text-align:center;">Register Work / Property</h2>
+                <form action="/register" method="POST" enctype="multipart/form-data">
+                    {login_fields}
+
+                    <label style="font-weight:bold; font-size:13px;">Category *:</label>
+                    <select name="category" id="categorySelect" required style="width:100%; padding:10px; margin:6px 0 12px; box-sizing:border-box;">
+                        <option value="Book">📚 Book</option>
+                        <option value="Media">🎬 Movies & Music</option>
+                        <option value="Hotel">🏨 Hotel & Restaurant</option>
+                        <option value="Manual">🏫 University Manual</option>
+                        <option value="Law">⚖️ Law & Manual</option>
+                        <option value="Ticket">🎟️ Event Ticket</option>
+                        <option value="Newspaper">📰 News & Article</option>
+                        <option value="Religious">🙏 Religious</option>
+                    </select>
+
+                    <input type="text" name="book_title" required style="width:100%; padding:10px; margin:6px 0 12px; box-sizing:border-box;" placeholder="Title of Book, Manual, or Event *">
+                    <input type="number" name="price" required style="width:100%; padding:10px; margin:6px 0 12px; box-sizing:border-box;" placeholder="Price (TZS) *">
+
+                    <div id="universityFields" style="display:none; background:#eef7ff; padding:12px; border-radius:6px; margin-bottom:12px;">
+                        <input type="text" name="institution" style="width:100%; padding:10px; margin-bottom:8px; box-sizing:border-box;" placeholder="University / Institution Name">
+                        <input type="text" name="course_code" style="width:100%; padding:10px; box-sizing:border-box;" placeholder="Course Code (e.g. LAW 101)">
+                    </div>
+
+                    <div id="mediaFields" style="display:none; background:#fdf2e9; padding:12px; border-radius:6px; margin-bottom:12px;">
+                        <select name="media_type" style="width:100%; padding:10px; margin-bottom:8px; box-sizing:border-box;">
+                            <option value="Single Audio">🎵 Single Audio Track</option>
+                            <option value="Album / EP">💿 Album / EP</option>
+                            <option value="Movie / Film">🎬 Movie / Film</option>
+                            <option value="Series / Show">📺 Series / Episode</option>
+                        </select>
+                        <input type="text" name="cast_or_artist" style="width:100%; padding:10px; margin-bottom:8px; box-sizing:border-box;" placeholder="Artist / Cast Name">
+                        <input type="text" name="duration" style="width:100%; padding:10px; margin-bottom:8px; box-sizing:border-box;" placeholder="Duration (e.g. 03:45 or 1h 40m)">
+                        <label style="font-size:12px; font-weight:bold;">Free 30s/60s Trailer or Hook (Optional):</label>
+                        <input type="file" name="trailer" accept="audio/*,video/*" style="width:100%; padding:6px 0;">
+                    </div>
+
+                    <div id="hotelFields" style="display:none; background:#eafaf1; border:1px solid #2ecc71; padding:15px; border-radius:8px; margin:10px 0;">
+                        <h4 style="margin:0 0 10px 0; color:#1e8449;">🏨 Hotel & Restaurant Location</h4>
+                        <select name="venue_type" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; box-sizing:border-box;">
+                            <option value="Hotel">🏨 Hotel</option>
+                            <option value="Lodge & Apartments">🏡 Lodge & Serviced Apartments</option>
+                            <option value="Restaurant">🍽️ Restaurant & Lounge</option>
+                        </select>
+                        <select name="region" id="regRegionSelect" onchange="updateRegDistricts()" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; box-sizing:border-box;">
+                            <option value="">-- Select Region --</option>
+                            {"".join(f'<option value="{r}">{r}</option>' for r in sorted(TZ_REGIONS_DISTRICTS.keys()))}
+                        </select>
+                        <select name="district" id="regDistrictSelect" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; box-sizing:border-box;">
+                            <option value="">-- Select District --</option>
+                        </select>
+                        <input type="text" name="address" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc; box-sizing:border-box;" placeholder="Street / Area Landmark">
+                    </div>
+
+                    <label id="coverLabel" style="font-weight:bold; font-size:13px;">Upload Cover Image *:</label>
+                    <input type="file" name="cover" accept="image/*" required style="width:100%; padding:8px 0 12px;">
+
+                    <label id="fileLabel" style="font-weight:bold; font-size:13px;">Upload PDF / Document:</label>
+                    <input type="file" id="fileInput" name="book_file" accept=".pdf,.doc,.docx" style="width:100%; padding:8px 0 12px;">
+
+                    <div style="margin: 15px 0; display: flex; align-items: flex-start; gap: 10px; background:#fff8e1; padding:12px; border-radius:6px; border:1px solid #f1c40f;">
+                        <input type="checkbox" name="agree_terms" value="yes" required style="margin-top: 4px; transform: scale(1.3);">
+                        <label style="font-size: 12.5px; color: #333; line-height:1.4;">
+                            <strong>Owner Declaration & Responsibility:</strong> I declare that I am the lawful owner/authorized operator of this work or hospitality property, all information and rates entered are accurate, and I bear full legal and operational responsibility to customers. I agree to the <a href="/terms" target="_blank" style="color: #3498db;">Gophigo Terms & Conditions</a>.
+                        </label>
+                    </div>
+
+                    <button type="submit" style="background:#2ecc71; color:white; border:none; padding:14px; width:100%; border-radius:6px; font-size:16px; font-weight:bold; cursor:pointer;">Submit & Publish</button>
+                </form>
+            </div>
+        </div>
+        """ + """
+        <script>
+        
 document.getElementById('categorySelect').addEventListener('change', function() {
     var uniFields = document.getElementById('universityFields');
     var mediaFields = document.getElementById('mediaFields');
