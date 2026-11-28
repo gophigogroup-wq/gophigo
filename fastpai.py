@@ -1151,7 +1151,7 @@ def process_registration(
         <p style="color:#e67e22; font-size:14px;"><strong>KYC Status:</strong> {author.kyc_status} (Your item <code>{new_book_id}</code> will go live on the storefront immediately once our compliance team verifies your NIDA details.)</p>
         <br>
         <a href="/author-dashboard" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px; font-weight:bold;">Go to My Dashboard</a>
-     </div>
+      </div>
 ''' + FOOTER + '</body></html>'
 
     response = HTMLResponse(content=success_html)
