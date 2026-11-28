@@ -374,7 +374,7 @@ def store(request: Request, search: str = None, category: str = "Book"):
             query = query.where(Product.title.contains(search))
 
         products = session.exec(query).all()
-hotel_filter_bar = ""
+        hotel_filter_bar = ""
         if category == "Hotel":
             reg_opts = "".join(
                 f'<option value="{r}" {"selected" if region == r else ""}>{r}</option>'
