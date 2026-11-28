@@ -365,170 +365,191 @@ def get_navbar(request: Request):
     return f'<nav style="background-color: #2c3e50; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: Poppins, sans-serif;"><div style="font-size: 24px; font-weight: bold;"><a href="/" style="color: white; text-decoration: none;">🛍️ Gophigo Store</a></div><div>{links}</div></nav>'
 
 @app.get("/", response_class=HTMLResponse)
-def store(request: Request, search: str = None, category: str = "Book"):
-    with Session(engine) as session:
-        query = select(Product).where(Product.status == "Approved", Product.is_hidden == False)
-        query = query.where(Product.category == category)
+def store(request: Request, search: str = None, category: str = "Book", region: str = None, district: str = None):
+    try:
+        with Session(engine) as session:
+            query = select(Product).where(Product.status == "Approved", Product.is_hidden == False)
+            query = query.where(Product.category == category)
 
-        if search:
-            query = query.where(Product.title.contains(search))
+            if search:
+                query = query.where(Product.title.contains(search))
+            if category == "Hotel":
+                if region:
+                    query = query.where(Product.region == region)
+                if district:
+                    query = query.where(Product.district == district)
 
-        products = session.exec(query).all()
-        hotel_filter_bar = ""
-        if category == "Hotel":
-            reg_opts = "".join(
-                f'<option value="{r}" {"selected" if region == r else ""}>{r}</option>'
-                for r in sorted(TZ_REGIONS_DISTRICTS.keys())
-            )
-            dist_opts = ""
-            if region and region in TZ_REGIONS_DISTRICTS:
-                dist_opts = "".join(
-                    f'<option value="{d}" {"selected" if district == d else ""}>{d}</option>'
-                    for d in TZ_REGIONS_DISTRICTS[region]
+            products = session.exec(query).all()
+
+            hotel_filter_bar = ""
+            if category == "Hotel":
+                regions_dict = globals().get("TZ_REGIONS_DISTRICTS", {})
+                reg_opts = "".join(
+                    f'<option value="{r}" {"selected" if region == r else ""}>{r}</option>'
+                    for r in sorted(regions_dict.keys())
                 )
-            hotel_filter_bar = f"""
-            <div style="max-width:720px; margin:0 auto 20px; background:white; padding:16px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06); display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
-                <form action="/" method="GET" id="hotelFilterForm" style="display:flex; gap:10px; flex-wrap:wrap; width:100%;">
-                    <input type="hidden" name="category" value="Hotel">
-                    <select name="region" id="storeRegion" onchange="this.form.district.value=''; this.form.submit();" style="flex:1; min-width:180px; padding:11px; border:1px solid #ccc; border-radius:6px; font-weight:bold;">
-                        <option value="">📍 All 31 Regions (Select Region)</option>
-                        {reg_opts}
-                    </select>
-                    <select name="district" id="storeDistrict" onchange="this.form.submit();" style="flex:1; min-width:180px; padding:11px; border:1px solid #ccc; border-radius:6px; font-weight:bold;">
-                        <option value="">🏘️ All Districts (Select District)</option>
-                        {dist_opts}
-                    </select>
+                dist_opts = ""
+                if region and region in regions_dict:
+                    dist_opts = "".join(
+                        f'<option value="{d}" {"selected" if district == d else ""}>{d}</option>'
+                        for d in regions_dict[region]
+                    )
+                hotel_filter_bar = f"""
+                <div style="max-width:720px; margin:0 auto 20px; background:white; padding:16px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06); display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+                    <form action="/" method="GET" style="display:flex; gap:10px; flex-wrap:wrap; width:100%;">
+                        <input type="hidden" name="category" value="Hotel">
+                        <select name="region" onchange="this.form.district.value=''; this.form.submit();" style="flex:1; min-width:180px; padding:11px; border:1px solid #ccc; border-radius:6px; font-weight:bold;">
+                            <option value="">📍 All 31 Regions (Select Region)</option>
+                            {reg_opts}
+                        </select>
+                        <select name="district" onchange="this.form.submit();" style="flex:1; min-width:180px; padding:11px; border:1px solid #ccc; border-radius:6px; font-weight:bold;">
+                            <option value="">🏘️ All Districts (Select District)</option>
+                            {dist_opts}
+                        </select>
+                    </form>
+                </div>
+                """
+
+            html = """
+            <html><head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+            <style>
+                body { font-family: Poppins, sans-serif; margin: 0; background-color: #f4f4f4; }
+                .store-header { text-align: center; padding: 20px; background: white; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+                .search-bar { max-width: 500px; margin: 15px auto 0; display: flex; gap: 10px; padding: 0 15px; }
+                .search-bar input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+                .search-bar button { background: #3498db; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+                .category-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; padding: 0 10px; }
+                .cat-btn { padding: 10px 20px; border-radius: 30px; text-decoration: none; font-weight: bold; font-size: 14px; transition: 0.2s; }
+                .cat-btn.active { background: #2c3e50; color: white; }
+                .cat-btn.inactive { background: white; color: #7f8c8d; border: 1px solid #ddd; }
+                .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 18px; padding: 15px; max-width: 1200px; margin: auto; }
+                .book-card { background: white; border-radius: 10px; padding: 15px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s; position: relative; }
+                .book-card:hover { transform: translateY(-5px); }
+                .book-card img { width: 100%; height: 220px; object-fit: cover; border-radius: 6px; margin-bottom: 10px; }
+                .book-title { color: #2c3e50; margin: 0 0 5px; font-size: 16px; font-weight: 600; line-height: 1.25; }
+                .book-author { color: #7f8c8d; margin: 0 0 8px; font-size: 13px; }
+                .btn-buy { display: block; width: 100%; padding: 10px; border-radius: 6px; text-decoration: none; font-weight: bold; color: white; margin-top: 6px; font-size: 14px; box-sizing: border-box; }
+                .btn-preview { display: block; width: 100%; padding: 8px; border-radius: 6px; border: none; background: #1a252f; color: #f1c40f; font-weight: bold; cursor: pointer; font-size: 13px; margin-top: 4px; }
+                .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; padding: 20px; }
+                .modal-box { background: #1a252f; color: white; padding: 20px; border-radius: 12px; max-width: 650px; width: 100%; text-align: center; position: relative; }
+            </style>
+            </head><body>
+            """ + get_navbar(request) + f"""
+            <div class="store-header">
+                <h1 style="color: #2c3e50; margin: 0; font-size: 24px;">Gophigo Store</h1>
+                <form action="/" method="GET" class="search-bar">
+                    <input type="hidden" name="category" value="{category}">
+                    <input type="text" name="search" placeholder="Search..." value="{search or ''}">
+                    <button type="submit">Search</button>
                 </form>
             </div>
-            """
-        html = """
-        <html><head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-        <style>
-            body { font-family: Poppins, sans-serif; margin: 0; background-color: #f4f4f4; }
-            .store-header { text-align: center; padding: 20px; background: white; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-            .search-bar { max-width: 500px; margin: 15px auto 0; display: flex; gap: 10px; padding: 0 15px; }
-            .search-bar input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
-            .search-bar button { background: #3498db; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-            .category-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; padding: 0 10px; }
-            .cat-btn { padding: 10px 20px; border-radius: 30px; text-decoration: none; font-weight: bold; font-size: 14px; transition: 0.2s; }
-            .cat-btn.active { background: #2c3e50; color: white; }
-            .cat-btn.inactive { background: white; color: #7f8c8d; border: 1px solid #ddd; }
-            .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 18px; padding: 15px; max-width: 1200px; margin: auto; }
-            .book-card { background: white; border-radius: 10px; padding: 15px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s; position: relative; }
-            .book-card:hover { transform: translateY(-5px); }
-            .book-card img { width: 100%; height: 220px; object-fit: cover; border-radius: 6px; margin-bottom: 10px; }
-            .book-title { color: #2c3e50; margin: 0 0 5px; font-size: 16px; font-weight: 600; line-height: 1.25; }
-            .book-author { color: #7f8c8d; margin: 0 0 8px; font-size: 13px; }
-            .btn-buy { display: block; width: 100%; padding: 10px; border-radius: 6px; text-decoration: none; font-weight: bold; color: white; margin-top: 6px; font-size: 14px; box-sizing: border-box; }
-            .btn-preview { display: block; width: 100%; padding: 8px; border-radius: 6px; border: none; background: #1a252f; color: #f1c40f; font-weight: bold; cursor: pointer; font-size: 13px; margin-top: 4px; }
-            .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; padding: 20px; }
-            .modal-box { background: #1a252f; color: white; padding: 20px; border-radius: 12px; max-width: 650px; width: 100%; text-align: center; position: relative; }
-        </style>
-        </head><body>
-        """ + get_navbar(request) + f"""
-        <div class="store-header">
-            <h1 style="color: #2c3e50; margin: 0; font-size: 24px;">Gophigo Store</h1>
-            <form action="/" method="GET" class="search-bar">
-                <input type="hidden" name="category" value="{category}">
-                <input type="text" name="search" placeholder="Search..." value="{search or ''}">
-                <button type="submit">Search</button>
-            </form>
-        </div>
-        
-        <div class="category-tabs">
-            <a href="/?category=Book" class="cat-btn {'active' if category == 'Book' else 'inactive'}">📚 Books</a>
-            <a href="/?category=Media" class="cat-btn {'active' if category == 'Media' else 'inactive'}">🎬 Movies & Music</a>
-            <a href="/?category=Manual" class="cat-btn {'active' if category == 'Manual' else 'inactive'}">🏫 University Manuals</a>
-            <a href="/?category=Law" class="cat-btn {'active' if category == 'Law' else 'inactive'}">⚖️ Laws & Manuals</a>
-            <a href="/?category=Ticket" class="cat-btn {'active' if category == 'Ticket' else 'inactive'}">🎟️ Tickets</a>
-            <a href="/?category=Newspaper" class="cat-btn {'active' if category == 'Newspaper' else 'inactive'}">📰 News & Articles</a>
-            <a href="/?category=Religious" class="cat-btn {'active' if category == 'Religious' else 'inactive'}">🙏 Religious</a>
-            <a href="/?category=Hotel" class="cat-btn {'active' if category == 'Hotel' else 'inactive'}">🏨 Hotel & Restaurant</a>
-        </div>
-
-        <div class="book-grid">
-        """
-
-        if not products:
-            html += "<p style='text-align:center; grid-column:1/-1; color:#7f8c8d;'>No products found in this category.</p>"
-
-        for p in products:
-            author = session.get(Author, p.author_id)
-            author_name = p.cast_or_artist or (author.fullname if author else "Gophigo")
-
-            reviews = session.exec(select(Review).where(Review.author_id == p.author_id)).all()
-            avg = sum(r.rating for r in reviews) / len(reviews) if reviews else 0
-            stars = "⭐" * int(round(avg)) if reviews else "New Release"
-
-            price_display = f"{p.price:,.0f}"
-            preview_btn = ""
-
-            if p.category == "Manual":
-                extra_info = f"{p.institution or ''} | {p.course_code or ''}"
-            elif p.category == "Law":
-                extra_info = "⚖️ Law & Manual"
-            elif p.category == "Newspaper":
-                extra_info = "📰 News & Article"
-            elif p.category == "Ticket":
-                extra_info = "🎟️ Event Ticket"
-            elif p.category == "Media":
-                m_type = p.media_type or "Premiere Media"
-                dur = f" • {p.duration}" if p.duration else ""
-                extra_info = f"🎬 {m_type}{dur}"
-                if p.trailer_url:
-                    safe_title = p.title.replace("'", "\\'")
-                    preview_btn = f"<button type='button' class='btn-preview' onclick=\"openPreview('{p.trailer_url}', '{safe_title}')\">▶ Free Preview / Trailer</button>"
-            else:
-                extra_info = p.category
-
-            html += f"""
-            <div class="book-card">
-                <div>
-                    <img src="{p.cover_image}" alt="{p.title}">
-                    <h3 class="book-title">{p.title}</h3>
-                    <p class="book-author">{author_name}</p>
-                    <p style="color:#f1c40f; margin:0 0 8px; font-size:13px;">{stars}</p>
-                </div>
-                <div>
-                    <span style="background:#eef2f7; color:#2c3e50; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600; display:inline-block; margin-bottom:8px;">{extra_info}</span>
-                    {preview_btn}
-                    <a href="/checkout-product/{p.id}" class="btn-buy" style="background:#3498db;">Unlock ({price_display} TZS)</a>
-                </div>
+            
+            <div class="category-tabs">
+                <a href="/?category=Book" class="cat-btn {'active' if category == 'Book' else 'inactive'}">📚 Books</a>
+                <a href="/?category=Media" class="cat-btn {'active' if category == 'Media' else 'inactive'}">🎬 Movies & Music</a>
+                <a href="/?category=Hotel" class="cat-btn {'active' if category == 'Hotel' else 'inactive'}">🏨 Hotel & Restaurant</a>
+                <a href="/?category=Manual" class="cat-btn {'active' if category == 'Manual' else 'inactive'}">🏫 University Manuals</a>
+                <a href="/?category=Law" class="cat-btn {'active' if category == 'Law' else 'inactive'}">⚖️ Laws & Manuals</a>
+                <a href="/?category=Ticket" class="cat-btn {'active' if category == 'Ticket' else 'inactive'}">🎟️ Tickets</a>
+                <a href="/?category=Newspaper" class="cat-btn {'active' if category == 'Newspaper' else 'inactive'}">📰 News & Articles</a>
+                <a href="/?category=Religious" class="cat-btn {'active' if category == 'Religious' else 'inactive'}">🙏 Religious</a>
             </div>
+
+            {hotel_filter_bar}
+
+            <div class="book-grid">
             """
 
-        modal_html = """
-        <div id="previewModal" class="modal-backdrop" onclick="if(event.target===this) closePreview();">
-            <div class="modal-box">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <h3 id="previewTitle" style="margin:0; color:#f1c40f;">Free Preview</h3>
-                    <button onclick="closePreview()" style="background:#e74c3c; color:white; border:none; padding:6px 12px; border-radius:5px; cursor:pointer; font-weight:bold;">✕ Close</button>
+            if not products:
+                html += "<p style='text-align:center; grid-column:1/-1; color:#7f8c8d;'>No products found in this category.</p>"
+
+            for p in products:
+                author = session.get(Author, p.author_id)
+                author_name = p.cast_or_artist or (author.fullname if author else "Gophigo")
+
+                reviews = session.exec(select(Review).where(Review.author_id == p.author_id)).all()
+                avg = sum(r.rating for r in reviews) / len(reviews) if reviews else 0
+                stars = "⭐" * int(round(avg)) if reviews else "New Release"
+
+                price_display = f"{p.price:,.0f}"
+                preview_btn = ""
+
+                if p.category == "Manual":
+                    extra_info = f"{p.institution or ''} | {p.course_code or ''}"
+                elif p.category == "Law":
+                    extra_info = "⚖️ Law & Manual"
+                elif p.category == "Newspaper":
+                    extra_info = "📰 News & Article"
+                elif p.category == "Ticket":
+                    extra_info = "🎟️ Event Ticket"
+                elif p.category == "Hotel":
+                    extra_info = f"🏨 {p.district or ''}, {p.region or ''}"
+                elif p.category == "Media":
+                    m_type = p.media_type or "Premiere Media"
+                    dur = f" • {p.duration}" if p.duration else ""
+                    extra_info = f"🎬 {m_type}{dur}"
+                    if p.trailer_url:
+                        safe_title = p.title.replace("'", "\\'")
+                        preview_btn = f"<button type='button' class='btn-preview' onclick=\"openPreview('{p.trailer_url}', '{safe_title}')\">▶ Free Preview / Trailer</button>"
+                else:
+                    extra_info = p.category
+
+                if p.category == "Hotel":
+                    action_btn = f'<a href="/hotel/{p.id}" class="btn-buy" style="background:#2ecc71;">View Rooms & Rates</a>'
+                else:
+                    action_btn = f'<a href="/checkout-product/{p.id}" class="btn-buy" style="background:#3498db;">Unlock ({price_display} TZS)</a>'
+
+                html += f"""
+                <div class="book-card">
+                    <div>
+                        <img src="{p.cover_image}" alt="{p.title}">
+                        <h3 class="book-title">{p.title}</h3>
+                        <p class="book-author">{author_name}</p>
+                        <p style="color:#f1c40f; margin:0 0 8px; font-size:13px;">{stars}</p>
+                    </div>
+                    <div>
+                        <span style="background:#eef2f7; color:#2c3e50; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600; display:inline-block; margin-bottom:8px;">{extra_info}</span>
+                        {preview_btn}
+                        {action_btn}
+                    </div>
                 </div>
-                <div id="previewContainer"></div>
+                """
+
+            modal_html = """
+            <div id="previewModal" class="modal-backdrop" onclick="if(event.target===this) closePreview();">
+                <div class="modal-box">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <h3 id="previewTitle" style="margin:0; color:#f1c40f;">Free Preview</h3>
+                        <button onclick="closePreview()" style="background:#e74c3c; color:white; border:none; padding:6px 12px; border-radius:5px; cursor:pointer; font-weight:bold;">✕ Close</button>
+                    </div>
+                    <div id="previewContainer"></div>
+                </div>
             </div>
-        </div>
-        <script>
-            function openPreview(url, title) {
-                document.getElementById('previewTitle').innerText = '🎬 Preview: ' + title;
-                var isAudio = url.match(/\\.(mp3|wav|m4a|ogg)(\\?|$)/i);
-                var container = document.getElementById('previewContainer');
-                if (isAudio) {
-                    container.innerHTML = '<audio controls autoplay controlsList="nodownload" style="width:100%; margin:20px 0;"><source src="' + url + '"></audio>';
-                } else {
-                    container.innerHTML = '<video controls autoplay controlsList="nodownload" style="width:100%; max-height:420px; border-radius:8px;"><source src="' + url + '"></video>';
+            <script>
+                function openPreview(url, title) {
+                    document.getElementById('previewTitle').innerText = '🎬 Preview: ' + title;
+                    var isAudio = url.match(/\\.(mp3|wav|m4a|ogg)(\\?|$)/i);
+                    var container = document.getElementById('previewContainer');
+                    if (isAudio) {
+                        container.innerHTML = '<audio controls autoplay controlsList="nodownload" style="width:100%; margin:20px 0;"><source src="' + url + '"></audio>';
+                    } else {
+                        container.innerHTML = '<video controls autoplay controlsList="nodownload" style="width:100%; max-height:420px; border-radius:8px;"><source src="' + url + '"></video>';
+                    }
+                    document.getElementById('previewModal').style.display = 'flex';
                 }
-                document.getElementById('previewModal').style.display = 'flex';
-            }
-            function closePreview() {
-                document.getElementById('previewContainer').innerHTML = '';
-                document.getElementById('previewModal').style.display = 'none';
-            }
-        </script>
-        """
-        return html + f"</div>{modal_html}{FOOTER}</body></html>"
-
+                function closePreview() {
+                    document.getElementById('previewContainer').innerHTML = '';
+                    document.getElementById('previewModal').style.display = 'none';
+                }
+            </script>
+            """
+            return html + f"</div>{modal_html}{FOOTER}</body></html>"
+    except Exception:
+        import traceback
+        return HTMLResponse(content=f"<h1>Store Debug Error</h1><pre>{traceback.format_exc()}</pre>", status_code=500)   
+        
 @app.get("/checkout-product/{product_id}", response_class=HTMLResponse)
 def checkout_product(request: Request, product_id: int):
     try:
