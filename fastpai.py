@@ -1144,7 +1144,7 @@ def process_registration(
         session.commit()
 
     success_html = f'''<html><body style="font-family:Arial; text-align:center; padding:60px 15px; background:#f4f4f4; margin:0;">
-            <div style="text-align:center; padding:45px 30px; background:white; border-radius:10px; max-width:520px; margin:40px auto; box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+        <div style="text-align:center; padding:45px 30px; background:white; border-radius:10px; max-width:520px; margin:40px auto; box-shadow:0 4px 12px rgba(0,0,0,0.08);">
                 <h1 style="color:#2ecc71; margin-top:0;">Registration Complete!</h1>
                 <p style="margin:8px 0;">Official Author Registration Number:</p>
                 <div style="background:#2c3e50; color:#f1c40f; font-size:22px; font-weight:bold; padding:10px 18px; border-radius:6px; display:inline-block; margin-bottom:15px;">{reg_no}</div>
