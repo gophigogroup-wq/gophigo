@@ -1653,7 +1653,7 @@ def admin_dashboard(request: Request):
                     <tr style="background:#34495e; color:white;">
                         <th>ID</th><th>Title</th><th>Category</th><th>Price</th><th>Status</th><th>Action</th>
                     </tr>
-            '''
+            ''' 
             
             for p in products:
                 if p.status == "Flagged & Removed" or p.is_hidden:
