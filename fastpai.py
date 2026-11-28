@@ -892,7 +892,7 @@ def register_page(request: Request):
                 <strong>Logged in as:</strong> {author_name} ({author_email_val})
             </div>
         '''
-  document.getElementById('categorySelect').addEventListener('change', function() {
+document.getElementById('categorySelect').addEventListener('change', function() {
     var uniFields = document.getElementById('universityFields');
     var mediaFields = document.getElementById('mediaFields');
     var hotelFields = document.getElementById('hotelFields');
