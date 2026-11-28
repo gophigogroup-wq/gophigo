@@ -869,8 +869,10 @@ def register_page(request: Request):
             <input type="text" name="fullname" required style="width:100%; padding:10px; margin:8px 0; box-sizing:border-box;" placeholder="Full Legal Name (Matching NIDA) *">
             <input type="email" name="email" required style="width:100%; padding:10px; margin:8px 0; box-sizing:border-box;" placeholder="Email Address *">
             <input type="text" name="phone_number" required style="width:100%; padding:10px; margin:8px 0; box-sizing:border-box;" placeholder="Mobile Money / Phone Number (e.g. 0754123456) *">
-            <input type="password" name="password" required style="width:100%; padding:10px; margin:8px 0; box-sizing:border-box;" placeholder="Create Password *">
-
+            <div style="position:relative; margin:10px 0;">
+                <input type="password" id="userPassword" name="password" required style="width:100%; padding:10px 75px 10px 10px; box-sizing:border-box;" placeholder="Password">
+                <button type="button" onclick="togglePwd('userPassword', this)" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#eef2f7; border:1px solid #ccc; border-radius:4px; padding:4px 8px; font-size:12px; cursor:pointer; color:#2c3e50;">Show</button>
+            </div>
             <div style="background:#f8f9fa; border:1px solid #dce1e7; padding:14px; border-radius:8px; margin:12px 0;">
                 <h4 style="margin:0 0 8px 0; color:#2c3e50;">🪪 Creator Verification (KYC)</h4>
                 <input type="text" name="nida_number" required maxlength="20" style="width:100%; padding:10px; margin:6px 0; box-sizing:border-box;" placeholder="NIDA Number (20 Digits) *">
@@ -890,11 +892,6 @@ def register_page(request: Request):
                 <strong>Logged in as:</strong> {author_name} ({author_email_val})
             </div>
         '''
-        <div style="position:relative; margin:10px 0;">
-            <input type="password" id="userPassword" name="password" required style="width:100%; padding:10px 75px 10px 10px; box-sizing:border-box;" placeholder="Password">
-            <button type="button" onclick="togglePwd('userPassword', this)" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#eef2f7; border:1px solid #ccc; border-radius:4px; padding:4px 8px; font-size:12px; cursor:pointer; color:#2c3e50;">👁️ Show</button>
-        </div>
-        ...
   document.getElementById('categorySelect').addEventListener('change', function() {
     var uniFields = document.getElementById('universityFields');
     var mediaFields = document.getElementById('mediaFields');
