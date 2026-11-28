@@ -1839,76 +1839,56 @@ def terms_page(request: Request):
 
 @app.get("/admin-reports", response_class=HTMLResponse)
 def admin_reports(request: Request, period: str = "all"):
-    if request.cookies.get("admin_session") != "true": 
+    if request.cookies.get("admin_session") != "true":
         return RedirectResponse(url="/admin-login", status_code=303)
-        
+
     with Session(engine) as session:
-        query = select(Purchase).where(Purchase.status == "paid")
-        now = datetime.now(timezone.utc)
-        
-        if period == "today":
-            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            query = query.where(Purchase.created_at >= start_date)
-        elif period == "week":
-            start_date = now - timedelta(days=7)
-            query = query.where(Purchase.created_at >= start_date)
-        elif period == "month":
-            start_date = now - timedelta(days=30)
-            query = query.where(Purchase.created_at >= start_date)
-        elif period == "year":
-            start_date = now - timedelta(days=365)
-            query = query.where(Purchase.created_at >= start_date)
-            
-        purchases = session.exec(query.order_by(Purchase.created_at.desc())).all()
-        
+        all_purchases = session.exec(select(Purchase)).all()
+        now = datetime.utcnow()
+        purchases = []
+        for p in all_purchases:
+            if str(getattr(p, "status", "")).lower() not in ["paid", "completed", "success"]:
+                continue
+            created = getattr(p, "created_at", None)
+            if period == "today" and created and created.date() != now.date():
+                continue
+            elif period == "week" and created and (now - created).days > 7:
+                continue
+            elif period == "month" and created and (now - created).days > 30:
+                continue
+            purchases.append(p)
+
         total_sales = len(purchases)
-        total_revenue = 0.0
-        
-        for p in purchases:
-            author = session.get(Author, p.author_id)
-            if author:
-                price = author.ebook_price if p.format_bought == "Ebook" else author.paperback_price
-                total_revenue += price * 0.5
-                
-        html = f'''<html><body style="font-family:Arial; background:#f4f4f4;">
+        total_revenue = sum(float(getattr(p, "amount_paid", 0) or 0) * 0.5 for p in purchases)
+
+        html = f"""
+        <html><body style="font-family:Poppins, Arial, sans-serif; background:#f4f4f4; margin:0;">
             {get_navbar(request)}
-            <div style="padding:50px; max-width: 1000px; margin: auto;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h1 style="color:#2c3e50;">Sales Reports</h1>
-                    <a href="/admin" style="background: #34495e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Back to Dashboard</a>
+            <div style="padding:40px 20px; max-width:1100px; margin:auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h1 style="color:#2c3e50; margin:0;">Financial &amp; Sales Reports</h1>
+                    <a href="/admin" style="background:#2c3e50; color:white; padding:10px 18px; text-decoration:none; border-radius:6px; font-weight:bold;">Back to Admin</a>
                 </div>
 
-                <div style="margin-bottom: 20px; display: flex; gap: 10px;">
-                    <a href="/admin-reports?period=today" style="background: {'#3498db' if period == 'today' else '#ccc'}; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">Today</a>
-                    <a href="/admin-reports?period=week" style="background: {'#3498db' if period == 'week' else '#ccc'}; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">This Week</a>
-                    <a href="/admin-reports?period=month" style="background: {'#3498db' if period == 'month' else '#ccc'}; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">This Month</a>
-                    <a href="/admin-reports?period=year" style="background: {'#3498db' if period == 'year' else '#ccc'}; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">This Year</a>
-                    <a href="/admin-reports?period=all" style="background: {'#3498db' if period == 'all' else '#ccc'}; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">All Time</a>
+                <div style="margin-bottom:20px; display:flex; gap:10px; flex-wrap:wrap;">
+                    <a href="/admin-reports?period=today" style="background:{'#3498db' if period == 'today' else '#95a5a6'}; color:white; padding:8px 16px; text-decoration:none; border-radius:5px;">Today</a>
+                    <a href="/admin-reports?period=week" style="background:{'#3498db' if period == 'week' else '#95a5a6'}; color:white; padding:8px 16px; text-decoration:none; border-radius:5px;">This Week</a>
+                    <a href="/admin-reports?period=month" style="background:{'#3498db' if period == 'month' else '#95a5a6'}; color:white; padding:8px 16px; text-decoration:none; border-radius:5px;">This Month</a>
+                    <a href="/admin-reports?period=all" style="background:{'#3498db' if period == 'all' else '#95a5a6'}; color:white; padding:8px 16px; text-decoration:none; border-radius:5px;">All Time</a>
                 </div>
 
-                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px;">
-                    <h3 style="margin: 0; color: #2c3e50;">Summary</h3>
-                    <p style="font-size: 18px;"><strong>Books Sold:</strong> {total_sales}</p>
-                    <p style="font-size: 18px;"><strong>Gophigo Revenue (50%):</strong> {total_revenue:,.2f} TZS</p>
+                <div style="background:white; padding:20px; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.08); margin-bottom:20px;">
+                    <h3 style="margin:0; color:#2c3e50;">Summary</h3>
+                    <p style="font-size:18px;"><strong>Total Paid Transactions:</strong> {total_sales}</p>
+                    <p style="font-size:18px;"><strong>Gophigo Revenue (50%):</strong> {total_revenue:,.2f} TZS</p>
                 </div>
 
                 <table border="1" style="width:100%; background:white; border-collapse:collapse;">
                     <tr style="background:#34495e; color:white;">
-                        <th>Date</th><th>Reference</th><th>Book</th><th>Format</th><th>Phone</th><th>Status</th>
+                        <th>Date</th><th>Reference</th><th>Item</th><th>Format</th><th>Phone</th><th>Status</th>
                     </tr>
-        '''
-        
-        for p in purchases:
-            phone = p.phone_number if p.phone_number else "N/A"
-            date_str = p.created_at.strftime("%Y-%m-%d %H:%M") if p.created_at else "Unknown"
-            html += f"<tr><td>{date_str}</td><td>{p.reference[:8]}...</td><td>{p.book_title}</td><td>{p.format_bought}</td><td>{phone}</td><td style='color:green; font-weight:bold;'>{p.status.upper()}</td></tr>"
-            
-        html += f'''</table>
-            </div>
-            {FOOTER}
-        </body></html>'''
-        
-        return html
+        """
+
 @app.post("/update-price")
 def update_price(request: Request, ebook_price: float = Form(...), paperback_price: float = Form(...)):
     author_email = request.cookies.get("author_email")
