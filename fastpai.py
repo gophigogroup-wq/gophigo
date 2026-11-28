@@ -1269,7 +1269,6 @@ def manage_tracks_page(request: Request, product_id: int):
             rows += f"<tr><td style='padding:8px;'>#{t.track_number}</td><td style='padding:8px;'>{t.track_title}</td><td style='padding:8px;'>{t.duration or '-'}</td></tr>"
         if not rows:
             rows = "<tr><td colspan='3' style='padding:12px; color:#7f8c8d;'>No extra tracks/episodes added yet.</td></tr>"
-
         return f"""
         <html><body style="font-family:Poppins, Arial, sans-serif; background:#f4f4f4; margin:0;">
             {get_navbar(request)}
