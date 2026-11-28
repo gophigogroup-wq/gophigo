@@ -894,6 +894,7 @@ def register_page(request: Request):
             <input type="password" id="userPassword" name="password" required style="width:100%; padding:10px 75px 10px 10px; box-sizing:border-box;" placeholder="Password">
             <button type="button" onclick="togglePwd('userPassword', this)" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#eef2f7; border:1px solid #ccc; border-radius:4px; padding:4px 8px; font-size:12px; cursor:pointer; color:#2c3e50;">👁️ Show</button>
             </div>
+        ...
 document.getElementById('categorySelect').addEventListener('change', function() {
     var uniFields = document.getElementById('universityFields');
     var mediaFields = document.getElementById('mediaFields');
