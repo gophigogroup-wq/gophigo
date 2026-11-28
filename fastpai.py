@@ -2512,7 +2512,7 @@ def hotel_detail_page(request: Request, product_id: int, ref: int = None):
         if ref:
             res.set_cookie(key="gophigo_ref", value=str(ref), max_age=86400 * 7)
         return res
- @app.get("/book-room/{room_id}", response_class=HTMLResponse)
+@app.get("/book-room/{room_id}", response_class=HTMLResponse)
 def book_room_page(request: Request, room_id: int):
     customer_email = request.cookies.get("customer_email")
     if not customer_email:
