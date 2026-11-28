@@ -907,7 +907,6 @@ def register_page(request: Request):
                 <strong>Logged in as:</strong> {author_name} ({author_email_val})
             </div>
         '''
-'''
 
     return f"""
     <html><body style="font-family:Poppins, Arial, sans-serif; background:#f4f4f4; margin:0;">
