@@ -1136,7 +1136,7 @@ def process_registration(
             price=price,
             cover_image=cover_url,
             file_url=file_url,
-            product_code=new_book_id,
+            product_code=new_book_id, 
             status=product_status
         )
         session.add(new_product)
