@@ -1030,120 +1030,7 @@ function togglePwd(inputId, btn) {
 }
 </script>
 """
-    return f'''<html><body style="font-family:Poppins, Arial, sans-serif; background:#f4f4f4; margin:0;">
-        {get_navbar(request)}
-        <div style="padding:40px 15px;">
-            <div style="background:white; padding:30px; border-radius:10px; max-width:540px; margin:auto; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
-                <h2 style="text-align:center; color:#2c3e50; margin-top:0;">Creator & Author Registration</h2>
-                <form action="/register" method="POST" enctype="multipart/form-data">
-                    {login_fields}
-                    
-                    <input type="text" name="book_title" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Title of Book, Song, Movie, or Event *">
-                    
-                    <select name="category" id="categorySelect" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;">
-                        <option value="Book">📚 General Book</option>
-                        <option value="Media">🎬 Movies, Music, Comedy & Podcasts</option>
-                        <option value="Manual">🏫 University Manual / Lecture Notes</option>
-                        <option value="Law">⚖️ Laws, Regulations & Manuals</option>
-                        <option value="Newspaper">📰 Newspaper & Articles</option>
-                        <option value="Ticket">🎟️ Event Ticket / Football Match</option>
-                        <option value="Religious">🙏 Religious Book</option>
-                    </select>
-
-                    <div id="universityFields" style="display: none;">
-                        <input type="text" name="institution" style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="University Name (e.g., UDSM, CBE)">
-                        <input type="text" name="course_code" style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Course Code (e.g., BUS 101)">
-                    </div>
-                   
-                    <div id="hotelFields" style="display: none; background:#eafaf1; border:1px solid #2ecc71; padding:15px; border-radius:8px; margin:10px 0;">
-                        <h4 style="margin:0 0 10px 0; color:#1e8449;">🏨 Hotel & Restaurant Location</h4>
-                        <select name="venue_type" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; box-sizing:border-box;">
-                            <option value="Hotel">🏨 Hotel</option>
-                            <option value="Lodge & Apartments">🏡 Lodge & Serviced Apartments</option>
-                            <option value="Restaurant">🍽️ Restaurant & Lounge</option>
-                    </select>
-                    <select name="region" id="regRegionSelect" onchange="updateRegDistricts()" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; box-sizing:border-box;">
-                        <option value="">-- Select Region --</option>
-                         {"".join(f'<option value="{r}">{r}</option>' for r in sorted(TZ_REGIONS_DISTRICTS.keys()))}
-                     </select>
-                     <select name="district" id="regDistrictSelect" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; box-sizing:border-box;">
-                         <option value="">-- Select District --</option>
-                     </select>
-                      <input type="text" name="address" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc; box-sizing:border-box;" placeholder="Street / Area Landmark (e.g., Kigamboni, Maweni Road)">
-                    </div>
-                    
-                    <div id="mediaFields" style="display: none; background:#1a252f; color:white; padding:15px; border-radius:8px; margin:10px 0;">
-                        <h4 style="margin:0 0 10px 0; color:#f1c40f;">🎬 Premiere Studio Details</h4>
-                        <select name="media_type" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; box-sizing:border-box;">
-                            <option value="Single Track">🎵 Single Audio Track</option>
-                            <option value="Full Album / EP">💿 Full Album / EP</option>
-                            <option value="Feature Movie">🎬 Feature Movie / Film</option>
-                            <option value="Series / Episode">📺 Series / Episode</option>
-                            <option value="Comedy / Podcast">🎙️ Stand-Up Comedy / Podcast</option>
-                        </select>
-                        <input type="text" name="cast_or_artist" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:none; box-sizing:border-box;" placeholder="Featured Artists / Cast & Director">
-                        <input type="text" name="duration" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:none; box-sizing:border-box;" placeholder="Duration (e.g., 3:45 or 1h 50m)">
-                        <label style="font-size:13px; font-weight:bold; color:#2ecc71; display:block; margin-top:5px;">Free 30s Audio Hook / 60s Video Trailer (Optional):</label>
-                        <input type="file" name="trailer_file" accept=".mp3,.mp4,.wav,.m4a,.mov,audio/*,video/*" style="width:100%; padding:8px 0; color:white;">
-                    </div>
-                    
-                    <input type="number" name="price" required style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;" placeholder="Standard Price (TZS) *">
-                    
-                    <label style="font-size:14px; font-weight:bold; display:block; margin-top:10px;">Upload Cover Image / Poster *:</label>
-                    <input type="file" name="cover" accept="image/*" required style="width:100%; padding:10px 0;">
-                    
-                    <label id="fileLabel" style="font-size:14px; font-weight:bold; display:block; margin-top:10px;">Upload PDF / Document:</label>
-                    <input type="file" id="fileInput" name="pdf_file" accept=".pdf,.doc,.docx" style="width:100%; padding:10px 0;">
-                    
-                    <div style="margin: 15px 0; display: flex; align-items: flex-start; gap: 10px;">
-                        <input type="checkbox" name="agree_terms" value="yes" required style="margin-top: 5px; transform: scale(1.4);">
-                        <label style="font-size: 13px; color: #555;">
-                            I declare that I am the copyright owner of this work and I agree to the
-                            <a href="/terms" target="_blank" style="color: #3498db;">Gophigo Terms & Conditions</a>.
-                        </label>
-                    </div>
-                    
-                    <button type="submit" style="background:#2ecc71; color:white; padding:14px; border:none; width:100%; border-radius:6px; font-size:16px; font-weight:bold; cursor:pointer;">Complete Registration & Submit</button>
-                </form>
-            </div>
-        </div>
-        {FOOTER}
-        <script>
-            document.getElementById('categorySelect').addEventListener('change', function() {{
-                var uniFields = document.getElementById('universityFields');
-                var mediaFields = document.getElementById('mediaFields');
-                var fileInput = document.getElementById('fileInput');
-                var fileLabel = document.getElementById('fileLabel');
-                
-                uniFields.style.display = (this.value === 'Manual') ? 'block' : 'none';
-                mediaFields.style.display = (this.value === 'Media') ? 'block' : 'none';
-                
-                if (this.value === 'Media') {{
-                    fileInput.accept = ".mp3,.mp4,.wav,.m4a,.mov,audio/*,video/*";
-                    fileLabel.innerText = "Upload Full Master Audio/Video File:";
-                }} else {{
-                    fileInput.accept = ".pdf,.doc,.docx";
-                    fileLabel.innerText = "Upload PDF / Document:";
-                }}
-            }});
-        </script>
-    </body></html>'''
-PASSWORD_TOGGLE_SCRIPT = """
-<script>
-function togglePwd(inputId, btn) {
-    var inp = document.getElementById(inputId);
-    if (!inp) return;
-    if (inp.type === "password") {
-        inp.type = "text";
-        btn.innerText = "🙈 Hide";
-    } else {
-        inp.type = "password";
-        btn.innerText = "👁️ Show";
-    }
-}
-</script>
-"""
-
+    
 @app.post("/register", response_class=HTMLResponse)
 def process_registration(
     request: Request,
@@ -1269,6 +1156,21 @@ def process_registration(
     response = HTMLResponse(content=success_html)
     response.set_cookie(key="author_email", value=author_email, httponly=True)
     return response
+PASSWORD_TOGGLE_SCRIPT = """
+<script>
+function togglePwd(inputId, btn) {
+    var inp = document.getElementById(inputId);
+    if (!inp) return;
+    if (inp.type === "password") {
+        inp.type = "text";
+        btn.innerText = "🙈 Hide";
+    } else {
+        inp.type = "password";
+        btn.innerText = "👁️ Show";
+    }
+}
+</script>
+"""
 
 @app.post("/register", response_class=HTMLResponse)
 def process_registration(
