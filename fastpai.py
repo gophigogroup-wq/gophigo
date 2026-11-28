@@ -1143,8 +1143,7 @@ def process_registration(
         session.add(new_product)
         session.commit()
 
-         success_html = f'''<html><body style="font-family:Arial; text-align:center; padding:60px 15px; background:#f4f4f4; margin:0;">
-              <div style="text-align:center; padding:45px 30px; background:white; border-radius:10px; max-width:520px; margin:40px auto; box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+         success_html = f"""<html><body style="font-family:Arial; text-align:center; padding:60px 15px; background:#f4f4f4; margin:0;">              <div style="text-align:center; padding:45px 30px; background:white; border-radius:10px; max-width:520px; margin:40px auto; box-shadow:0 4px 12px rgba(0,0,0,0.08);">
                   <h1 style="color:#2ecc71; margin-top:0;">Registration Complete!</h1>
                   <p style="margin:8px 0;">Official Author Registration Number:</p>
                   <div style="background:#2c3e50; color:#f1c40f; font-size:22px; font-weight:bold; padding:10px 18px; border-radius:6px; display:inline-block; margin-bottom:15px;">{reg_no}</div>
@@ -1152,7 +1151,7 @@ def process_registration(
                   <br>
                   <a href="/author-dashboard" style="background:#3498db; color:white; padding:12px 25px; text-decoration:none; border-radius:5px; font-weight:bold;">Go to My Dashboard</a>
                 </div>
-          ''' + FOOTER + '</body></html>'
+          """ + FOOTER + "</body></html>"
     response = HTMLResponse(content=success_html)
     response.set_cookie(key="author_email", value=author_email, httponly=True)
     return response
