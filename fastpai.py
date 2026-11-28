@@ -1570,7 +1570,7 @@ def admin_dashboard(request: Request):
                     k_btn = f"<a href='/admin-verify-author/{au.id}' style='background:#2ecc71; color:white; padding:5px 10px; text-decoration:none; border-radius:3px; font-weight:bold;'>Verify & Publish</a>"
                 kyc_rows += f"<tr><td>{r_no}</td><td>{au.fullname}</td><td>{au.phone_number or '-'}</td><td>{au.nida_number or '-'} ({nida_link})</td><td>{au.tin_number or '-'} ({tin_link})</td><td>{k_btn}</td></tr>"
 
-            kyc_table_html = f"""
+            html = f"""
             <h3>Creator Due Diligence (KYC Verification)</h3>
             <table border="1" style="width:100%; background:white; border-collapse:collapse; margin-bottom:35px;">
                 <tr style="background:#2c3e50; color:white;">
